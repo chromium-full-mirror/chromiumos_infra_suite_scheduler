@@ -1,0 +1,19 @@
+#!/bin/bash
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script will start glint for current module.
+
+set -eu
+
+readonly bin_dir=$(readlink -f -- "$(dirname -- "$0")")
+
+if (( $# == 0 )); then
+    echo "No file specified. Linting all files managed by git." >&2
+    cd "${bin_dir}/.."
+    git ls-files | xargs -d '\n' /usr/bin/glint
+    exit 0
+fi
+
+exec "/usr/bin/glint" "$@"
