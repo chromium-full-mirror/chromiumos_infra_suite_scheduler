@@ -12,6 +12,7 @@ Example invocation:
 """
 
 import argparse
+import logging
 import os
 import sys
 import unittest
@@ -44,7 +45,18 @@ def fixup_paths(path):
   sys.path.insert(0, path)
 
 
-def main(sdk_path, test_path, test_pattern):
+def main(sdk_path, test_path, test_pattern, test_file):
+  """The main function to run unittest for given test_pattern/test_file.
+
+  Args:
+    sdk_path: the google sdk path.
+    test_path: the path of test files to run.
+    test_pattern: the file name patterns for testing files.
+    test_file: the single file for testing.
+
+  Returns:
+    a unittest.TextTestRunner object.
+  """
   if sdk_path != GOOGLE_CLOUD_SDK_PATH:
     _import_sdk_path(sdk_path)
 
@@ -60,8 +72,12 @@ def main(sdk_path, test_path, test_pattern):
     print 'Note: unable to import appengine_config.'
 
   # Discover and run tests.
-  suite = unittest.loader.TestLoader().discover(test_path, test_pattern)
-  return unittest.TextTestRunner(verbosity=2).run(suite)
+  if test_file:
+    suites = unittest.loader.TestLoader().discover(test_path, test_file)
+  else:
+    suites = unittest.loader.TestLoader().discover(test_path, test_pattern)
+
+  return unittest.TextTestRunner(verbosity=2).run(suites)
 
 
 def _import_sdk_path(sdk_path):
@@ -92,22 +108,40 @@ def _make_parser():
       '--test-path',
       help='The path to look for tests, defaults to the current directory.',
       default=os.getcwd())
-  parser.add_argument(
+  group = parser.add_mutually_exclusive_group()
+  group.add_argument(
       '--test-pattern',
       help='The file pattern for test modules, defaults to *_test.py.',
       default='*_test.py')
+  group.add_argument(
+      'test_file',
+      nargs='?',
+      help=('A single test module to test, default to empty string, which '
+            'means the runner will find test modules by test-pattern.'),
+      default='')
+  parser.add_argument(
+      '--debug',
+      action='store_true',
+      help='Display the logging in unittest.')
   return parser
 
 
 if __name__ == '__main__':
   unittest_parser = _make_parser()
   args = unittest_parser.parse_args()
+  if args.debug:
+    logging.getLogger().setLevel(logging.DEBUG)
+  else:
+    logging.getLogger().setLevel(logging.CRITICAL)
+
   try:
     _import_sdk_path(args.sdk_path)
   except ImportError:
     args.sdk_path = raw_input('Cannot find google SDK in %s. Please specify '
                               'your google SDK path: ' % GOOGLE_CLOUD_SDK_PATH)
 
-  result = main(args.sdk_path, args.test_path, args.test_pattern)
+  result = main(args.sdk_path, args.test_path, args.test_pattern,
+                args.test_file)
+
   if not result.wasSuccessful():
     sys.exit(1)
