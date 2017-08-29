@@ -1,0 +1,183 @@
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""Module of TimedEvent, triggered by time points."""
+
+import datetime
+import logging
+
+import base_event
+import constants
+import time_converter
+
+
+class TimedEvent(base_event.BaseEvent):
+  """Base class for events that triggered based on time."""
+
+  def __init__(self, event_settings, last_exec_utc, target_exec_utc):
+    """Initialize a TimedEvent.
+
+    Args:
+      event_settings: a config_reader.EventSettings object, indicating
+        the event settings.
+      last_exec_utc: The utc datetime.datetime timestamp of last
+        execution.
+      target_exec_utc: The utc datetime.datetime timestamp of the expected
+        execution for current round.
+    """
+    super(TimedEvent, self).__init__(
+        event_settings, last_exec_utc, target_exec_utc)
+    self.since_date = self.target_exec_utc - datetime.timedelta(
+        days=self.DAYS_INTERVAL)
+
+  def set_default_utc_time(self):
+    """Convert default day/hour to UTC for TimedEvent."""
+    default_pst_timeinfo = time_converter.convert_time_info_to_utc(
+        time_converter.TimeInfo(self.DEFAULT_PST_DAY,
+                                self.DEFAULT_PST_HOUR))
+    self._default_utc_day = default_pst_timeinfo.weekday
+    self._default_utc_hour = default_pst_timeinfo.hour
+
+
+class Nightly(TimedEvent):
+  """The class for nightly-triggered TimedEvent.
+
+  A nightly-triggered TimedEvent allows a task to be triggered at
+  every day. One can set the hour when this task should be triggered
+  through 'hour' setting.
+
+  For example:
+  [AVWebcam]
+  run_on: nightly
+  hour: 19
+  This nightly task means it should be triggered at 19:00 everyday.
+  """
+  KEYWORD = 'nightly'
+  PRIORITY = constants.Priorities.DAILY
+
+  # Each task may have its own setting of 'hour'. The default is set to 9PM.
+  # Nightly task cannot set 'day'. The default is None.
+  DEFAULT_PST_DAY = None
+  DEFAULT_PST_HOUR = 21
+
+  # Nightly event is triggered once a day.
+  DAYS_INTERVAL = 1
+
+  # Every 1 hours a batch of tasks in task_list of nightly event is
+  # scheduled, eg. suite scheduler will schedule all nightly event's
+  # tasks whose hour is set 4 in its first run after 4:00am every day.
+  LAST_EXEC_INTERVAL = 1
+
+  # Kicked off once a day, so nightly event's tasks get the full day to run
+  TIMEOUT = 24
+
+  def __init__(self, event_settings, last_exec_utc):
+    """Initialize a nightly TimedEvent.
+
+    Args:
+      event_settings: a config_reader.EventSettings object.
+      last_exec_utc: The utc datetime.datetime timestamp of last
+          execution.
+    """
+    self.set_default_utc_time()
+    now = time_converter.utc_now()
+    target_exec_utc = datetime.datetime(
+        now.year, now.month, now.day, now.hour,
+        tzinfo=time_converter.UTC_TZ)
+
+    super(Nightly, self).__init__(
+        event_settings, last_exec_utc, target_exec_utc)
+
+  def filter_tasks(self):
+    """Filter tasks by target_exec_utc."""
+    cur_hour = self.target_exec_utc.hour
+    logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+    tasks = [t for t in self.task_list
+             if ((t.hour is not None and cur_hour == t.hour) or
+                 (t.hour is None and cur_hour == self._default_utc_hour))]
+    self.task_list = tasks
+
+
+class Weekly(TimedEvent):
+  """The class for weekly-triggered TimedEvent.
+
+  A weekly-triggered TimedEvent allows a task to be triggered at
+  every week. One can set the day when this task should be triggered
+  through 'day' setting, and set the hour for tasks to run by config
+  section in 'weekly_params'.
+
+  For example:
+  [ChameleonDpOldBranch]
+  run_on: weekly
+  day: 5
+  This weekly task means it should be triggered at every Saturday 11PM, which
+  is the default PST hour setting (DEFAULT_PST_HOUR) for Weekly Event.
+  """
+  KEYWORD = 'weekly'
+  PRIORITY = constants.Priorities.WEEKLY
+
+  # Each task may have its own settings of 'day' & 'hour'. The default day
+  # is Saturday. The default hour is set to 11PM.
+  DEFAULT_PST_DAY = 5  # Saturday
+  DEFAULT_PST_HOUR = 23
+
+  # Weekly event is triggered once a week.
+  DAYS_INTERVAL = 7
+
+  # Every 24 hours a batch of tasks in task_list of weekly event is
+  # scheduled, eg. suite scheduler will schedule all weekly event's
+  # tasks whose day is set 5 in its first run after 11PM every Saturday.
+  LAST_EXEC_INTERVAL = 24
+
+  # Kicked off once a week, so weekly event's tasks get the 7 days to run
+  TIMEOUT = 7 * 24
+
+  def __init__(self, event_settings, last_exec_utc):
+    """Initialize a weekly TimedEvent.
+
+    Args:
+      event_settings: A config_reader.EventSettings object.
+      last_exec_utc: The utc datetime.datetime timestamp of last
+        execution.
+    """
+    self.set_default_utc_time()
+    now = time_converter.utc_now()
+
+    event_hour = event_settings.event_hour
+    if event_hour is None:
+      event_hour = self._default_utc_hour
+    else:
+      utc_event_time_info = time_converter.convert_time_info_to_utc(
+          time_converter.TimeInfo(None, event_hour))
+      event_hour = utc_event_time_info.hour
+
+    scheduled_exec_utc = datetime.datetime.combine(
+        datetime.datetime(now.year, now.month, now.day, now.hour),
+        datetime.time(event_hour))
+    scheduled_exec_utc = scheduled_exec_utc.replace(
+        tzinfo=time_converter.UTC_TZ)
+
+    cur_exec_utc = datetime.datetime(
+        now.year, now.month, now.day, now.hour,
+        tzinfo=time_converter.UTC_TZ)
+    if cur_exec_utc < scheduled_exec_utc:
+      # Don't kick off weekly event when everyday's timepoint hasn't
+      # arrived, so set target_exec_utc as the day before.
+      # Usually it's last_exec_utc saved in datastore.
+      target_exec_utc = scheduled_exec_utc - datetime.timedelta(
+          hours=self.LAST_EXEC_INTERVAL)
+    else:
+      target_exec_utc = scheduled_exec_utc
+
+    super(Weekly, self).__init__(
+        event_settings, last_exec_utc, target_exec_utc)
+
+  def filter_tasks(self):
+    """Filter tasks by target_exec_utc."""
+    cur_day = self.target_exec_utc.weekday()
+    logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
+    tasks = [t for t in self.task_list
+             if ((t.day is not None and cur_day == t.day) or
+                 (t.day is None and cur_day == self._default_utc_day))]
+    self.task_list = tasks

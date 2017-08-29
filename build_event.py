@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Module of BuildEvent, triggerred by new builds."""
+"""Module of BuildEvent, triggered by new builds."""
 
 import datetime
 
@@ -12,7 +12,7 @@ import time_converter
 
 
 class NewBuild(base_event.BaseEvent):
-  """The class for BuildEvent triggerred by new builds."""
+  """The class for BuildEvent triggered by new builds."""
 
   KEYWORD = 'new_build'
   PRIORITY = constants.Priorities.POSTBUILD
