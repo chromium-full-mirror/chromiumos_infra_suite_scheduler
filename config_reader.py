@@ -45,7 +45,6 @@ CommonTaskEntries = ['boards',
                      'branch_specs',
                      'cros_build_spec',
                      'day',
-                     'file_bugs',
                      'firmware_ro_build_spec',
                      'firmware_rw_build_spec',
                      'hour',
@@ -66,6 +65,7 @@ TaskInfo = collections.namedtuple(
     'TaskInfo',
     CommonTaskEntries + ['name', 'keyword', 'testbed_dut_count']
     )
+TaskInfo.__new__.__defaults__ = (None,) * len(TaskInfo._fields)
 
 # The entries of android boards in lab config file.
 ANDROID_BOARD = 'AndroidBoard'
@@ -273,9 +273,6 @@ class TaskConfig(object):
     job_retry = self._config_reader.getboolean(section, 'job_retry')
     job_retry = False if job_retry is None else job_retry
 
-    file_bugs = self._config_reader.getboolean(section, 'file_bugs')
-    file_bugs = False if file_bugs is None else file_bugs
-
     no_delay = self._config_reader.getboolean(section, 'no_delay')
     no_delay = False if no_delay is None else no_delay
 
@@ -321,7 +318,6 @@ class TaskConfig(object):
                     boards=boards,
                     priority=priority,
                     timeout=timeout,
-                    file_bugs=file_bugs,
                     job_retry=job_retry,
                     no_delay=no_delay,
                     num=num,
@@ -485,29 +481,7 @@ class TaskConfig(object):
     task_info = self._read_task_section(section)
     self._validate_task_section(task_info)
 
-    return task.Task(
-        section,
-        task_info.suite,
-        task_info.branch_specs,
-        task_info.pool,
-        task_info.num,
-        task_info.boards,
-        task_info.priority,
-        task_info.timeout,
-        file_bugs=task_info.file_bugs,
-        cros_build_spec=task_info.cros_build_spec,
-        firmware_rw_build_spec=task_info.firmware_rw_build_spec,
-        firmware_ro_build_spec=task_info.firmware_ro_build_spec,
-        test_source=task_info.test_source,
-        job_retry=task_info.job_retry,
-        no_delay=task_info.no_delay,
-        hour=task_info.hour,
-        day=task_info.day,
-        os_type=task_info.os_type,
-        launch_control_branches=task_info.lc_branches,
-        launch_control_targets=task_info.lc_targets,
-        testbed_dut_count=task_info.testbed_dut_count,
-        tot=self._tot_manager)
+    return task.Task(task_info, tot=self._tot_manager)
 
 
 class LabConfig(object):

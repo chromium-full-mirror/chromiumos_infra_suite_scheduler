@@ -9,7 +9,6 @@ import unittest
 import config_reader
 import constants
 import mock
-import task
 import tot_manager
 
 
@@ -77,15 +76,10 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     self.assertEqual(new_task.branch_specs, [self._BRANCH_SPEC])
     self.assertEqual(new_task.pool, self._POOL)
     self.assertEqual(new_task.num, self._NUM)
-    self.assertEqual(new_task.boards, task.split_str_to_list(self._BOARD))
+    self.assertEqual(new_task.boards,
+                     [t.lstrip() for t in self._BOARD.split(',')])
     self.assertEqual(new_task.priority, self._PRIORITY)
     self.assertEqual(new_task.timeout, self._TIMEOUT)
-
-  def testGetTaskByKeywordCheckFileBug(self):
-    """Ensure a Task can be built from a correct config."""
-    task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
-    self.assertFalse(tasks[0].file_bugs)
 
   def testGetTaskByKeywordNoRunonNoRaise(self):
     """Ensure a Task CANNOT be built without run_on, but not raise error."""
