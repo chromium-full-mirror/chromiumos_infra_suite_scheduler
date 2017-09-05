@@ -1,0 +1,31 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /test_push/.*
+  script: gae_test.app
+
+- url: /.*
+  script: main.app
+
+# [START libraries]
+libraries:
+- name: pytz
+  version: latest
+- name: jinja2
+  version: latest
+- name: MySQLdb
+  version: latest
+# [END libraries]
+
+builtins:
+- django_wsgi: on
+
+# Search DEFAULT_SKIP_FILES in google.appengine.api.appinfo plus a few others
+skip_files: |
+    ^(.*/)?(
+    (.*\.py[co])|
+    (cloud_sql_proxy)|
+    ([A-Z]+(\.py)?)|
+    )$

@@ -24,4 +24,5 @@ LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
 
 # Service account secret json file used for local development.
 LOCAL_CLIENT_SECRETS_FILE = os.path.join(
-    CREDENTIALS_PATH, 'suite-scheduler_client_secret_service_account.json')
+    CREDENTIALS_PATH,
+    'suite-scheduler-staging_client_secret_service_account.json')
