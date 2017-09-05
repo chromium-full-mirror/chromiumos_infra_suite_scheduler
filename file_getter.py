@@ -6,8 +6,6 @@
 
 import os
 
-import constants
-
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 

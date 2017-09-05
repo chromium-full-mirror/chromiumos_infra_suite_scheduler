@@ -3,11 +3,14 @@
 # found in the LICENSE file.
 
 """Module for ChromeOS & Android build related logic in suite scheduler."""
+# pylint: disable=g-bad-import-order
 
-import apiclient
+from distutils import version
 import collections
 import logging
 import re
+
+import apiclient
 
 # Bare branches
 BARE_BRANCHES = ['factory', 'firmware']
@@ -19,189 +22,21 @@ OS_TYPE_ANDROID = 'android'
 OS_TYPES = [OS_TYPE_CROS, OS_TYPE_BRILLO, OS_TYPE_ANDROID]
 OS_TYPES_LAUNCH_CONTROL = [OS_TYPE_BRILLO, OS_TYPE_ANDROID]
 
-
+# Launch control build's target's information
 LaunchControlBuildTargetInfo = collections.namedtuple(
     'LaunchControlBuildTargetInfo',
     [
-      'target',
-      'type',
+        'target',
+        'type',
     ])
 
+# ChromeOS build config's information
 CrOSBuildConfigInfo = collections.namedtuple(
     'CrOSBuildConfigInfo',
     [
-      'board',
-      'type',
+        'board',
+        'type',
     ])
-
-
-class NoBuildError(Exception):
-    """Raised when failing to get the required build from Google Storage."""
-
-
-class BuildType(object):
-    """Representing the type of test source build.
-
-    This is used to identify the test source build for testing.
-    """
-    FIRMWARE_RW = 'firmware_rw'
-    FIRMWARE_RO = 'firmware_ro'
-    CROS = 'cros'
-
-
-class BuildVersionKey(object):
-    """Keys referring to the builds to install in run_suites."""
-
-    CROS_VERSION = 'cros_version'
-    ANDROID_BUILD_VERSION = 'android_version'
-    TESTBED_BUILD_VERSION = 'testbed_version'
-    FW_RW_VERSION = 'fwrw_version'
-    FW_RO_VERSION = 'fwro_version'
-
-
-class AndroidBuild(collections.namedtuple(
-    '_AndroidBuildBase', ['branch', 'target', 'build_id']), object):
-
-    def __str__(self):
-        return _ANDROID_BUILD_PATTERN % {'branch': self.branch,
-                                         'target': self.target,
-                                         'build_id': self.build_id}
-
-
-class CrOSBuild(collections.namedtuple(
-    '_CrOSBuildBase',
-    ['board', 'build_type', 'milestone', 'manifest']), object):
-
-    def __str__(self):
-        return _CROS_BUILD_PATTERN % {'board': self.board,
-                                      'build_type': self.build_type,
-                                      'milestone': self.milestone,
-                                      'manifest': self.manifest}
-
-
-def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
-    """Get latest build for given board from Google Storage.
-
-    Args:
-        storage_client: a rest_client.StorageRestClient object.
-        board: the board to fetch latest build. Default is 'master'.
-        suffix: suffix represents build channel, like '-release'.
-                Default is '-paladin'.
-
-    Returns:
-        a ChromeOS version string, e.g. '59.0.000.0'.
-
-    Raises:
-        HttpError if error happens in interacting with Google Storage.
-    """
-    board = board if board is not None else _DEFAULT_MASTER
-    suffix = suffix if suffix is not None else _DEFAULT_BUILD_SUFFIX
-    file_to_check = _GS_LATEST_MASTER_PATTERN % {
-        'board': board,
-        'suffix': suffix,
-        'name': _LATEST_MASTER}
-
-    try:
-        return storage_client.ReadObject(_GS_BUCKET, file_to_check)
-    except apiclient.errors.HttpError as e:
-        raise NoBuildError(
-            'Cannot find latest build for board %s, suffix %s: %s' %
-            (board, suffix, str(e)))
-
-
-def get_latest_launch_control_build(android_client, branch, target):
-    """Get the latest launch control build from Android Build API.
-
-    Args:
-        android_client: a rest_client.AndroidBuildRestClient object.
-        branch: the launch control branch.
-        target: the launch control target.
-
-    Returns:
-        a string latest launch control build id.
-
-    Raises:
-        NoBuildError if no latest launch control build is found.
-    """
-    try:
-        latest_build_id = android_client.get_latest_build_id(branch, target)
-        if latest_build_id is None:
-            raise NoBuildError('No latest builds is found.')
-
-        return latest_build_id
-    except apiclient.errors.HttpError as e:
-        raise NoBuildError('HttpError happened in getting the latest launch '
-                           'control build for '
-                           '%s,%s: %s' % (branch, target, str(e)))
-
-def parse_launch_control_target(target):
-    """Parse the build target and type from a Launch Control target.
-
-    The Launch Control target has the format of build_target-build_type, e.g.,
-    shamu-eng or dragonboard-userdebug. This method extracts the build target
-    and type from the target name.
-
-    Args:
-        target: Name of a Launch Control target, e.g., shamu-userdebug.
-
-    Returns:
-        a LaunchControlBuildTargetInfo object whose value is like
-            (target='shamu',
-             type='userdebug')
-
-    Raises:
-        Raise ValueError if target is not valid.
-    """
-    match = re.match(_LAUNCH_CONTROL_TARGET_PATTERN, target)
-    if not match:
-        raise ValueError('target format is not valid')
-
-    return LaunchControlBuildTargetInfo(match.group('build_target'),
-                                        match.group('build_type'))
-
-
-def parse_cros_build_config(board, build_config):
-    """Parse build_type from a given builder for a given board.
-
-    Args:
-        board: the prefix of a ChromeOS build_config, representing board.
-        build_config: a ChromeOS build_config name, like 'kevin-release'.
-
-    Returns:
-        a CrOSBuildConfigInfo object whose value is like
-            (board='kevin',
-             type='release')
-
-    Raises:
-        Raise ValueError if target is not valid.
-    """
-    if build_config[0:len(board)] != board:
-        raise ValueError('build_config cannot be parsed: %s' % build_config)
-
-    match = re.match(_CROS_BUILD_CONFIG_PATTERN, build_config[len(board):])
-    if not match:
-        raise ValueError('build_config %s is not matched %s' % (
-            build_config, _CROS_BUILD_CONFIG_PATTERN))
-
-    return CrOSBuildConfigInfo(board, match.groups()[0])
-
-
-def get_board_by_android_target(target):
-    """Map a android target to a android board.
-
-    # Mapping between an android board name and a build target. This is for
-    # special case handling for certain Android board that the board name and
-    # build target name does not match.
-    # This comes from server/site_utils.py in autotest module.
-
-    Args:
-        board: an android board.
-
-    Returns:
-        a string android board mapped by ANDROID_TARGET_TO_BOARD_MAP.
-    """
-    return _ANDROID_TARGET_TO_BOARD_MAP.get(target, target)
-
 
 # The default build type for fetching latest build.
 _DEFAULT_BUILD_SUFFIX = '-paladin'
@@ -235,3 +70,282 @@ _LAUNCH_CONTROL_TARGET_PATTERN = r'(?P<build_target>.+)-(?P<build_type>[^-]+)'
 
 # The pattern for CrOS build config
 _CROS_BUILD_CONFIG_PATTERN = r'-([^-]+)(?:-group)?'
+
+
+class NoBuildError(Exception):
+  """Raised when failing to get the required build from Google Storage."""
+
+
+class BuildType(object):
+  """Representing the type of test source build.
+
+  This is used to identify the test source build for testing.
+  """
+  FIRMWARE_RW = 'firmware_rw'
+  FIRMWARE_RO = 'firmware_ro'
+  CROS = 'cros'
+
+
+class BuildVersionKey(object):
+  """Keys referring to the builds to install in run_suites."""
+
+  CROS_VERSION = 'cros_version'
+  ANDROID_BUILD_VERSION = 'android_version'
+  TESTBED_BUILD_VERSION = 'testbed_version'
+  FW_RW_VERSION = 'fwrw_version'
+  FW_RO_VERSION = 'fwro_version'
+
+
+class AndroidBuild(collections.namedtuple(
+    '_AndroidBuildBase', ['branch', 'target', 'build_id']), object):
+  """Class for constructing android build string."""
+
+  def __str__(self):
+    return _ANDROID_BUILD_PATTERN % {'branch': self.branch,
+                                     'target': self.target,
+                                     'build_id': self.build_id}
+
+
+class CrOSBuild(collections.namedtuple(
+    '_CrOSBuildBase',
+    ['board', 'build_type', 'milestone', 'manifest']), object):
+  """Class for constructing ChromeOS build string."""
+
+  def __str__(self):
+    return _CROS_BUILD_PATTERN % {'board': self.board,
+                                  'build_type': self.build_type,
+                                  'milestone': self.milestone,
+                                  'manifest': self.manifest}
+
+
+def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
+  """Get latest build for given board from Google Storage.
+
+  Args:
+    storage_client: a rest_client.StorageRestClient object.
+    board: the board to fetch latest build. Default is 'master'.
+    suffix: suffix represents build channel, like '-release'.
+      Default is '-paladin'.
+
+  Returns:
+    a ChromeOS version string, e.g. '59.0.000.0'.
+
+  Raises:
+    HttpError if error happens in interacting with Google Storage.
+  """
+  board = board if board is not None else _DEFAULT_MASTER
+  suffix = suffix if suffix is not None else _DEFAULT_BUILD_SUFFIX
+  file_to_check = _GS_LATEST_MASTER_PATTERN % {
+      'board': board,
+      'suffix': suffix,
+      'name': _LATEST_MASTER}
+
+  try:
+    return storage_client.read_object(_GS_BUCKET, file_to_check)
+  except apiclient.errors.HttpError as e:
+    raise NoBuildError(
+        'Cannot find latest build for board %s, suffix %s: %s' %
+        (board, suffix, str(e)))
+
+
+def get_cros_builds_since_date_from_db(db_client, since_date):
+  """Get branch builds for ChromeOS boards.
+
+  Args:
+    db_client: a cloud_sql_client.CIDBClient object, to read cidb
+      build infos.
+    since_date: a datetime.datetime object in UTC to indicate since when CrOS
+      builds will be fetched.
+
+  Returns:
+    a branch build dict:
+    key: a tuple of (board, build_type, milestone), like:
+      ('wolf', 'release', '58')
+    value: the latest manifest for the given tuple, like:
+      '9242.0.0'.
+  """
+  # CIDB use UTC timezone
+  all_branch_builds = db_client.get_passed_builds_since_date(since_date)
+
+  branch_build_dict = {}
+  for build in all_branch_builds:
+    try:
+      build_config_info = parse_cros_build_config(build.board,
+                                                  build.build_config)
+    except ValueError as e:
+      logging.warning('Failed to parse build config: %s: %s',
+                      build.build_config, e)
+      continue
+
+    if build.board != build_config_info.board:
+      logging.warning('Non-matched build_config and board: %s, %s',
+                      build.board, build.board)
+      continue
+
+    build_key = (build.board, build_config_info.type, build.milestone)
+    cur_manifest = branch_build_dict.get(build_key)
+    if cur_manifest is not None:
+      branch_build_dict[build_key] = max(
+          [cur_manifest, build.platform], key=version.LooseVersion)
+    else:
+      branch_build_dict[build_key] = build.platform
+
+  return branch_build_dict
+
+
+def get_latest_launch_control_build(android_client, branch, target):
+  """Get the latest launch control build from Android Build API.
+
+  Args:
+    android_client: a rest_client.AndroidBuildRestClient object.
+    branch: the launch control branch.
+    target: the launch control target.
+
+  Returns:
+    a string latest launch control build id.
+
+  Raises:
+    NoBuildError if no latest launch control build is found.
+  """
+  try:
+    latest_build_id = android_client.get_latest_build_id(branch, target)
+    if latest_build_id is None:
+      raise NoBuildError('No latest builds is found.')
+
+    return latest_build_id
+  except apiclient.errors.HttpError as e:
+    raise NoBuildError('HttpError happened in getting the latest launch '
+                       'control build for '
+                       '%s,%s: %s' % (branch, target, str(e)))
+
+
+def get_launch_control_builds_by_branch_targets(
+    android_client, android_board_list, launch_control_branch_targets):
+  """Get latest launch_control_builds for android boards.
+
+  For every tasks in this event, if it has settings of launch control
+  branch & target, get the latest launch control build for it.
+
+  Args:
+    android_client: a rest_client.AndroidBuildRestClient object to
+      interact with android build API.
+    android_board_list: a list of Android boards.
+    launch_control_branch_targets: a dict of branch:targets, see property
+      launch_control_branch_targets in base_event.py.
+
+  Returns:
+    a launch control build dict:
+      key: an android board, like 'shamu'.
+      value: a list involves the latest builds for each pair
+        (branch, target) of this board, like:
+            [u'git_nyc-mr2-release/shamu-userdebug/3844975',
+             u'git_nyc-mr1-release/shamu-userdebug/3783920']
+  """
+  launch_control_dict = {}
+  board_to_builds_dict = {}
+  for branch, targets in launch_control_branch_targets.iteritems():
+    for t in targets:
+      try:
+        board = parse_launch_control_target(t).target
+      except ValueError:
+        logging.warning(
+            'Failed to parse launch control target: %s', t)
+        continue
+
+      if board not in android_board_list:
+        continue
+
+      # Use dict here to reduce the times to call AndroidBuild API
+      if launch_control_dict.get((branch, t)) is None:
+        try:
+          build_id = get_latest_launch_control_build(
+              android_client, branch, t)
+        except NoBuildError as e:
+          logging.warning(e)
+          continue
+
+        build = str(AndroidBuild(branch, t, build_id))
+        launch_control_dict[(branch, t)] = build
+        board_to_builds_dict.setdefault(board, []).append(
+            build)
+
+  for board, in board_to_builds_dict.iteritems():
+    mapped_board = get_board_by_android_target(board)
+    if mapped_board != board:
+      logging.debug('Map board %s to %s', board, mapped_board)
+      if board_to_builds_dict.get(mapped_board) is None:
+        del board_to_builds_dict[board]
+      else:
+        board_to_builds_dict[board] = board_to_builds_dict[
+            mapped_board]
+
+  return board_to_builds_dict
+
+
+def parse_launch_control_target(target):
+  """Parse the build target and type from a Launch Control target.
+
+  The Launch Control target has the format of build_target-build_type, e.g.,
+  shamu-eng or dragonboard-userdebug. This method extracts the build target
+  and type from the target name.
+
+  Args:
+    target: Name of a Launch Control target, e.g., shamu-userdebug.
+
+  Returns:
+    a LaunchControlBuildTargetInfo object whose value is like
+        (target='shamu',
+         type='userdebug')
+
+  Raises:
+    ValueError: if target is not valid.
+  """
+  match = re.match(_LAUNCH_CONTROL_TARGET_PATTERN, target)
+  if not match:
+    raise ValueError('target format is not valid')
+
+  return LaunchControlBuildTargetInfo(match.group('build_target'),
+                                      match.group('build_type'))
+
+
+def parse_cros_build_config(board, build_config):
+  """Parse build_type from a given builder for a given board.
+
+  Args:
+    board: the prefix of a ChromeOS build_config, representing board.
+    build_config: a ChromeOS build_config name, like 'kevin-release'.
+
+  Returns:
+    a CrOSBuildConfigInfo object whose value is like
+        (board='kevin',
+         type='release')
+
+  Raises:
+    ValueError: if build_config is in invalid form.
+  """
+  if build_config[0:len(board)] != board:
+    raise ValueError('build_config cannot be parsed: %s' % build_config)
+
+  match = re.match(_CROS_BUILD_CONFIG_PATTERN, build_config[len(board):])
+  if not match:
+    raise ValueError('build_config %s is not matched %s' % (
+        build_config, _CROS_BUILD_CONFIG_PATTERN))
+
+  return CrOSBuildConfigInfo(board, match.groups()[0])
+
+
+def get_board_by_android_target(target):
+  """Map a android target to a android board.
+
+  # Mapping between an android board name and a build target. This is for
+  # special case handling for certain Android board that the board name and
+  # build target name does not match.
+  # This comes from server/site_utils.py in autotest module.
+
+  Args:
+    target: an android target.
+
+  Returns:
+    a string android board mapped by ANDROID_TARGET_TO_BOARD_MAP.
+  """
+  return _ANDROID_TARGET_TO_BOARD_MAP.get(target, target)
