@@ -21,6 +21,10 @@ import unittest
 GOOGLE_CLOUD_SDK_PATH = os.path.join(
     os.path.expanduser('~'), 'google-cloud-sdk')
 
+# Mapping between test type and test files' pattern.
+TEST_PATTERN_MAP = {'unittest': '*_unittest.py',
+                    'integration': '*_integration_test.py'}
+
 
 def fixup_paths(path):
   """Adds GAE SDK path to system path and appends it to the google path.
@@ -45,20 +49,17 @@ def fixup_paths(path):
   sys.path.insert(0, path)
 
 
-def main(sdk_path, test_path, test_pattern, test_file):
-  """The main function to run unittest for given test_pattern/test_file.
+def main(input_args):
+  """The main function to run unittest/integration tests.
 
   Args:
-    sdk_path: the google sdk path.
-    test_path: the path of test files to run.
-    test_pattern: the file name patterns for testing files.
-    test_file: the single file for testing.
+    input_args: the input args.
 
   Returns:
     a unittest.TextTestRunner object.
   """
-  if sdk_path != GOOGLE_CLOUD_SDK_PATH:
-    _import_sdk_path(sdk_path)
+  if input_args.sdk_path != GOOGLE_CLOUD_SDK_PATH:
+    _import_sdk_path(input_args.sdk_path)
 
   # Loading appengine_config from the current project ensures that any
   # changes to configuration there are available to all tests (e.g.
@@ -72,10 +73,12 @@ def main(sdk_path, test_path, test_pattern, test_file):
     print 'Note: unable to import appengine_config.'
 
   # Discover and run tests.
-  if test_file:
-    suites = unittest.loader.TestLoader().discover(test_path, test_file)
+  if input_args.test_file:
+    suites = unittest.loader.TestLoader().discover(
+        input_args.test_path, input_args.test_file)
   else:
-    suites = unittest.loader.TestLoader().discover(test_path, test_pattern)
+    suites = unittest.loader.TestLoader().discover(
+        input_args.test_path, TEST_PATTERN_MAP[input_args.test_type])
 
   return unittest.TextTestRunner(verbosity=2).run(suites)
 
@@ -105,14 +108,15 @@ def _make_parser():
       help='The path to the Google App Engine SDK or the Google Cloud SDK.',
       default=GOOGLE_CLOUD_SDK_PATH)
   parser.add_argument(
-      '--test-path',
+      '--test_path',
       help='The path to look for tests, defaults to the current directory.',
       default=os.getcwd())
   group = parser.add_mutually_exclusive_group()
   group.add_argument(
-      '--test-pattern',
-      help='The file pattern for test modules, defaults to *_test.py.',
-      default='*_test.py')
+      '--test_type', choices=['unittest', 'integration'],
+      help=('The test type, including unittest and integration test, defaults '
+            'to unittest'),
+      default='unittest')
   group.add_argument(
       'test_file',
       nargs='?',
@@ -140,8 +144,7 @@ if __name__ == '__main__':
     args.sdk_path = raw_input('Cannot find google SDK in %s. Please specify '
                               'your google SDK path: ' % GOOGLE_CLOUD_SDK_PATH)
 
-  result = main(args.sdk_path, args.test_path, args.test_pattern,
-                args.test_file)
+  result = main(args)
 
   if not result.wasSuccessful():
     sys.exit(1)

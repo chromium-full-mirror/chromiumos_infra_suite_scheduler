@@ -10,7 +10,15 @@ import config_reader
 import constants
 import mock
 import task
-import tot_manager_test
+import tot_manager
+
+
+class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
+
+  def __init__(self, is_sanity):
+    self.is_sanity = is_sanity
+    self.storage_client = None
+    self.tot = self._tot_milestone()
 
 
 class BaseTaskConfigReaderTestCase(unittest.TestCase):
@@ -37,8 +45,7 @@ class BaseTaskConfigReaderTestCase(unittest.TestCase):
 
     tot_patcher = mock.patch('tot_manager.TotMilestoneManager')
     self._tot = tot_patcher.start()
-    self._tot.return_value = tot_manager_test.FakeTotMilestoneManager(
-        True)
+    self._tot.return_value = FakeTotMilestoneManager(True)
     self.addCleanup(tot_patcher.stop)
 
 

@@ -507,7 +507,7 @@ class TaskConfig(object):
         launch_control_branches=task_info.lc_branches,
         launch_control_targets=task_info.lc_targets,
         testbed_dut_count=task_info.testbed_dut_count,
-        tot_manager=self._tot_manager)
+        tot=self._tot_manager)
 
 
 class LabConfig(object):
