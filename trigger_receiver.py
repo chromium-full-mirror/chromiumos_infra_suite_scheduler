@@ -10,7 +10,6 @@ import cloud_sql_client
 import config_reader
 import constants
 import datastore_client
-import dropper
 import file_getter
 import rest_client
 
@@ -37,10 +36,6 @@ class TriggerReceiver(object):
     lab_config_reader = config_reader.ConfigReader(
         file_getter.LAB_CONFIG_FILE)
     self._lab_config = config_reader.LabConfig(lab_config_reader)
-
-    # Drop events if needed.
-    suite_dropper = dropper.SuiteDropper(config_reader.EVENT_CLASSES)
-    suite_dropper.drop_suite_if_needed()
 
     # Initialize events
     self.events = {}

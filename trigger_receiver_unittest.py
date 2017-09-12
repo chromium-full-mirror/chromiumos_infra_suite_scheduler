@@ -217,6 +217,26 @@ class TriggerReceiverTestCase(unittest.TestCase):
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
     self.assertFalse(suite_trigger.events['new_build'].should_handle)
 
+  def testCronTriggerNightlyOutdated(self):
+    """Test nightly event is read with available nightly last_exec_time."""
+    utc_now = datetime.datetime.now(time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'nightly', utc_now - datetime.timedelta(days=3))
+    self._mock_utc_now.return_value = utc_now
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    self.assertFalse(suite_trigger.events['nightly'].should_handle)
+
+  def testCronTriggerWeeklyOutdated(self):
+    """Test weekly event is read with available weekly last_exec_time."""
+    utc_now = datetime.datetime.now(time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'weekly', utc_now - datetime.timedelta(days=8))
+    self._mock_utc_now.return_value = utc_now
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    self.assertFalse(suite_trigger.events['weekly'].should_handle)
+
   def testCronForWeeks(self):
     """Ensure cron job can be successfully scheduled for several weeks."""
     all_tasks = _get_ground_truth_task_list_from_config()
