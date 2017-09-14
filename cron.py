@@ -1,0 +1,98 @@
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""Module for cron jobs kicked off by suite scheduler."""
+# pylint: disable=g-bad-import-order
+
+import logging
+import webapp2
+
+import constants
+import rest_client
+import task_executor
+import time_converter
+import trigger_receiver
+
+
+_PROD_CALENDAR_ID_MAPPING = {
+    'new_build': constants.CalendarID.PROD_NEW_BUILD,
+    'nightly': constants.CalendarID.PROD_NIGHTLY,
+    'weekly': constants.CalendarID.PROD_WEEKLY,
+}
+
+_STAGING_CALENDAR_ID_MAPPING = {
+    'new_build': constants.CalendarID.STAGING_NEW_BUILD,
+    'nightly': constants.CalendarID.STAGING_NIGHTLY,
+    'weekly': constants.CalendarID.STAGING_WEEKLY,
+}
+
+_CALENDAR_TIMEZONE = 'America/Los_Angeles'
+
+
+class TriggerEvent(webapp2.RequestHandler):
+  """Trigger events regularly to schedule tasks for suite_scheduler."""
+
+  def get(self):
+    start_time = time_converter.pst_now()
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+    end_time = time_converter.pst_now()
+
+    calendar_client = rest_client.CalendarRestClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.CALENDAR_CLIENT.scopes,
+            constants.RestClient.CALENDAR_CLIENT.service_name,
+            constants.RestClient.CALENDAR_CLIENT.service_version))
+
+    for keyword, results in suite_trigger.event_results.iteritems():
+      # No finished tasks for the given keyword
+      if not results:
+        continue
+
+      event = {}
+      event['summary'] = '%s Suite Tasks - Scheduled' % keyword
+      description = '%d scheduled tasks: \n' % len(results)
+      for task_name in results:
+        description += task_name + '\n'
+
+      event['description'] = description
+      # The start time is exactly when the cron job is triggered, i.e. when
+      # all tasks of this event are pushed into the task queue. It's not
+      # when the tasks are 'really' kicked off in lab because there will be
+      # some time delay since task queue will schedule tasks batch by batch.
+      # However, the end time is not exactly when the cron job is finished,
+      # since this cron job's runtime is very short, but the calendar won't
+      # show any item that's shorter than 30 minutes. So no matter what
+      # endtime we set here, it will show a half-an-hour event.
+      event['start'] = {
+          'dateTime': start_time.strftime(time_converter.CALENDAR_TIME_FORMAT),
+          'timeZone': _CALENDAR_TIMEZONE,
+      }
+      event['end'] = {
+          'dateTime': end_time.strftime(time_converter.CALENDAR_TIME_FORMAT),
+          'timeZone': _CALENDAR_TIMEZONE,
+      }
+
+      if constants.environment() == constants.RunningEnv.ENV_PROD:
+        if constants.application_id() == constants.AppID.PROD_APP:
+          calendar_client.add_event(_PROD_CALENDAR_ID_MAPPING[keyword], event)
+        else:
+          calendar_client.add_event(_STAGING_CALENDAR_ID_MAPPING[keyword],
+                                    event)
+      else:
+        logging.info(event)
+
+
+class ExecuteTask(webapp2.RequestHandler):
+  """Run scheduled tasks regularly for suite_scheduler."""
+
+  def get(self):
+    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+    task_processor.batch_execute()
+
+
+app = webapp2.WSGIApplication([
+    ('/cron/trigger_event', TriggerEvent),
+    ('/cron/execute_task', ExecuteTask),
+], debug=True)

@@ -20,6 +20,30 @@ _ENV_DEVELOPMENT_STR = 'Development'
 _ENV_APP_ENGINE_STR = 'Google App Engine/'
 
 
+class AppID(object):
+  """Constants refer to app id."""
+
+  PROD_APP = 'suite-scheduler'
+  STAGING_APP = 'suite-scheduler-staging'
+
+
+class CalendarID(object):
+  """Constants refer to calendar id."""
+
+  PROD_NEW_BUILD = (
+      'google.com_8n9gndgp0o642d7ta7dakbiiso@group.calendar.google.com')
+  PROD_NIGHTLY = (
+      'google.com_e8p3i4pk80lt6snfb57fdgff3g@group.calendar.google.com')
+  PROD_WEEKLY = (
+      'google.com_9es5a7m1r9til9uf5qc8mpr6p4@group.calendar.google.com')
+  STAGING_NEW_BUILD = (
+      'google.com_pjlsd9371ic158vdgcacspu0m4@group.calendar.google.com')
+  STAGING_NIGHTLY = (
+      'google.com_lu3v13kr4if93l9embsvb5llj4@group.calendar.google.com')
+  STAGING_WEEKLY = (
+      'google.com_9l29i5ncfk24e5aktjr6gaerp8@group.calendar.google.com')
+
+
 class RestClient(object):
   """Constants related to rest clients to google service."""
 

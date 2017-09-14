@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+{% if app_id=='suite-scheduler' %}
+<title>Suite Scheduler</title>
+<p>Hello Suite Scheduler</p>
+<iframe
+src="https://calendar.google.com/calendar/embed?title=suite_scheduler_calendar&amp;mode=WEEK&amp;height=800&amp;wkst=1&amp;bgcolor=%23FFFFFF&amp;src=google.com_8n9gndgp0o642d7ta7dakbiiso%40group.calendar.google.com&amp;color=%23875509&amp;src=google.com_e8p3i4pk80lt6snfb57fdgff3g%40group.calendar.google.com&amp;color=%2342104A&amp;src=google.com_9es5a7m1r9til9uf5qc8mpr6p4%40group.calendar.google.com&amp;color=%23711616&amp;ctz=America%2FLos_Angeles"
+      style="border-width:0"
+      width="1200"
+      height="800"
+      frameborder="0"
+      scrolling="no"></iframe>
+{% elif app_id=='suite-scheduler-staging' %}
+<title>Staging Suite Scheduler</title>
+<p>Hello Staging Suite Scheduler</p>
+<iframe
+src="https://calendar.google.com/calendar/embed?title=staging_suite_scheduler_calendar&amp;mode=WEEK&amp;height=800&amp;wkst=1&amp;bgcolor=%23FFFFFF&amp;src=google.com_pjlsd9371ic158vdgcacspu0m4%40group.calendar.google.com&amp;color=%235229A3&amp;src=google.com_lu3v13kr4if93l9embsvb5llj4%40group.calendar.google.com&amp;color=%236B3304&amp;src=google.com_9l29i5ncfk24e5aktjr6gaerp8%40group.calendar.google.com&amp;color=%238D6F47&amp;ctz=America%2FLos_Angeles"
+      style="border-width:0"
+      width="1200"
+      height="800"
+      frameborder="0"
+      scrolling="no"></iframe>
+{% else %}
+<p>Non-valid project id: {{app_id}}</p>
+{% endif %}
