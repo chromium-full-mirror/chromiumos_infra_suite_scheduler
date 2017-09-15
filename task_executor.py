@@ -48,7 +48,7 @@ class TaskProcessor(object):
           self._swarming.run(**task.extract_params())
           executed_tasks.append(task)
 
-      except ValueError as e:
+      except (ValueError, swarming_lib.SwarmingRunError) as e:
         logging.exception(e)
         raise
       finally:

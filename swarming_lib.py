@@ -5,7 +5,9 @@
 """Module for kicking off tests via swarming service."""
 
 import collections
+import logging
 
+import build_lib
 import constants
 import rest_client
 
@@ -64,11 +66,16 @@ _GRACE_PERIOD_SECONDS = 30
 _TASK_EXPIRATION_SECONDS = 20 * 60
 
 # Keys in raw swarming requests.
+USER = 'suite_scheduler'
 PROPERTY = 'properties'
 DIMENSION = 'dimensions'
 KEY = 'key'
 VALUE = 'value'
 ENV = 'env'
+
+
+class SwarmingRunError(Exception):
+  """Raised when interactions with swarming server fail."""
 
 
 class SwarmingRunner(object):
@@ -91,9 +98,77 @@ class SwarmingRunner(object):
 
     Args:
       **task_params: the suite params to run.
+
+    Returns:
+      A swarming task ID if it's successfully created.
+
+    Raises:
+      SwarmingRunError: if failing to create swarming task.
     """
-    # TODO(xixuan): add real logic to kick off a suite here.
-    pass
+    cros_build = task_params[build_lib.BuildVersionKey.CROS_VERSION]
+    android_build = task_params[
+        build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
+    testbed_build = task_params[
+        build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
+    fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
+    fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
+
+    final_build = cros_build or android_build or testbed_build
+    if not final_build:
+      raise SwarmingRunError('No proper build in task params: %r' %
+                             task_params)
+
+    task_name = '%s-%s' % (final_build, task_params['suite'])
+    tags = ['suite:%s' % task_params['suite']]
+    tags.append('priority:%s' % task_params['priority'])
+    tags.append('board:%s' % task_params['board'])
+    tags.append('build:%s' % final_build)
+    tags.append('task_name:%s' % task_name)
+
+    timeout_mins = (task_params['timeout_mins'] or
+                    task_params['timeout'] * 60)
+    max_runtime_mins = (task_params['max_runtime_mins'] or
+                        task_params['timeout'] * 60)
+
+    command = [self.RUN_SUITE_PATH, '--pre_check',
+               '--build', final_build,
+               '--board', task_params['board'],
+               '--suite_name', task_params['suite'],
+               '--pool', task_params['pool'],
+               '--priority', task_params['priority'],
+               '--timeout_mins', str(timeout_mins),
+               '--max_runtime_mins', str(max_runtime_mins),
+               '--no_wait', task_params['no_wait_for_results'],
+               '--test_source_build', task_params['test_source_build'],
+               '--retry', task_params['job_retry']]
+
+    if task_params['num'] != 'None':
+      command.extend(['--num', task_params['num']])
+
+    if fw_rw_build != 'None':
+      command.extend(['--firmware_rw_build', fw_rw_build])
+
+    if fw_ro_build != 'None':
+      command.extend(['--firmware_ro_build', fw_ro_build])
+
+    properties = TaskProperties(
+        command=command,
+        dimensions=self.DIMENSIONS,
+        env={},
+        execution_timeout_secs=_EXECUTION_TIMEOUT_SECONDS,
+        grace_period_secs=_GRACE_PERIOD_SECONDS,
+        idempotent=False,
+        io_timeout_secs=_EXECUTION_TIMEOUT_SECONDS)
+    task_request = NewTaskRequest(
+        expiration_secs=_TASK_EXPIRATION_SECONDS,
+        name=task_name,
+        priority=int(task_params['priority']),
+        properties=properties,
+        tags=tags,
+        user=USER)
+    raw_request = _to_raw_request(task_request)
+    logging.debug(raw_request)
+    return self._client.create_task(request=raw_request)
 
   def dummy_run(self):
     """Perform a dummy run to swarming proxy service."""
@@ -112,7 +187,7 @@ class SwarmingRunner(object):
         priority=DUMMY_PRIORITY,
         properties=properties,
         tags=tags,
-        user='suite_scheduler')
+        user=USER)
     return self._client.create_task(
         request=_to_raw_request(task_request))
 

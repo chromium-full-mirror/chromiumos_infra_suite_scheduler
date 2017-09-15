@@ -363,7 +363,7 @@ class Task(object):
         'timeout': self.timeout,
         'timeout_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
         'max_runtime_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
-        'wait_for_results': self.job_retry,
+        'no_wait_for_results': not self.job_retry,
         'test_source_build': test_source_build,
         'job_retry': self.job_retry,
         'no_delay': self.no_delay,
