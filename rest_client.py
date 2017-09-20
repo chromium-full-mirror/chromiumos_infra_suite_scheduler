@@ -70,7 +70,7 @@ class BaseRestClient(object):
       # Running locally
       service_credentials = service_account.ServiceAccountCredentials
       self._credentials = service_credentials.from_json_keyfile_name(
-          file_getter.LOCAL_CLIENT_SECRETS_FILE, self.scopes)
+          file_getter.STAGING_CLIENT_SECRETS_FILE, self.scopes)
     else:
       # Running in app-engine production
       self._credentials = appengine.AppAssertionCredentials(self.scopes)

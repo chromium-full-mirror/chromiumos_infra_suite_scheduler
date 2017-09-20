@@ -1,0 +1,10 @@
+cron:
+- description: schedule suite scheduler jobs
+  url: /cron/trigger_event
+  target: beta
+  schedule: every 30 minutes
+
+- description: run suite scheduler jobs
+  url: /cron/execute_task
+  target: beta
+  schedule: every 10 minutes

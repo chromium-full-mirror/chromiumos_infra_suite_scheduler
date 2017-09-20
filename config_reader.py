@@ -67,8 +67,8 @@ TaskInfo = collections.namedtuple(
     )
 TaskInfo.__new__.__defaults__ = (None,) * len(TaskInfo._fields)
 
-# The entries of android boards in lab config file.
-ANDROID_BOARD = 'AndroidBoard'
+# The entries of android settings in lab config file.
+ANDROID_SETTINGS = 'Android'
 
 # The entry of release ro builds in lab config file.
 RELEASED_RO_BUILDS = 'RELEASED_RO_BUILDS'
@@ -505,7 +505,7 @@ class LabConfig(object):
       ValueError: no android board list is found.
     """
     board_list = self._config_reader.getstring(
-        ANDROID_BOARD, 'board_list')
+        ANDROID_SETTINGS, 'board_list')
     if board_list is None:
       raise ValueError('Cannot find board_list in lab config file.')
 

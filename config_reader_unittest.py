@@ -256,21 +256,21 @@ class LabReaderTestCase(unittest.TestCase):
 
   def setUp(self):
     self.config = config_reader.ConfigReader(None)
-    self.config.add_section(config_reader.ANDROID_BOARD)
+    self.config.add_section(config_reader.ANDROID_SETTINGS)
     self.config.add_section(config_reader.RELEASED_RO_BUILDS)
 
   def testGetAndroidBoardList(self):
     """Ensure android board list can be correctly fetched."""
-    self.config.set(config_reader.ANDROID_BOARD, 'board_list',
-                    'abox_edge,android-angler-1,angler-6')
+    self.config.set(config_reader.ANDROID_SETTINGS, 'board_list',
+                    '\nabox_edge,\nandroid-angler-1,\nangler-6')
     lab_config = config_reader.LabConfig(self.config)
     self.assertEqual(lab_config.get_android_board_list(),
                      set(['abox_edge', 'android-angler', 'angler']))
 
   def testGetInvalidAndroidBoardListEntry(self):
     """Ensure ValueError is raised if no valid board list entry."""
-    self.config.set(config_reader.ANDROID_BOARD, 'invalid_board_list',
-                    'abox_edge,android-angler-1,angler-6')
+    self.config.set(config_reader.ANDROID_SETTINGS, 'invalid_board_list',
+                    '\nabox_edge,\nandroid-angler-1,\nangler-6')
     lab_config = config_reader.LabConfig(self.config)
     self.assertRaises(ValueError, lab_config.get_android_board_list)
 

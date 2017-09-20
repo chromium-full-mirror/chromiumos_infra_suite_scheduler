@@ -6,6 +6,9 @@
 
 import os
 
+# The path for third-party libraries.
+THIRD_PARTY_LIB_PATH = os.path.join(os.path.dirname(__file__), 'lib')
+
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 
@@ -17,12 +20,25 @@ SQL_CREDENTIAL_FILE = os.path.join(CREDENTIALS_PATH,
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'configs')
 
 # Suite scheduler event config file
-SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH, 'suite_scheduler.ini')
+SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH,
+                                           'suite_scheduler.ini')
+
+# The suite scheduler config file for testing.
+# TODO(xixuan): after suite scheduler's configs are fully migrated, will
+# change this file to SUITE_SCHEDULER_CONFIG_FILE. In another words, we
+# want to use real config file for testing.
+TEST_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(
+    CONFIG_PATH, 'suite_scheduler_test.ini')
 
 # Lab config file
 LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
 
-# Service account secret json file used for local development.
-LOCAL_CLIENT_SECRETS_FILE = os.path.join(
+# Service account secret json file used for staging project.
+STAGING_CLIENT_SECRETS_FILE = os.path.join(
     CREDENTIALS_PATH,
     'suite-scheduler-staging_client_secret_service_account.json')
+
+# Service account secret json file used for prod project.
+PROD_CLIENT_SECRETS_FILE = os.path.join(
+    CREDENTIALS_PATH,
+    'suite-scheduler_client_secret_service_account.json')

@@ -21,7 +21,7 @@ from google.appengine.ext import testbed
 
 # Ensure that SUITE_SCHEDULER_CONFIG_FILE is read only once.
 _SUITE_CONFIG_READER = config_reader.ConfigReader(
-    file_getter.SUITE_SCHEDULER_CONFIG_FILE)
+    file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE)
 
 
 def now_generator(start_time, interval_min=30, last_days=7):
