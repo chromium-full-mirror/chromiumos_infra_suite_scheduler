@@ -30,10 +30,26 @@ _STAGING_CALENDAR_ID_MAPPING = {
 _CALENDAR_TIMEZONE = 'America/Los_Angeles'
 
 
+def _is_in_staging():
+  """Check whether this script is running on staging instance or not.
+
+  Returns:
+    A boolean indicating the script is running on staging instance
+    suite-scheduler-staging.googleplex.com or not.
+  """
+  return (constants.environment() == constants.RunningEnv.ENV_PROD and
+          constants.application_id() == constants.AppID.STAGING_APP)
+
+
 class TriggerEvent(webapp2.RequestHandler):
   """Trigger events regularly to schedule tasks for suite_scheduler."""
 
   def get(self):
+    # Don't kick off cron job in staging instance. This cron job can be
+    # kicked off On local development env or prod instance.
+    if _is_in_staging():
+      return
+
     start_time = time_converter.pst_now()
     suite_trigger = trigger_receiver.TriggerReceiver()
     suite_trigger.cron()
@@ -75,11 +91,7 @@ class TriggerEvent(webapp2.RequestHandler):
       }
 
       if constants.environment() == constants.RunningEnv.ENV_PROD:
-        if constants.application_id() == constants.AppID.PROD_APP:
-          calendar_client.add_event(_PROD_CALENDAR_ID_MAPPING[keyword], event)
-        else:
-          calendar_client.add_event(_STAGING_CALENDAR_ID_MAPPING[keyword],
-                                    event)
+        calendar_client.add_event(_PROD_CALENDAR_ID_MAPPING[keyword], event)
       else:
         logging.info(event)
 
@@ -88,6 +100,9 @@ class ExecuteTask(webapp2.RequestHandler):
   """Run scheduled tasks regularly for suite_scheduler."""
 
   def get(self):
+    if _is_in_staging():
+      return
+
     task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
     task_processor.batch_execute()
 
