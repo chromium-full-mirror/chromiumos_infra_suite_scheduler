@@ -9,6 +9,7 @@ import logging
 import webapp2
 
 import constants
+import global_config
 import rest_client
 import task_executor
 import time_converter
@@ -30,24 +31,13 @@ _STAGING_CALENDAR_ID_MAPPING = {
 _CALENDAR_TIMEZONE = 'America/Los_Angeles'
 
 
-def _is_in_staging():
-  """Check whether this script is running on staging instance or not.
-
-  Returns:
-    A boolean indicating the script is running on staging instance
-    suite-scheduler-staging.googleplex.com or not.
-  """
-  return (constants.environment() == constants.RunningEnv.ENV_PROD and
-          constants.application_id() == constants.AppID.STAGING_APP)
-
-
 class TriggerEvent(webapp2.RequestHandler):
   """Trigger events regularly to schedule tasks for suite_scheduler."""
 
   def get(self):
     # Don't kick off cron job in staging instance. This cron job can be
     # kicked off On local development env or prod instance.
-    if _is_in_staging():
+    if global_config.is_in_staging():
       return
 
     start_time = time_converter.pst_now()
@@ -100,14 +90,37 @@ class ExecuteTask(webapp2.RequestHandler):
   """Run scheduled tasks regularly for suite_scheduler."""
 
   def get(self):
-    if _is_in_staging():
+    if global_config.is_in_staging():
       return
 
     task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
     task_processor.batch_execute()
 
 
+class TestPush(webapp2.RequestHandler):
+  """Test push for suite_scheduler on staging instance."""
+
+  def get(self):
+    if global_config.is_in_staging():
+      return
+
+    # Test Cron jobs
+    # 1) No tasks will be filtered by nightly/weekly constraints.
+    # 2) Randomly select builds in |get_cros_builds_since_date_from_db|.
+    # 3) Every task will be kicked off with dummy swarming run |dummy_run|.
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+    task_processor.batch_execute()
+    # In testing, after one round of batch_execute() to execute all tasks,
+    # the suite queue will be purged.
+    task_processor.purge()
+
+
 app = webapp2.WSGIApplication([
     ('/cron/trigger_event', TriggerEvent),
     ('/cron/execute_task', ExecuteTask),
+    ('/cron/test_push', TestPush),
 ], debug=True)

@@ -114,3 +114,11 @@ class BaseEventTestCase(unittest.TestCase):
     self.assertEqual(event.launch_control_branch_targets,
                      {'b1': ['t1', 't2', 't5', 't6'],
                       'b2': ['t3', 't4']})
+
+  def testGAETestingForShouldHandle(self):
+    """Verify that testing on GAE staging will cause event to handle."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          config_reader.EventSettings(True, None), utc_now, utc_now)
+      self.assertTrue(event.should_handle)

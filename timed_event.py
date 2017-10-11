@@ -9,6 +9,7 @@ import logging
 
 import base_event
 import constants
+import global_config
 import time_converter
 
 
@@ -91,12 +92,15 @@ class Nightly(TimedEvent):
 
   def filter_tasks(self):
     """Filter tasks by target_exec_utc."""
-    cur_hour = self.target_exec_utc.hour
-    logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
-    tasks = [t for t in self.task_list
-             if ((t.hour is not None and cur_hour == t.hour) or
-                 (t.hour is None and cur_hour == self._default_utc_hour))]
-    self.task_list = tasks
+    if global_config.GAE_TESTING:
+      super(Nightly, self).filter_tasks()
+    else:
+      cur_hour = self.target_exec_utc.hour
+      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+      tasks = [t for t in self.task_list
+               if ((t.hour is not None and cur_hour == t.hour) or
+                   (t.hour is None and cur_hour == self._default_utc_hour))]
+      self.task_list = tasks
 
 
 class Weekly(TimedEvent):
@@ -175,9 +179,12 @@ class Weekly(TimedEvent):
 
   def filter_tasks(self):
     """Filter tasks by target_exec_utc."""
-    cur_day = self.target_exec_utc.weekday()
-    logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
-    tasks = [t for t in self.task_list
-             if ((t.day is not None and cur_day == t.day) or
-                 (t.day is None and cur_day == self._default_utc_day))]
-    self.task_list = tasks
+    if global_config.GAE_TESTING:
+      super(Weekly, self).filter_tasks()
+    else:
+      cur_day = self.target_exec_utc.weekday()
+      logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
+      tasks = [t for t in self.task_list
+               if ((t.day is not None and cur_day == t.day) or
+                   (t.day is None and cur_day == self._default_utc_day))]
+      self.task_list = tasks

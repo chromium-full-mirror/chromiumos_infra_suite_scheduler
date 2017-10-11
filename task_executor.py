@@ -6,6 +6,7 @@
 
 import logging
 
+import global_config
 import swarming_lib
 
 from google.appengine.api import taskqueue
@@ -29,12 +30,12 @@ class TaskProcessor(object):
     Args:
       queue_name: the name of a pull queue.
     """
-    self._queue = taskqueue.Queue(queue_name)
-    self._swarming = swarming_lib.SwarmingRunner()
+    self.queue = taskqueue.Queue(queue_name)
+    self.swarming = swarming_lib.SwarmingRunner()
 
   def batch_execute(self):
     try:
-      tasks = self._queue.lease_tasks(3600, BATCH_SIZE, deadline=60)
+      tasks = self.queue.lease_tasks(3600, BATCH_SIZE, deadline=60)
     except (taskqueue.UnknownQueueError,
             taskqueue.TransientError,
             apiproxy_errors.DeadlineExceededError) as e:
@@ -45,7 +46,11 @@ class TaskProcessor(object):
       executed_tasks = []
       try:
         for task in tasks:
-          self._swarming.run(**task.extract_params())
+          if global_config.GAE_TESTING:
+            self.swarming.dummy_run()
+          else:
+            self.swarming.run(**task.extract_params())
+
           executed_tasks.append(task)
 
       except (ValueError, swarming_lib.SwarmingRunError) as e:
@@ -54,7 +59,11 @@ class TaskProcessor(object):
       finally:
         if executed_tasks:
           logging.info('Successfully kicking %d tasks', len(executed_tasks))
-          self._queue.delete_tasks(executed_tasks)
+          self.queue.delete_tasks(executed_tasks)
+
+  def purge(self):
+    """Purge the entire tasks in the task queue."""
+    self.queue.purge()
 
 
 def push(queue_name, **suite_kwargs):

@@ -82,6 +82,26 @@ class NightlyEventTestCase(TimedEventTestCase):
     self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
     self.assertFalse(event.should_handle)
 
+  def testCreateCantHandleNightlyEventWithValidLastExecWithGAETesting(self):
+    """Test a can't-be-handled event can be handled in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
+                                               tzinfo=time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(self.config)
+    self._mock_utc_now.return_value = utc_now
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        self._KLASS.KEYWORD, expected_last_exec_utc)
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          task_config.get_event_setting(self._KLASS.section_name()),
+          last_exec_client.get_last_execute_time(self._KLASS.KEYWORD))
+      self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
+      self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
+      self.assertTrue(event.should_handle)
+
   def testCreateNightlyEventWithValidLastExecShouldHandle(self):
     """Create a nightly event with last_exec_utc and should be handled."""
     utc_now = datetime.datetime(2017, 8, 1, 5, 15,
@@ -122,6 +142,27 @@ class NightlyEventTestCase(TimedEventTestCase):
     self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
     self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
     self.assertFalse(event.should_handle)
+
+  def testCreateNightlyEventWithOutdatedLastExecWithGAETesting(self):
+    """Test an event with old last exec can be handled in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
+                                               tzinfo=time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(self.config)
+    self._mock_utc_now.return_value = utc_now
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        self._KLASS.KEYWORD,
+        expected_last_exec_utc - datetime.timedelta(hours=3))
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          task_config.get_event_setting(self._KLASS.section_name()),
+          last_exec_client.get_last_execute_time(self._KLASS.KEYWORD))
+      self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
+      self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
+      self.assertTrue(event.should_handle)
 
   def testFilterTasksWithTaskHourForNightlyEvent(self):
     """Test filter_tasks with tasks which contain settings of hour."""
@@ -167,13 +208,35 @@ class NightlyEventTestCase(TimedEventTestCase):
     self.assertEqual(sorted([t.name for t in event.task_list]),
                      ['test2', 'test4'])
 
+  def testFilterTasksWithTaskHourWithGAETesting(self):
+    """Verify all tasks are kept when testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 0, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    self._mock_utc_now.return_value = utc_now
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          config_reader.EventSettings(True, None),
+          datetime.datetime(2017, 7, 31, 23, tzinfo=time_converter.UTC_TZ))
+
+      task_list = [FakeTask('test1', day=None, hour=3),
+                   FakeTask('test2', day=None, hour=0),
+                   FakeTask('test3', day=None, hour=4),
+                   FakeTask('test4', day=None, hour=0)]
+      event.set_task_list(task_list)
+      self.assertEqual(len(event.task_list), len(task_list))
+      event.filter_tasks()
+      self.assertEqual(len(event.task_list), 4)
+      self.assertEqual(sorted([t.name for t in event.task_list]),
+                       ['test1', 'test2', 'test3', 'test4'])
+
 
 class WeeklyEventTestCase(TimedEventTestCase):
 
   _KLASS = timed_event.Weekly
 
   def testCreateWeeklyEventWithoutLastExec(self):
-    """Create a nightly event without last_exec_utc in datastore."""
+    """Create a weekly event without last_exec_utc in datastore."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
@@ -188,6 +251,25 @@ class WeeklyEventTestCase(TimedEventTestCase):
     self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
     self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
     self.assertFalse(event.should_handle)
+
+  def testCreateWeeklyEventWithoutLastExecWithGAETesting(self):
+    """Test an event without last exec can be handled in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
+                                               tzinfo=time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(self.config)
+    self._mock_utc_now.return_value = utc_now
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          task_config.get_event_setting(self._KLASS.section_name()),
+          last_exec_client.get_last_execute_time(self._KLASS.KEYWORD))
+
+      self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
+      self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
+      self.assertTrue(event.should_handle)
 
   def testCreateWeeklyEventWithValidLastExecShouldNotHandle(self):
     """Create a weekly event with last_exec_utc but shouldn't be handled."""
@@ -207,6 +289,26 @@ class WeeklyEventTestCase(TimedEventTestCase):
     self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
     self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
     self.assertFalse(event.should_handle)
+
+  def testCreateCantHandleWeeklyEventWithValidLastExecWithGAETesting(self):
+    """Test a can't-be-handled event can be handled in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
+                                               tzinfo=time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(self.config)
+    self._mock_utc_now.return_value = utc_now
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        self._KLASS.KEYWORD, expected_last_exec_utc)
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          task_config.get_event_setting(self._KLASS.section_name()),
+          last_exec_client.get_last_execute_time(self._KLASS.KEYWORD))
+      self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
+      self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
+      self.assertTrue(event.should_handle)
 
   def testCreateNightlyEventWithValidLastExecShouldHandle(self):
     """Create a nightly event with last_exec_utc and should be handled."""
@@ -248,6 +350,27 @@ class WeeklyEventTestCase(TimedEventTestCase):
     self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
     self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
     self.assertFalse(event.should_handle)
+
+  def testCreateWeeklyEventWithOutdatedLastExecWithGAETesting(self):
+    """Test an event with old last exec can be handled in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
+                                               tzinfo=time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(self.config)
+    self._mock_utc_now.return_value = utc_now
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        self._KLASS.KEYWORD,
+        expected_last_exec_utc - datetime.timedelta(days=3))
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          task_config.get_event_setting(self._KLASS.section_name()),
+          last_exec_client.get_last_execute_time(self._KLASS.KEYWORD))
+      self.assertEqual(event.target_exec_utc, expected_last_exec_utc)
+      self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
+      self.assertTrue(event.should_handle)
 
   def testCreateWeeklyEventWithEventHourSettings(self):
     """Create a weekly event with setting event hour."""
@@ -318,3 +441,24 @@ class WeeklyEventTestCase(TimedEventTestCase):
     self.assertEqual(len(event.task_list), 2)
     self.assertEqual(sorted([t.name for t in event.task_list]),
                      ['test1', 'test4'])
+
+  def testFilterTasksWithTaskDayWithGAETesting(self):
+    """Verify all tasks are kept in testing on GAE."""
+    utc_now = datetime.datetime(2017, 8, 6, 6, 15,
+                                tzinfo=time_converter.UTC_TZ)
+    self._mock_utc_now.return_value = utc_now
+
+    with mock.patch('global_config.GAE_TESTING', return_value=True):
+      event = self._KLASS(
+          config_reader.EventSettings(True, None),
+          datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
+      task_list = [FakeTask('test1', day=6),
+                   FakeTask('test2', day=0),
+                   FakeTask('test3', day=3),
+                   FakeTask('test4', day=6)]
+      event.set_task_list(task_list)
+      self.assertEqual(len(event.task_list), len(task_list))
+      event.filter_tasks()
+      self.assertEqual(len(event.task_list), 4)
+      self.assertEqual(sorted([t.name for t in event.task_list]),
+                       ['test1', 'test2', 'test3', 'test4'])

@@ -20,10 +20,14 @@ class FakeSwarmingLib(object):
 
   def __init__(self, success_num=sys.maxint):
     self.success_num = success_num
+    self.dummy_run_count = 0
 
   def run(self, **suite_kwargs):
     if int(suite_kwargs.get('num', 0)) > self.success_num:
       raise ValueError('test')
+
+  def dummy_run(self):
+    self.dummy_run_count += 1
 
 
 class TaskExecutorTestCase(unittest.TestCase):
@@ -46,6 +50,21 @@ class TaskExecutorTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), 1)
     self.assertEqual(suite_kwargs, tasks[0].extract_params())
+
+  def testBatchExecuteTaskWithGAETesting(self):
+    """Test task_executor execute tasks in batch in testing on GAE."""
+    suite_kwargs = {'suite': 'fake_suite'}
+    for i in range(task_executor.BATCH_SIZE):
+      suite_kwargs['num'] = i + 1
+      task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
+
+    with mock.patch('swarming_lib.SwarmingRunner',
+                    return_value=FakeSwarmingLib()):
+      with mock.patch('global_config.GAE_TESTING', return_value=True):
+        task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+        task_processor.batch_execute()
+        self.assertEqual(task_executor.BATCH_SIZE,
+                         task_processor.swarming.dummy_run_count)
 
   def testBatchExecuteTaskSuccessfully(self):
     """Test task_executor successfully execute tasks in batch."""

@@ -10,6 +10,7 @@ import logging
 import build_lib
 import constants
 import datastore_client
+import global_config
 import task
 
 # The suffix for section
@@ -170,7 +171,7 @@ class BaseEvent(object):
 
   def _set_should_handle(self):
     """Update it's the time for the event to be handled."""
-    if self.always_handle:
+    if self.always_handle or global_config.GAE_TESTING:
       self.should_handle = True
     else:
       if self.last_exec_utc and self.last_exec_utc == self.target_exec_utc:

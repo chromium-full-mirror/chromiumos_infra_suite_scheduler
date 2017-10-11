@@ -4,7 +4,12 @@ cron:
   target: beta
   schedule: every 30 minutes
 
-- description: run suite scheduler jobs
+- description: kick off suite scheduler jobs
   url: /cron/execute_task
   target: beta
   schedule: every 10 minutes
+
+- description: test push for suite_scheduler on staging instance
+  url: /cron/test_push
+  target: beta
+  schedule: every 4 hours

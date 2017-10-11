@@ -13,6 +13,7 @@ import os
 import config_reader
 import constants
 import file_getter
+import global_config
 import time_converter
 
 BuildInfo = collections.namedtuple(
@@ -105,7 +106,7 @@ class CIDBClient(object):
     """Get passed builds since a given date.
 
     Args:
-      since_date: a date string, like '2017-02-01 23:00:00'.
+      since_date: a datetime.datetime object in UTC.
 
     Returns:
       A list of BuildInfo objects.
@@ -113,7 +114,6 @@ class CIDBClient(object):
     Raises:
       MySQLdb.OperationalError if connection operations are not valid.
     """
-
     sql = """\
         select bo.board, bu.milestone_version,
         bu.platform_version, bu.build_config
@@ -121,9 +121,14 @@ class CIDBClient(object):
         where bu.status='pass' and bu.suite_scheduling=1 and
         bu.finish_time > %s and bu.id=bo.build_id
     """
-    logging.info('Get passed builds since %r', since_date)
-    self._connection.cursor.execute(
-        sql, [since_date.strftime(time_converter.TIME_FORMAT)])
+    if global_config.GAE_TESTING:
+      since_date_str = '2017-08-01 00:00:00'
+      sql += 'limit 10'
+    else:
+      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+
+    logging.info('Get passed builds since %s', since_date_str)
+    self._connection.cursor.execute(sql, [since_date_str])
     builds = self._connection.cursor.fetchall()
     return [BuildInfo(board, milestone, platform, build_config)
             for board, milestone, platform, build_config in builds]
