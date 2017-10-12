@@ -49,7 +49,7 @@ def pst_now():
   return datetime.datetime.now(PST_TZ)
 
 
-def convert_time_info_to_utc(time_info, source_tz=PST_TZ):
+def convert_time_info(time_info, source_tz=PST_TZ, target_tz=UTC_TZ):
   """Convert (day, hour) extracted from config file to UTC timezone.
 
   The time_info could be in any timezone, which is indicated by source_tz.
@@ -59,6 +59,8 @@ def convert_time_info_to_utc(time_info, source_tz=PST_TZ):
           hour is 0~23.
       source_tz: a pytz timezone object, specifies the original timezone to
           be converted. Default is PST.
+      target_tz: a pytz timezone object, specifies the target timezone to be
+          be converted to. Default is UTC.
 
   Returns:
       A UTC TimeInfo object.
@@ -66,7 +68,7 @@ def convert_time_info_to_utc(time_info, source_tz=PST_TZ):
   source_now = datetime.datetime.now(source_tz)
   utc_time = source_tz.localize(
       datetime.datetime(source_now.year, source_now.month,
-                        source_now.day, time_info.hour)).astimezone(UTC_TZ)
+                        source_now.day, time_info.hour)).astimezone(target_tz)
   weekday = time_info.weekday
   if weekday is not None and utc_time.weekday() != source_now.weekday():
     weekday = (weekday + utc_time.weekday() - source_now.weekday()) % 7

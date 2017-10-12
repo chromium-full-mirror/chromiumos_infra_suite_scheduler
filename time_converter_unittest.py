@@ -41,7 +41,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 8, 1)
     pst_time = time_converter.TimeInfo(5, 9)
-    utc_time = time_converter.convert_time_info_to_utc(pst_time)
+    utc_time = time_converter.convert_time_info(pst_time)
     self.assertEqual(utc_time.weekday, 5)
     self.assertEqual(utc_time.hour, 16)
 
@@ -53,7 +53,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 8, 1)
     pst_time = time_converter.TimeInfo(5, 19)
-    utc_time = time_converter.convert_time_info_to_utc(pst_time)
+    utc_time = time_converter.convert_time_info(pst_time)
     self.assertEqual(utc_time.weekday, 6)
     self.assertEqual(utc_time.hour, 2)
 
@@ -65,7 +65,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 8, 1)
     pst_time = time_converter.TimeInfo(6, 19)
-    utc_time = time_converter.convert_time_info_to_utc(pst_time)
+    utc_time = time_converter.convert_time_info(pst_time)
     self.assertEqual(utc_time.weekday, 0)
     self.assertEqual(utc_time.hour, 2)
 
@@ -77,7 +77,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 2, 1)
     pst_time = time_converter.TimeInfo(5, 9)
-    utc_time = time_converter.convert_time_info_to_utc(pst_time)
+    utc_time = time_converter.convert_time_info(pst_time)
     self.assertEqual(utc_time.weekday, 5)
     self.assertEqual(utc_time.hour, 17)
 
@@ -89,7 +89,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 8, 1)
     hk_time = time_converter.TimeInfo(5, 9)
-    utc_time = time_converter.convert_time_info_to_utc(
+    utc_time = time_converter.convert_time_info(
         hk_time, source_tz=pytz.timezone('Asia/Hong_Kong'))
     self.assertEqual(utc_time.weekday, 5)
     self.assertEqual(utc_time.hour, 1)
@@ -102,7 +102,7 @@ class TimeConverterTestCase(unittest.TestCase):
     """
     self._mock_now.return_value = datetime.datetime(2017, 8, 1)
     hk_time = time_converter.TimeInfo(5, 2)
-    utc_time = time_converter.convert_time_info_to_utc(
+    utc_time = time_converter.convert_time_info(
         hk_time, source_tz=pytz.timezone('Asia/Hong_Kong'))
     self.assertEqual(utc_time.weekday, 4)
     self.assertEqual(utc_time.hour, 18)
