@@ -47,7 +47,7 @@ class TriggerReceiver(object):
 
       if new_event.should_handle:
         new_event.set_task_list(
-            self._task_config.get_tasks_by_keyword(klass.KEYWORD))
+            self._task_config.get_tasks_by_keyword(klass.KEYWORD)['tasks'])
         logging.info('Got %d tasks for %s event',
                      len(new_event.task_list), klass.KEYWORD)
 

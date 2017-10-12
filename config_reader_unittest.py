@@ -68,7 +68,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
   def testGetTaskByKeyword(self):
     """Ensure a Task can be built from a correct config."""
     task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(len(tasks), 1)
     new_task = tasks[0]
     self.assertEqual(new_task.name, self._TASK_NAME)
@@ -86,8 +86,9 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     self.config.remove_option(self._TASK_NAME, 'run_on')
     task_config = config_reader.TaskConfig(self.config)
     try:
-      tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
-      self.assertEqual(len(tasks), 0)
+      response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+      self.assertEqual(len(response['tasks']), 0)
+      self.assertEqual(len(response['exceptions']), 1)
     except config_reader.MalformedConfigEntryError:
       self.fail('task_config should not raise error without run_on!')
 
@@ -99,8 +100,9 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     self.config.remove_option(self._TASK_NAME, 'suite')
     task_config = config_reader.TaskConfig(self.config)
     try:
-      tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
-      self.assertEqual(len(tasks), 0)
+      response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+      self.assertEqual(len(response['tasks']), 0)
+      self.assertEqual(len(response['exceptions']), 1)
     except config_reader.MalformedConfigEntry:
       self.fail('task_config should not raise error without suite!')
 
@@ -108,14 +110,14 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a Task can be built without branch_specs."""
     self.config.remove_option(self._TASK_NAME, 'branch_specs')
     task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].branch_specs, [])
 
   def testGetTaskByKeywordNoNum(self):
     """Ensure a Task can be built without num."""
     self.config.remove_option(self._TASK_NAME, 'num')
     task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertIsNone(tasks[0].num)
 
   def testSetPriority(self):
@@ -123,7 +125,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     priority = constants.Priorities.DEFAULT
     self.config.set(self._TASK_NAME, 'priority', str(priority))
     task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].priority, priority)
 
   def testSetTimeout(self):
@@ -131,7 +133,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     timeout = 1000
     self.config.set(self._TASK_NAME, 'timeout', str(timeout))
     task_config = config_reader.TaskConfig(self.config)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].timeout, timeout)
 
 

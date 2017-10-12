@@ -22,7 +22,8 @@ import gae_import
 
 # Mapping between test type and test files' pattern.
 TEST_PATTERN_MAP = {'unittest': '*_unittest.py',
-                    'integration': '*_integration_test.py'}
+                    'integration': '*_integration_test.py',
+                    'sanity': '*sanity_test.py'}
 
 
 def main(input_args):
@@ -65,9 +66,9 @@ def _make_parser():
       default=os.getcwd())
   group = parser.add_mutually_exclusive_group()
   group.add_argument(
-      '--test_type', choices=['unittest', 'integration'],
-      help=('The test type, including unittest and integration test, defaults '
-            'to unittest'),
+      '--test_type', choices=['unittest', 'integration', 'sanity'],
+      help=('The test type, including unittest, integration tests and sanity '
+            'tests, defaults to unittest'),
       default='unittest')
   group.add_argument(
       'test_file',

@@ -12,4 +12,4 @@ cd "${bin_dir}/.."
 
 find . -name "*.pyc" -delete
 
-exec "/usr/bin/python2.7" "runner.py"
+exec "/usr/bin/python2.7" "runner.py" "--test_type" "sanity"

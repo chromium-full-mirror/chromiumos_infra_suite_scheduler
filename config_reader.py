@@ -157,19 +157,22 @@ class TaskConfig(object):
         like 'new_build'.
 
     Returns:
-      a list of task.Task objects.
+      a dict containing successfully parsed 'tasks' and 'exceptions', which
+      combines all parsing errors.
     """
     tasks = []
+    exceptions = []
     for section in self._config_reader.sections():
-      if event_type == self._get_keyword(section):
-        try:
+      try:
+        if event_type == self._get_keyword(section):
           new_task = self._create_task_from_config_section(section)
           tasks.append(new_task)
-        except MalformedConfigEntryError as e:
-          logging.exception(str(e))
-          continue
+      except MalformedConfigEntryError as e:
+        exceptions.append(str(e))
+        logging.exception(str(e))
+        continue
 
-    return tasks
+    return {'tasks': tasks, 'exceptions': exceptions}
 
   def get_event_setting(self, section_name):
     """Fetch event settings from config file by given section name.
@@ -187,7 +190,12 @@ class TaskConfig(object):
                          event_hour=event_hour)
 
   def _get_keyword(self, section):
-    return self._config_reader.getstring(section, 'run_on')
+    run_on = self._config_reader.getstring(section, 'run_on')
+    if run_on is None:
+      raise MalformedConfigEntryError(
+          'run_on is not specified for %s' % section)
+
+    return run_on
 
   def _get_testbed_dut_count(self, board_entry):
     """Parse boards from launch control targets.

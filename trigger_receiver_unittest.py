@@ -51,7 +51,7 @@ def _get_ground_truth_task_list_from_config():
   task_config = config_reader.TaskConfig(_SUITE_CONFIG_READER)
   tasks = {}
   for keyword, klass in config_reader.EVENT_CLASSES.iteritems():
-    tasks[keyword] = task_config.get_tasks_by_keyword(klass.KEYWORD)
+    tasks[keyword] = task_config.get_tasks_by_keyword(klass.KEYWORD)['tasks']
 
   return tasks
 
