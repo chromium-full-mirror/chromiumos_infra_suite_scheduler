@@ -142,6 +142,9 @@ class SwarmingRunner(object):
                '--test_source_build', task_params['test_source_build'],
                '--retry', task_params['job_retry']]
 
+    # Swarming calls from suite_scheduler should creat and return immediately.
+    command.extend(['-c'])
+
     if task_params['force'] != 'True':
       command.extend(['--pre_check'])
 
