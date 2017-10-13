@@ -11,7 +11,6 @@ import logging
 
 import build_lib
 import task_executor
-import time_converter
 import tot_manager
 
 # The max lifetime of a suite scheduled by suite scheduler
@@ -93,14 +92,8 @@ class Task(object):
     self.force = task_info.force
     self.os_type = task_info.os_type
     self.testbed_dut_count = task_info.testbed_dut_count
-    if task_info.hour is not None:
-      utc_time_info = time_converter.convert_time_info_to_utc(
-          time_converter.TimeInfo(task_info.day, task_info.hour))
-      self.hour = utc_time_info.hour
-      self.day = utc_time_info.weekday
-    else:
-      self.hour = task_info.hour
-      self.day = task_info.day
+    self.hour = task_info.hour
+    self.day = task_info.day
 
     if task_info.lc_branches:
       self.launch_control_branches = [

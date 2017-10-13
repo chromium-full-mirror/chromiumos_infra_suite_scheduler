@@ -9,7 +9,7 @@ import unittest
 import utils
 
 
-# Gloabl variable for mocking functions.
+# Global variable for mocking functions.
 SUCCESS_COUNT = 0
 
 

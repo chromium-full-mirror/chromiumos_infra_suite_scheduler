@@ -166,6 +166,10 @@ class NightlyEventTestCase(TimedEventTestCase):
 
   def testFilterTasksWithTaskHourForNightlyEvent(self):
     """Test filter_tasks with tasks which contain settings of hour."""
+    default_pst_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, 0),
+        source_tz=time_converter.UTC_TZ,
+        target_tz=time_converter.PST_TZ).hour
     utc_now = datetime.datetime(2017, 8, 1, 0, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
@@ -173,37 +177,42 @@ class NightlyEventTestCase(TimedEventTestCase):
         config_reader.EventSettings(True, None),
         datetime.datetime(2017, 7, 31, 23, tzinfo=time_converter.UTC_TZ))
 
-    task_list = [FakeTask('test1', day=None, hour=3),
-                 FakeTask('test2', day=None, hour=0),
-                 FakeTask('test3', day=None, hour=4),
-                 FakeTask('test4', day=None, hour=0)]
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=None, hour=default_pst_hour+1),
+                 FakeTask('test2', day=None, hour=default_pst_hour),
+                 FakeTask('test3', day=None, hour=0),
+                 FakeTask('test4', day=None, hour=default_pst_hour)]
     event.set_task_list(task_list)
     self.assertEqual(len(event.task_list), len(task_list))
     event.filter_tasks()
-    # Verify only tasks that should be run at 0 are kept, since current time
-    # is 0:15.
+    # Verify only tasks that should be run at 0:00 in UTC are kept,
+    # since current time is 0:15.
     self.assertEqual(len(event.task_list), 2)
     self.assertEqual(sorted([t.name for t in event.task_list]),
                      ['test2', 'test4'])
 
   def testFilterTasksWithDefaultHourForNightlyEvent(self):
     """Test filter_tasks with tasks which don't contain settings of hour."""
-    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+    default_pst_hour = config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR
+    default_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, default_pst_hour)).hour
+    utc_now = datetime.datetime(2017, 8, 1, default_utc_hour, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
     event = self._KLASS(
         config_reader.EventSettings(True, None),
         datetime.datetime(2017, 8, 1, 3, tzinfo=time_converter.UTC_TZ))
 
-    task_list = [FakeTask('test1', day=None, hour=3),
-                 FakeTask('test2', day=None, hour=4),
-                 FakeTask('test3', day=None, hour=5),
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=None, hour=default_pst_hour - 1),
+                 FakeTask('test2', day=None, hour=default_pst_hour),
+                 FakeTask('test3', day=None, hour=default_pst_hour + 1),
                  FakeTask('test4', day=None, hour=None)]
     event.set_task_list(task_list)
     self.assertEqual(len(event.task_list), len(task_list))
     event.filter_tasks()
-    # Verify only tasks that should be run at 4 are kept.
-    # If a task's hour is not set, by default it should be run at 4.
+    # Verify only tasks that should be run at 21:00 (the default pst hour
+    # for nightly events) are kept.
     self.assertEqual(len(event.task_list), 2)
     self.assertEqual(sorted([t.name for t in event.task_list]),
                      ['test2', 'test4'])
@@ -229,6 +238,27 @@ class NightlyEventTestCase(TimedEventTestCase):
       self.assertEqual(len(event.task_list), 4)
       self.assertEqual(sorted([t.name for t in event.task_list]),
                        ['test1', 'test2', 'test3', 'test4'])
+
+  def testSetTaskListForNightlyEvent(self):
+    """Verify tasks' timeinfo are correctly converted to UTC."""
+    self._mock_utc_now.return_value = datetime.datetime.now(
+        time_converter.UTC_TZ)
+    event = self._KLASS(
+        config_reader.EventSettings(True, None), None)
+
+    default_pst_hour = config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR
+    default_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, default_pst_hour)).hour
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=None, hour=default_pst_hour),
+                 FakeTask('test2', day=None, hour=0),
+                 FakeTask('test3', day=None, hour=default_pst_hour+1),
+                 FakeTask('test4', day=None, hour=None)]
+    event.set_task_list(task_list)
+    tasks_with_default_utc_hour = [
+        t.name for t in event.task_list if t.hour == default_utc_hour]
+    self.assertEqual(sorted(tasks_with_default_utc_hour),
+                     ['test1', 'test4'])
 
 
 class WeeklyEventTestCase(TimedEventTestCase):
@@ -405,15 +435,16 @@ class WeeklyEventTestCase(TimedEventTestCase):
         config_reader.EventSettings(True, None),
         datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
 
-    task_list = [FakeTask('test1', day=6),
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=5),
                  FakeTask('test2', day=0),
                  FakeTask('test3', day=3),
-                 FakeTask('test4', day=6)]
+                 FakeTask('test4', day=5)]
     event.set_task_list(task_list)
     self.assertEqual(len(event.task_list), len(task_list))
     event.filter_tasks()
-    # Verify only tasks that should be run at Sunday are kept, since
-    # 2017-08-06 is Sunday.
+    # Verify only tasks that should be run at Saturday 23:00 in PST are kept,
+    # since 2017-08-06 6:00 is Sunday in UTC.
     self.assertEqual(len(event.task_list), 2)
     self.assertEqual(sorted([t.name for t in event.task_list]),
                      ['test1', 'test4'])
@@ -427,15 +458,16 @@ class WeeklyEventTestCase(TimedEventTestCase):
         config_reader.EventSettings(True, None),
         datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
 
-    task_list = [FakeTask('test1', day=6),
-                 FakeTask('test2', day=0),
-                 FakeTask('test3', day=3),
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=5),
+                 FakeTask('test2', day=6),
+                 FakeTask('test3', day=4),
                  FakeTask('test4', day=None)]
     event.set_task_list(task_list)
     self.assertEqual(len(event.task_list), len(task_list))
     event.filter_tasks()
-    # Verify only tasks that should be run at Sunday are kept, since
-    # 2017-08-05 is Sunday.
+    # Verify only tasks that should be run at Saturday 23:00 in PST are kept,
+    # since 2017-08-06 6:00 is Sunday in UTC.
     # If a task's day is not set, by default it should be run at
     # 6:00 at every Sunday in UTC (equals to 23:00 at every Saturday in PST).
     self.assertEqual(len(event.task_list), 2)
@@ -462,3 +494,46 @@ class WeeklyEventTestCase(TimedEventTestCase):
       self.assertEqual(len(event.task_list), 4)
       self.assertEqual(sorted([t.name for t in event.task_list]),
                        ['test1', 'test2', 'test3', 'test4'])
+
+  def testSetTaskListForWeeklyEventCheckWeekday(self):
+    """Verify tasks' timeinfo are correctly converted to UTC."""
+    self._mock_utc_now.return_value = datetime.datetime.now(
+        time_converter.UTC_TZ)
+    event = self._KLASS(
+        config_reader.EventSettings(True, None), None)
+
+    default_pst_day = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY
+    default_pst_hour = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR
+    default_utc_day = time_converter.convert_time_info(
+        time_converter.TimeInfo(default_pst_day, default_pst_hour)).weekday
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=default_pst_day),
+                 FakeTask('test2', day=0),
+                 FakeTask('test3', day=default_pst_day-1),
+                 FakeTask('test4', day=None)]
+    event.set_task_list(task_list)
+    tasks_with_default_utc_day = [
+        t.name for t in event.task_list if t.day == default_utc_day]
+    self.assertEqual(sorted(tasks_with_default_utc_day),
+                     ['test1', 'test4'])
+
+  def testSetTaskListForWeeklyEventCheckHour(self):
+    """Verify tasks' timeinfo are correctly converted to UTC."""
+    self._mock_utc_now.return_value = datetime.datetime.now(
+        time_converter.UTC_TZ)
+    event = self._KLASS(
+        config_reader.EventSettings(True, None), None)
+
+    default_pst_day = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY
+    default_pst_hour = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR
+    default_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(default_pst_day, default_pst_hour)).hour
+    # It's in PST time.
+    task_list = [FakeTask('test1', day=default_pst_day),
+                 FakeTask('test2', day=default_pst_day, hour=0),
+                 FakeTask('test3', day=default_pst_day, hour=default_pst_hour)]
+    event.set_task_list(task_list)
+    tasks_with_default_utc_hour = [
+        t.name for t in event.task_list if t.hour == default_utc_hour]
+    self.assertEqual(sorted(tasks_with_default_utc_hour),
+                     ['test1', 'test3'])

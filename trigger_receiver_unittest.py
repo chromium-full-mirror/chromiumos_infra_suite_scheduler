@@ -46,16 +46,6 @@ def now_generator(start_time, interval_min=30, last_days=7):
     cur_time += datetime.timedelta(minutes=interval_min)
 
 
-def _get_ground_truth_task_list_from_config():
-  """Get the ground truth of to-be-scheduled task list from config file."""
-  task_config = config_reader.TaskConfig(_SUITE_CONFIG_READER)
-  tasks = {}
-  for keyword, klass in config_reader.EVENT_CLASSES.iteritems():
-    tasks[keyword] = task_config.get_tasks_by_keyword(klass.KEYWORD)['tasks']
-
-  return tasks
-
-
 def _should_schedule_nightly_task(last_now, now):
   """Check whether nightly task should be scheduled.
 
@@ -153,7 +143,7 @@ class FakeLabConfig(object):
     return 'firmware1,firmware2'
 
 
-class TriggerReceiverTestCase(unittest.TestCase):
+class TriggerReceiverBaseTestCase(unittest.TestCase):
 
   def setUp(self):
     self.testbed = testbed.Testbed()
@@ -176,10 +166,6 @@ class TriggerReceiverTestCase(unittest.TestCase):
     self._mock_android_client = mock_android_client.start()
     self.addCleanup(mock_android_client.stop)
 
-    mock_config_reader = mock.patch('config_reader.ConfigReader')
-    self._mock_config_reader = mock_config_reader.start()
-    self.addCleanup(mock_config_reader.stop)
-
     mock_lab_config = mock.patch('config_reader.LabConfig')
     self._mock_lab_config = mock_lab_config.start()
     self.addCleanup(mock_lab_config.stop)
@@ -190,8 +176,142 @@ class TriggerReceiverTestCase(unittest.TestCase):
 
     self._mock_cidb_client.return_value = FakeCIDBClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
-    self._mock_config_reader.return_value = _SUITE_CONFIG_READER
     self._mock_lab_config.return_value = FakeLabConfig()
+
+
+class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
+
+  _TEST_PST_HOUR = 20
+  _TEST_PST_DAY = 4  # Friday
+  _TEST_EVENT_PST_HOUR = 13
+
+  _FAKE_NIGHTLY_TASK_NAME = 'fake_nightly_task'
+  _FAKE_WEEKLY_TASK_NAME = 'fake_weekly_task'
+
+  def setUp(self):
+    super(TriggerReceiverFakeConfigTestCase, self).setUp()
+
+    self.fake_config = config_reader.ConfigReader(None)
+    self._add_nightly_tasks(self.fake_config)
+    self._add_weekly_tasks(self.fake_config)
+
+    self.fake_config_with_settings = config_reader.ConfigReader(None)
+    self._add_weekly_tasks(self.fake_config_with_settings)
+    self._add_weekly_params(self.fake_config_with_settings)
+
+    mock_config_reader = mock.patch('config_reader.ConfigReader')
+    self._mock_config_reader = mock_config_reader.start()
+    self.addCleanup(mock_config_reader.stop)
+
+  def _add_nightly_tasks(self, fake_config):
+    fake_config.add_section(self._FAKE_NIGHTLY_TASK_NAME)
+    fake_config.set(self._FAKE_NIGHTLY_TASK_NAME, 'suite', 'fake_suite')
+    fake_config.set(self._FAKE_NIGHTLY_TASK_NAME, 'run_on', 'nightly')
+    fake_config.set(self._FAKE_NIGHTLY_TASK_NAME, 'hour',
+                    str(self._TEST_PST_HOUR))
+
+  def _add_weekly_tasks(self, fake_config):
+    fake_config.add_section(self._FAKE_WEEKLY_TASK_NAME)
+    fake_config.set(self._FAKE_WEEKLY_TASK_NAME, 'suite', 'fake_suite')
+    fake_config.set(self._FAKE_WEEKLY_TASK_NAME, 'run_on', 'weekly')
+    fake_config.set(self._FAKE_WEEKLY_TASK_NAME, 'day', str(self._TEST_PST_DAY))
+
+  def _add_weekly_params(self, fake_config):
+    weekly_section_name = config_reader.EVENT_CLASSES['weekly'].section_name()
+    fake_config.add_section(weekly_section_name)
+    fake_config.set(weekly_section_name, 'hour', str(self._TEST_EVENT_PST_HOUR))
+
+  def testInitializeTriggerReceiverWithNightlyEvent(self):
+    """Test nightly event can be handled on right hour."""
+    # A task with hour=20 should be scheduled at 20:00 in PST everyday, which
+    # is 3:00/4:00 in UTC everyday.
+    self._mock_config_reader.return_value = self.fake_config
+    given_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, self._TEST_PST_HOUR)).hour
+    utc_now = datetime.datetime(2017, 8, 6, given_utc_hour,
+                                tzinfo=time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'nightly', utc_now - datetime.timedelta(hours=1))
+    self._mock_utc_now.return_value = utc_now
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+    self.assertTrue(suite_trigger.events['nightly'].should_handle)
+    self.assertEqual(len(suite_trigger.event_results['nightly']), 1)
+    self.assertEqual(suite_trigger.event_results['nightly'][0],
+                     self._FAKE_NIGHTLY_TASK_NAME)
+
+  def testInitializeTriggerReceiverWithWeeklyEventWithoutEventHour(self):
+    """Test weekly event without event settings can be handled on right day."""
+    # A task with day=4 (Friday) and default event_hour (23) should be
+    # scheduled at Friday 23:00 in PST, which is Saturday 6:00 or 7:00 in UTC.
+    self._mock_config_reader.return_value = self.fake_config
+    given_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(
+            self._TEST_PST_DAY,
+            config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR)).hour
+    utc_now = datetime.datetime(2017, 10, 14, given_utc_hour,
+                                tzinfo=time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'weekly', utc_now - datetime.timedelta(days=1))
+    self._mock_utc_now.return_value = utc_now
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+    self.assertTrue(suite_trigger.events['weekly'].should_handle)
+    self.assertEqual(len(suite_trigger.event_results['weekly']), 1)
+    self.assertEqual(suite_trigger.event_results['weekly'][0],
+                     self._FAKE_WEEKLY_TASK_NAME)
+
+  def testInitializeTriggerReceiverWithWeeklyEventWithEventHour(self):
+    """Test weekly event with event settings can be handled on right day."""
+    # A task with day=4 (Friday) and event_hour=13 should be scheduled at
+    # Friday 13:00 in PST, which is Friday 20:00 or 21:00 in UTC.
+    self._mock_config_reader.return_value = self.fake_config_with_settings
+    given_utc_time_info = time_converter.convert_time_info(
+        time_converter.TimeInfo(self._TEST_PST_DAY, self._TEST_EVENT_PST_HOUR))
+
+    # Set the current time as a Friday 20:00 or 21:00 in UTC.
+    utc_now = datetime.datetime(2017, 10, 13, given_utc_time_info.hour,
+                                tzinfo=time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'weekly', utc_now - datetime.timedelta(days=1))
+    self._mock_utc_now.return_value = utc_now
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+    self.assertTrue(suite_trigger.events['weekly'].should_handle)
+    self.assertEqual(len(suite_trigger.event_results['weekly']), 1)
+    self.assertEqual(suite_trigger.event_results['weekly'][0],
+                     self._FAKE_WEEKLY_TASK_NAME)
+
+
+class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
+
+  def setUp(self):
+    super(TriggerReceiverRealConfigTestCase, self).setUp()
+    mock_config_reader = mock.patch('config_reader.ConfigReader')
+    self._mock_config_reader = mock_config_reader.start()
+    self.addCleanup(mock_config_reader.stop)
+    self._mock_config_reader.return_value = _SUITE_CONFIG_READER
+
+  def _get_ground_truth_task_list_from_config(self):
+    """Get the ground truth of to-be-scheduled task list from config file."""
+    self._mock_utc_now.return_value = datetime.datetime.now(
+        time_converter.UTC_TZ)
+    task_config = config_reader.TaskConfig(_SUITE_CONFIG_READER)
+    tasks = {}
+    for keyword, klass in config_reader.EVENT_CLASSES.iteritems():
+      new_event = klass(
+          task_config.get_event_setting(klass.section_name()), None)
+      new_event.set_task_list(
+          task_config.get_tasks_by_keyword(klass.KEYWORD)['tasks'])
+      tasks[keyword] = new_event.task_list
+
+    return tasks
 
   def testCronWithoutLastExec(self):
     """Test the first round of cron can be successfully executed."""
@@ -239,12 +359,12 @@ class TriggerReceiverTestCase(unittest.TestCase):
 
   def testCronForWeeks(self):
     """Ensure cron job can be successfully scheduled for several weeks."""
-    all_tasks = _get_ground_truth_task_list_from_config()
-    nightly_time_info = time_converter.convert_time_info_to_utc(
+    all_tasks = self._get_ground_truth_task_list_from_config()
+    nightly_time_info = time_converter.convert_time_info(
         time_converter.TimeInfo(
             config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_DAY,
             config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR))
-    weekly_time_info = time_converter.convert_time_info_to_utc(
+    weekly_time_info = time_converter.convert_time_info(
         time_converter.TimeInfo(
             config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY,
             config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR))
@@ -255,11 +375,11 @@ class TriggerReceiverTestCase(unittest.TestCase):
       suite_trigger = trigger_receiver.TriggerReceiver()
       suite_trigger.cron()
 
-      # Verify nightly tasks
       should_scheduled_nightly_tasks = [
           t.name for t in all_tasks['nightly']
           if (t.hour is not None and t.hour == now.hour) or
           (t.hour is None and now.hour == nightly_time_info.hour)]
+
       if (_should_schedule_nightly_task(last_now, now) and
           should_scheduled_nightly_tasks):
         self.assertEqual(suite_trigger.event_results['nightly'],

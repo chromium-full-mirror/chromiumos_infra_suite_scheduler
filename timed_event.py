@@ -34,7 +34,7 @@ class TimedEvent(base_event.BaseEvent):
 
   def set_default_utc_time(self):
     """Convert default day/hour to UTC for TimedEvent."""
-    default_pst_timeinfo = time_converter.convert_time_info_to_utc(
+    default_pst_timeinfo = time_converter.convert_time_info(
         time_converter.TimeInfo(self.DEFAULT_PST_DAY,
                                 self.DEFAULT_PST_HOUR))
     self._default_utc_day = default_pst_timeinfo.weekday
@@ -89,6 +89,24 @@ class Nightly(TimedEvent):
 
     super(Nightly, self).__init__(
         event_settings, last_exec_utc, target_exec_utc)
+
+  def set_task_list(self, task_list):
+    """Set task list for nightly event.
+
+    This also update all tasks' time from PST to UTC.
+
+    Args:
+      task_list: the given list of task.Task objects, in which their
+        day and hour are in PST.
+    """
+    for per_task in task_list:
+      hour = self.DEFAULT_PST_HOUR if per_task.hour is None else per_task.hour
+      utc_time_info = time_converter.convert_time_info(
+          time_converter.TimeInfo(per_task.day, hour))
+      per_task.hour = utc_time_info.hour
+      per_task.day = utc_time_info.weekday
+
+    self.task_list = list(task_list)
 
   def filter_tasks(self):
     """Filter tasks by target_exec_utc."""
@@ -148,17 +166,17 @@ class Weekly(TimedEvent):
     self.set_default_utc_time()
     now = time_converter.utc_now()
 
-    event_hour = event_settings.event_hour
-    if event_hour is None:
-      event_hour = self._default_utc_hour
-    else:
-      utc_event_time_info = time_converter.convert_time_info_to_utc(
-          time_converter.TimeInfo(None, event_hour))
-      event_hour = utc_event_time_info.hour
+    self.event_hour_pst = event_settings.event_hour
+    if self.event_hour_pst is None:
+      self.event_hour_pst = self.DEFAULT_PST_HOUR
+
+    utc_event_time_info = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, self.event_hour_pst))
+    event_hour_utc = utc_event_time_info.hour
 
     scheduled_exec_utc = datetime.datetime.combine(
         datetime.datetime(now.year, now.month, now.day, now.hour),
-        datetime.time(event_hour))
+        datetime.time(event_hour_utc))
     scheduled_exec_utc = scheduled_exec_utc.replace(
         tzinfo=time_converter.UTC_TZ)
 
@@ -176,6 +194,25 @@ class Weekly(TimedEvent):
 
     super(Weekly, self).__init__(
         event_settings, last_exec_utc, target_exec_utc)
+
+  def set_task_list(self, task_list):
+    """Set task list for weekly event.
+
+    This also update all tasks' time from PST to UTC.
+
+    Args:
+      task_list: the given list of task.Task objects, in which their
+        day and hour are in PST.
+    """
+    for per_task in task_list:
+      hour = self.event_hour_pst if per_task.hour is None else per_task.hour
+      day = self.DEFAULT_PST_DAY if per_task.day is None else per_task.day
+      utc_time_info = time_converter.convert_time_info(
+          time_converter.TimeInfo(day, hour))
+      per_task.hour = utc_time_info.hour
+      per_task.day = utc_time_info.weekday
+
+    self.task_list = list(task_list)
 
   def filter_tasks(self):
     """Filter tasks by target_exec_utc."""
