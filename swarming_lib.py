@@ -105,16 +105,8 @@ class SwarmingRunner(object):
     Raises:
       SwarmingRunError: if failing to create swarming task.
     """
-    cros_build = task_params[build_lib.BuildVersionKey.CROS_VERSION]
-    android_build = task_params[
-        build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
-    testbed_build = task_params[
-        build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
-    fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
-    fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
-
-    final_build = cros_build or android_build or testbed_build
-    if not final_build:
+    final_build = self._get_final_build(**task_params)
+    if final_build == 'None':
       raise SwarmingRunError('No proper build in task params: %r' %
                              task_params)
 
@@ -124,6 +116,63 @@ class SwarmingRunner(object):
     tags.append('board:%s' % task_params['board'])
     tags.append('build:%s' % final_build)
     tags.append('task_name:%s' % task_name)
+
+    command = self._form_run_suite_command(final_build, **task_params)
+    raw_request = self._form_swarming_request(
+        command, task_name, tags, int(task_params['priority']))
+    logging.debug(raw_request)
+    return self._client.create_task(request=raw_request)
+
+  def dummy_run(self):
+    """Perform a dummy run to swarming proxy service."""
+    tags = ['task_name:dummy_run']
+    raw_request = self._form_swarming_request(
+        [self.RUN_SUITE_PATH, '--do_nothing'],
+        DUMMY_TASK_NAME, tags, DUMMY_PRIORITY)
+    logging.debug(raw_request)
+    return self._client.create_task(request=raw_request)
+
+  def query_task(self, task_id):
+    """Get a kicked-off task's status.
+
+    Args:
+      task_id: an id of a swarming task.
+
+    Returns:
+      a SwarmingTaskInfo object.
+    """
+    response = self._client.get_task_result(task_id)
+    task_info_dict = {k: response.get(k) for k in SwarmingTaskInfo._fields}
+    return SwarmingTaskInfo(**task_info_dict)
+
+  def _get_final_build(self, **task_params):
+    """Get the final build to kick off on a lab DUT.
+
+    Args:
+      **task_params: The parameters of a task got from suite queue.
+
+    Returns:
+      A string representing the build to run.
+    """
+    cros_build = task_params[build_lib.BuildVersionKey.CROS_VERSION]
+    android_build = task_params[
+        build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
+    testbed_build = task_params[
+        build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
+    return cros_build or android_build or testbed_build
+
+  def _form_run_suite_command(self, final_build, **task_params):
+    """Form the swarming call command based on task_params.
+
+    Args:
+      final_build: The build to kick off on a DUT.
+      **task_params: the parameters of a task got from suite queue.
+
+    Returns:
+      A string command.
+    """
+    fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
+    fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
 
     timeout_mins = (task_params['timeout_mins'] or
                     task_params['timeout'] * 60)
@@ -157,6 +206,20 @@ class SwarmingRunner(object):
     if fw_ro_build != 'None':
       command.extend(['--firmware_ro_build', fw_ro_build])
 
+    return command
+
+  def _form_swarming_request(self, command, task_name, tags, priority):
+    """Form a raw request which will be sent to swarming API.
+
+    Args:
+      command: the command to be run by swarming bot.
+      task_name: the name of the swarming task.
+      tags: the tags of the to-be-run swarming task.
+      priority: the priority of the to-be-run swarming task.
+
+    Returns:
+      A json-compatible dict that can be parsed by swarming API.
+    """
     properties = TaskProperties(
         command=command,
         dimensions=self.DIMENSIONS,
@@ -168,47 +231,11 @@ class SwarmingRunner(object):
     task_request = NewTaskRequest(
         expiration_secs=_TASK_EXPIRATION_SECONDS,
         name=task_name,
-        priority=int(task_params['priority']),
+        priority=priority,
         properties=properties,
         tags=tags,
         user=USER)
-    raw_request = _to_raw_request(task_request)
-    logging.debug(raw_request)
-    return self._client.create_task(request=raw_request)
-
-  def dummy_run(self):
-    """Perform a dummy run to swarming proxy service."""
-    tags = ['task_name:dummy_run']
-    properties = TaskProperties(
-        command=[self.RUN_SUITE_PATH, '--do_nothing'],
-        dimensions=self.DIMENSIONS,
-        env={},
-        execution_timeout_secs=_EXECUTION_TIMEOUT_SECONDS,
-        grace_period_secs=_GRACE_PERIOD_SECONDS,
-        idempotent=False,
-        io_timeout_secs=_EXECUTION_TIMEOUT_SECONDS)
-    task_request = NewTaskRequest(
-        expiration_secs=_TASK_EXPIRATION_SECONDS,
-        name=DUMMY_TASK_NAME,
-        priority=DUMMY_PRIORITY,
-        properties=properties,
-        tags=tags,
-        user=USER)
-    return self._client.create_task(
-        request=_to_raw_request(task_request))
-
-  def query_task(self, task_id):
-    """Get a kicked-off task's status.
-
-    Args:
-      task_id: an id of a swarming task.
-
-    Returns:
-      a SwarmingTaskInfo object.
-    """
-    response = self._client.get_task_result(task_id)
-    task_info_dict = {k: response.get(k) for k in SwarmingTaskInfo._fields}
-    return SwarmingTaskInfo(**task_info_dict)
+    return _to_raw_request(task_request)
 
 
 def _namedtuple_to_dict(value):

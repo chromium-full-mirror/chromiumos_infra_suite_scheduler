@@ -101,7 +101,7 @@ class TestPush(webapp2.RequestHandler):
   """Test push for suite_scheduler on staging instance."""
 
   def get(self):
-    if global_config.is_in_staging():
+    if not global_config.is_in_staging():
       return
 
     # Test Cron jobs
