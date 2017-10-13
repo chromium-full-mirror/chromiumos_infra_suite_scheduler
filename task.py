@@ -57,7 +57,9 @@ class Task(object):
           test_source, the source of test code when firmware will be updated in
             the test. The value can be 'firmware_rw', 'firmware_ro' or 'cros'.
           job_retry, set to True to enable job-level retry. Default is False.
-          no_delay, set to True to raise the priority of this task in task
+          no_delay, set to True to raise the priority of this task in task.
+          force, set to True to schedule this suite no matter whether there's
+            duplicate jobs before.
           queue, so the suite jobs can start running tests with no waiting.
           hour, an integer specifying the hour that a nightly run should be
             triggered, default is set to 21.
@@ -88,6 +90,7 @@ class Task(object):
     self.test_source = task_info.test_source
     self.job_retry = task_info.job_retry
     self.no_delay = task_info.no_delay
+    self.force = task_info.force
     self.os_type = task_info.os_type
     self.testbed_dut_count = task_info.testbed_dut_count
     if task_info.hour is not None:
@@ -367,6 +370,7 @@ class Task(object):
         'test_source_build': test_source_build,
         'job_retry': self.job_retry,
         'no_delay': self.no_delay,
+        'force': self.force,
         'run_prod_code': run_prod_code,
     }
 

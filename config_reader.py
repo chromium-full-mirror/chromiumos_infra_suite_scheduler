@@ -52,6 +52,7 @@ CommonTaskEntries = ['boards',
                      'lc_branches',
                      'lc_targets',
                      'no_delay',
+                     'force',
                      'num',
                      'os_type',
                      'pool',
@@ -278,11 +279,11 @@ class TaskConfig(object):
     os_type = self._config_reader.getstring(section, 'os_type')
     os_type = build_lib.OS_TYPE_CROS if os_type is None else os_type
 
-    job_retry = self._config_reader.getboolean(section, 'job_retry')
-    job_retry = False if job_retry is None else job_retry
+    job_retry = bool(self._config_reader.getboolean(section, 'job_retry'))
 
-    no_delay = self._config_reader.getboolean(section, 'no_delay')
-    no_delay = False if no_delay is None else no_delay
+    no_delay = bool(self._config_reader.getboolean(section, 'no_delay'))
+
+    force = bool(self._config_reader.getboolean(section, 'force'))
 
     priority = self._config_reader.getint(section, 'priority')
     if priority is None:
@@ -328,6 +329,7 @@ class TaskConfig(object):
                     timeout=timeout,
                     job_retry=job_retry,
                     no_delay=no_delay,
+                    force=force,
                     num=num,
                     hour=hour,
                     day=day,

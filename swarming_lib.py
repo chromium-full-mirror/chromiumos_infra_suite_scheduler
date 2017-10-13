@@ -130,7 +130,7 @@ class SwarmingRunner(object):
     max_runtime_mins = (task_params['max_runtime_mins'] or
                         task_params['timeout'] * 60)
 
-    command = [self.RUN_SUITE_PATH, '--pre_check',
+    command = [self.RUN_SUITE_PATH,
                '--build', final_build,
                '--board', task_params['board'],
                '--suite_name', task_params['suite'],
@@ -141,6 +141,9 @@ class SwarmingRunner(object):
                '--no_wait', task_params['no_wait_for_results'],
                '--test_source_build', task_params['test_source_build'],
                '--retry', task_params['job_retry']]
+
+    if task_params['force'] != 'True':
+      command.extend(['--pre_check'])
 
     if task_params['num'] != 'None':
       command.extend(['--num', task_params['num']])
