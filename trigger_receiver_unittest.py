@@ -373,7 +373,8 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     for now in now_generator(datetime.datetime.now(time_converter.UTC_TZ)):
       self._mock_utc_now.return_value = now
       suite_trigger = trigger_receiver.TriggerReceiver()
-      suite_trigger.cron()
+      with mock.patch('task.Task.schedule', return_value=True):
+        suite_trigger.cron()
 
       should_scheduled_nightly_tasks = [
           t.name for t in all_tasks['nightly']

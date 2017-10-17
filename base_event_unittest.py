@@ -30,6 +30,8 @@ class FakeTask(object):
   def schedule(self, lc_builds, cros_builds, lab_config, db_client=None):
     if not self.success:
       raise task.SchedulingError('Failed to run task.')
+
+    return self.success
 # pylint: enable=unused-argument
 
 

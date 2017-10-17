@@ -119,17 +119,20 @@ class BaseEvent(object):
     Returns:
       A list of finished tasks' names.
     """
-    finished_tasks = []
+    scheduled_tasks = []
     for per_task in self.task_list:
       try:
-        per_task.schedule(launch_control_builds, cros_builds, lab_config,
-                          db_client)
-        finished_tasks.append(per_task.name)
+        if per_task.schedule(launch_control_builds, cros_builds,
+                             lab_config, db_client):
+          scheduled_tasks.append(per_task.name)
+        else:
+          logging.debug('No suites are scheduled in suites queue for '
+                        'task %s', per_task.name)
       except task.SchedulingError:
         logging.exception('Failed to schedule task: %s', per_task.name)
         continue
 
-    return finished_tasks
+    return scheduled_tasks
 
   def finish(self):
     """Execute all actions that once an event is finished."""

@@ -76,6 +76,9 @@ class Task(object):
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
     """
+    # Indicate whether there're suites get pushed into taskqueue for this task.
+    self.is_pushed = False
+
     self.name = task_info.name
     self.suite = task_info.suite
     self.branch_specs = task_info.branch_specs
@@ -133,8 +136,14 @@ class Task(object):
 
     Raises:
       SchedulingError: if tasks that should be scheduled fail to schedule.
+
+    Returns:
+      A boolean indicator to show whether there're suites related to this task
+        get pushed into the suites queue.
     """
     assert lab_config is not None
+    self.is_pushed = False
+
     logging.info('######## Scheduling task %s ########', self.name)
     if self.os_type == build_lib.OS_TYPE_CROS:
       if not branch_builds:
@@ -146,6 +155,8 @@ class Task(object):
         logging.info('No Android build to run, skip running.')
       else:
         self._schedule_launch_control_builds(launch_control_builds)
+
+    return self.is_pushed
 
   def _set_spec_compare_info(self):
     """Set branch spec compare info for task for further check."""
@@ -369,6 +380,7 @@ class Task(object):
 
     task_executor.push(task_executor.SUITES_QUEUE, **suite_job_parameters)
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
+    self.is_pushed = True
 
   def _schedule_cros_builds(self, branch_builds, lab_config, db_client):
     """Schedule tasks with branch builds.

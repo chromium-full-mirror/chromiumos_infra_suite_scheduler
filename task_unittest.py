@@ -7,6 +7,7 @@
 import re
 import unittest
 
+import build_lib
 import cloud_sql_client
 import config_reader
 import mock
@@ -40,7 +41,7 @@ class FakeCIDBClient(object):
                                       build_config=build_config)
 
 
-class TaskTestCase(unittest.TestCase):
+class TaskBaseTestCase(unittest.TestCase):
 
   BOARD = 'fake_board'
   NAME = 'fake_name'
@@ -67,6 +68,12 @@ class TaskTestCase(unittest.TestCase):
         boards=self.BOARD,
         priority=self.PRIORITY,
         timeout=self.TIMEOUT))
+
+
+class TaskTestCase(TaskBaseTestCase):
+
+  def setUp(self):
+    super(TaskTestCase, self).setUp()
 
     mock_push = mock.patch('task.Task._push_suite')
     self._mock_push = mock_push.start()
@@ -239,3 +246,50 @@ class TaskTestCase(unittest.TestCase):
         t.lstrip() for t in lc_branches.split(',')]
     self.task._schedule_launch_control_builds(lc_builds)
     self.assertEqual(self._mock_push.call_count, 0)
+
+
+class TaskPushTestCase(TaskBaseTestCase):
+
+  def setUp(self):
+    super(TaskPushTestCase, self).setUp()
+    mock_push = mock.patch('task_executor.push')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testScheduleCrOSIsPushSuccessfully(self):
+    """Test IS_PUSHED is changed if some CrOS suites are scheduled."""
+    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    self.task.os_type = build_lib.OS_TYPE_CROS
+    self.assertTrue(self.task.schedule(
+        [], branch_builds, config_reader.LabConfig(None), FakeCIDBClient()))
+
+  def testScheduleLaunchControlIsPushSuccessfully(self):
+    """Test IS_PUSHED is changed if some launch control suites are scheduled."""
+    lc_builds = {self.BOARD: ['git_nyc-mr2-release/shamu-userdebug/3844975',
+                              'git_nyc-mr1-release/shamu-userdebug/3783920']}
+    lc_branches = 'git_nyc-mr1-release,git_nyc-mr2-release'
+    self.task.launch_control_branches = [
+        t.lstrip() for t in lc_branches.split(',')]
+    self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
+    self.assertTrue(self.task.schedule(
+        lc_builds, [], config_reader.LabConfig(None), FakeCIDBClient()))
+
+  def testScheduleCrosIsPushInvalidBoard(self):
+    """Test schedule no cros builds due to non-allowed board."""
+    branch_builds = {('%s_2' % self.BOARD, 'release', '56'): '0000.00.00'}
+    self.task.os_type = build_lib.OS_TYPE_CROS
+    self.assertFalse(self.task.schedule(
+        [], branch_builds, config_reader.LabConfig(None), FakeCIDBClient()))
+
+  def testScheduleLaunchControlIsPushInvalidBoard(self):
+    """Test schedule none of launch control builds due to board check."""
+    lc_builds = {'%s_2' % self.BOARD:
+                 ['git_nyc-mr2-release/shamu-userdebug/3844975',
+                  'git_nyc-mr1-release/shamu-userdebug/3783920']}
+    lc_branches = 'git_nyc-mr1-release,git_nyc-mr2-release'
+    self.task.launch_control_branches = [
+        t.lstrip() for t in lc_branches.split(',')]
+    self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
+    self.task._schedule_launch_control_builds(lc_builds)
+    self.assertFalse(self.task.schedule(
+        lc_builds, [], config_reader.LabConfig(None), FakeCIDBClient()))
