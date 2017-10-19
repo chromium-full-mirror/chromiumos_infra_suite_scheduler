@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 
 """Module for executing tasks queued by suite scheduler."""
+# pylint: disable=g-bad-import-order
 
 import logging
 
 import global_config
 import swarming_lib
 
+import apiclient
 from google.appengine.api import taskqueue
 from google.appengine.runtime import apiproxy_errors
 
@@ -46,16 +48,17 @@ class TaskProcessor(object):
       executed_tasks = []
       try:
         for task in tasks:
-          if global_config.GAE_TESTING:
-            self.swarming.dummy_run()
-          else:
-            self.swarming.run(**task.extract_params())
+          try:
+            params = task.extract_params()
+            if global_config.GAE_TESTING:
+              self.swarming.dummy_run()
+            else:
+              self.swarming.run(**params)
 
-          executed_tasks.append(task)
-
-      except (ValueError, swarming_lib.SwarmingRunError) as e:
-        logging.exception(e)
-        raise
+            executed_tasks.append(task)
+          except (ValueError, swarming_lib.SwarmingRunError,
+                  apiclient.errors.HttpError) as e:
+            logging.exception('Failed to kick off %r', params)
       finally:
         if executed_tasks:
           logging.info('Successfully kicking %d tasks', len(executed_tasks))

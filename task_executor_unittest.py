@@ -18,12 +18,14 @@ from google.appengine.ext import testbed
 
 class FakeSwarmingLib(object):
 
-  def __init__(self, success_num=sys.maxint):
+  def __init__(self, success_num=sys.maxint, error_num=0):
     self.success_num = success_num
+    self.error_num = error_num
     self.dummy_run_count = 0
 
   def run(self, **suite_kwargs):
-    if int(suite_kwargs.get('num', 0)) > self.success_num:
+    num = int(suite_kwargs.get('num', 0))
+    if num > self.success_num and num <= self.success_num + self.error_num:
       raise ValueError('test')
 
   def dummy_run(self):
@@ -97,10 +99,11 @@ class TaskExecutorTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), task_executor.BATCH_SIZE + extra_num)
     with mock.patch('swarming_lib.SwarmingRunner',
-                    return_value=FakeSwarmingLib(0)):
+                    return_value=FakeSwarmingLib(0, error_num=len(tasks))):
       task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
-      self.assertRaises(ValueError, task_processor.batch_execute)
-      # After batch_execute fails, no tasks are deleted from task queue.
+      task_processor.batch_execute()
+      # After batch_execute, no tasks are deleted from task queue, due
+      # to they're all failed to kick off.
       tasks = self.taskqueue_stub.get_filtered_tasks()
       self.assertEqual(len(tasks), task_executor.BATCH_SIZE + extra_num)
 
@@ -109,6 +112,7 @@ class TaskExecutorTestCase(unittest.TestCase):
     suite_kwargs = {'suite': 'fake_suite'}
     extra_num = 10
     success_num = 50
+    error_num = 5
     for i in range(task_executor.BATCH_SIZE + extra_num):
       suite_kwargs['num'] = i + 1
       task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
@@ -117,13 +121,13 @@ class TaskExecutorTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), task_executor.BATCH_SIZE + extra_num)
     with mock.patch('swarming_lib.SwarmingRunner',
-                    return_value=FakeSwarmingLib(success_num)):
+                    return_value=FakeSwarmingLib(success_num, error_num)):
       task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
-      self.assertRaises(ValueError, task_processor.batch_execute)
-      # After batch_execute fails, no tasks are deleted from task queue.
+      task_processor.batch_execute()
+      # After batch_execute, only failed suites and extra suites are
+      # kept in task queue.
       tasks = self.taskqueue_stub.get_filtered_tasks()
-      self.assertEqual(len(tasks),
-                       task_executor.BATCH_SIZE - success_num + extra_num)
+      self.assertEqual(len(tasks), error_num + extra_num)
 
   def testBatchExecuteTaskFailedLeasing(self):
     """Test task_executor fails to lease task."""
