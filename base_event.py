@@ -75,10 +75,11 @@ class BaseEvent(object):
     """
     self.task_list = list(self.task_list)
 
-  def get_cros_builds(self, db_client):
+  def get_cros_builds(self, lab_config, db_client):
     """Get CrOS builds to run on for this event.
 
     Args:
+      lab_config: a config_reader.LabConfig object, to read lab configs.
       db_client: a cloud_sql_client.CIDBClient object, to call CIDB.
 
     Returns:
@@ -86,7 +87,7 @@ class BaseEvent(object):
         |build_lib.get_cros_builds_since_date_from_db|.
     """
     return build_lib.get_cros_builds_since_date_from_db(
-        db_client, self.since_date)
+        db_client, lab_config.get_cros_board_list(), self.since_date)
 
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.

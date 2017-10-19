@@ -148,12 +148,13 @@ def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
         (board, suffix, str(e)))
 
 
-def get_cros_builds_since_date_from_db(db_client, since_date):
+def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
   """Get branch builds for ChromeOS boards.
 
   Args:
     db_client: a cloud_sql_client.CIDBClient object, to read cidb
       build infos.
+    cros_board_list: The board list including all CrOS boards.
     since_date: a datetime.datetime object in UTC to indicate since when CrOS
       builds will be fetched.
 
@@ -180,6 +181,10 @@ def get_cros_builds_since_date_from_db(db_client, since_date):
     if build.board != build_config_info.board:
       logging.warning('Non-matched build_config and board: %s, %s',
                       build.board, build.board)
+      continue
+
+    if build.board not in cros_board_list:
+      logging.warning('%s is not a valid CrOS board.', build.board)
       continue
 
     build_key = (build.board, build_config_info.type, build.milestone)

@@ -259,6 +259,7 @@ class LabReaderTestCase(unittest.TestCase):
   def setUp(self):
     self.config = config_reader.ConfigReader(None)
     self.config.add_section(config_reader.ANDROID_SETTINGS)
+    self.config.add_section(config_reader.CROS_SETTINGS)
     self.config.add_section(config_reader.RELEASED_RO_BUILDS)
 
   def testGetAndroidBoardList(self):
@@ -280,6 +281,16 @@ class LabReaderTestCase(unittest.TestCase):
     """Ensure ValueError is raised if no android board list is found."""
     lab_config = config_reader.LabConfig(self.config)
     self.assertRaises(ValueError, lab_config.get_android_board_list)
+
+  def testGetCrOSBoardList(self):
+    """Ensure android board list can be correctly fetched."""
+    self.config.set(config_reader.CROS_SETTINGS, 'board_list',
+                    '\nlink,\nandroid-angler-1,\nangler-6')
+    self.config.set(config_reader.ANDROID_SETTINGS, 'board_list',
+                    '\nandroid-angler-1,\nangler-6')
+    lab_config = config_reader.LabConfig(self.config)
+    self.assertEqual(lab_config.get_cros_board_list(),
+                     set(['link']))
 
   def testGetFirmwareROBuildList(self):
     """Ensure firmware ro build can be successfully found."""

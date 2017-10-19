@@ -137,6 +137,10 @@ class FakeLabConfig(object):
     """Mock config_reader.LabConfig.get_android_board_list."""
     return ('android-angler', 'android-bullhead')
 
+  def get_cros_board_list(self):
+    """Mock config_reader.LabConfig.get_android_board_list."""
+    return ('link', 'peppy', 'daisy')
+
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
     del release_board  # unused

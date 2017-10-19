@@ -69,7 +69,10 @@ TaskInfo = collections.namedtuple(
 TaskInfo.__new__.__defaults__ = (None,) * len(TaskInfo._fields)
 
 # The entries of android settings in lab config file.
-ANDROID_SETTINGS = 'Android'
+ANDROID_SETTINGS = 'ANDROID'
+
+# The entries of CrOS settings in lab config file.
+CROS_SETTINGS = 'CROS'
 
 # The entry of release ro builds in lab config file.
 RELEASED_RO_BUILDS = 'RELEASED_RO_BUILDS'
@@ -517,10 +520,29 @@ class LabConfig(object):
     board_list = self._config_reader.getstring(
         ANDROID_SETTINGS, 'board_list')
     if board_list is None:
-      raise ValueError('Cannot find board_list in lab config file.')
+      raise ValueError('Cannot find Android board_list in lab config file.')
 
     return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
                 for board in board_list.split(',')])
+
+  def get_cros_board_list(self):
+    """Get the CrOS board list from lab config file.
+
+    Returns:
+      A set of CrOS boards: (abox_edge, alex, ...)
+
+    Raises:
+      ValueError: no CrOS board list is found.
+    """
+    board_list = self._config_reader.getstring(CROS_SETTINGS, 'board_list')
+    if board_list is None:
+      raise ValueError('Cannot find CrOS board_list in lab config file.')
+
+    android_board_list = self.get_android_board_list()
+    # Filter board like xxxx_1 to xxxx.
+    cros_board_list = set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
+                           for board in board_list.split(',')])
+    return cros_board_list - android_board_list
 
   def get_firmware_ro_build_list(self, release_board):
     """Get firmware ro build list from config file.
