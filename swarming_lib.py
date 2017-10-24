@@ -57,7 +57,19 @@ SwarmingTaskInfo = collections.namedtuple(
     ])
 
 # The theoretical maximum time for executing a swarming task.
-_EXECUTION_TIMEOUT_SECONDS = 5 * 60
+# In builder, the timeout for swarming execution is often 1 hour longer than
+# the timeout of suite. However, we pass in create_and_return for every
+# run_suite.py call for suite-scheduler, which means it doesn't need to be
+# consistent with the suite timeout. So here let's just follow the parameters
+# used by builder in chromite to make sure
+# 1) it's enough to call run_suite.py then return.
+# 2) it's not too long even if some suites' timeout in suite_scheduler.ini
+# is 1 week.
+_EXECUTION_TIMEOUT_HOURS = {
+    'arc-cts-qual': 49,
+    'arc-gts-qual': 49,
+}
+_EXECUTION_DEFAULT_TIMEOUT_HOUR = 2
 
 # When a task is about to be killed, it will have a grace period.
 _GRACE_PERIOD_SECONDS = 30
@@ -110,7 +122,8 @@ class SwarmingRunner(object):
       raise SwarmingRunError('No proper build in task params: %r' %
                              task_params)
 
-    task_name = '%s-%s' % (final_build, task_params['suite'])
+    suite_name = task_params['suite']
+    task_name = '%s-%s' % (final_build, suite_name)
     tags = ['suite:%s' % task_params['suite']]
     tags.append('priority:%s' % task_params['priority'])
     tags.append('board:%s' % task_params['board'])
@@ -118,17 +131,20 @@ class SwarmingRunner(object):
     tags.append('task_name:%s' % task_name)
 
     command = self._form_run_suite_command(final_build, **task_params)
+    execution_timeout_secs = self._get_execution_timeout(suite_name)
     raw_request = self._form_swarming_request(
-        command, task_name, tags, int(task_params['priority']))
+        command, task_name, tags, int(task_params['priority']),
+        execution_timeout_secs)
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
 
   def dummy_run(self):
     """Perform a dummy run to swarming proxy service."""
     tags = ['task_name:dummy_run']
+    execution_timeout_secs = self._get_execution_timeout('fake_suite')
     raw_request = self._form_swarming_request(
         [self.RUN_SUITE_PATH, '--do_nothing'],
-        DUMMY_TASK_NAME, tags, DUMMY_PRIORITY)
+        DUMMY_TASK_NAME, tags, DUMMY_PRIORITY, execution_timeout_secs)
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
 
@@ -144,6 +160,18 @@ class SwarmingRunner(object):
     response = self._client.get_task_result(task_id)
     task_info_dict = {k: response.get(k) for k in SwarmingTaskInfo._fields}
     return SwarmingTaskInfo(**task_info_dict)
+
+  def _get_execution_timeout(self, suite_name):
+    """Get execution timeout for suite.
+
+    Args:
+      suite_name: the name of the suite to be kicked off.
+
+    Returns:
+      A timeout represented by seconds.
+    """
+    return 60 * 60 * _EXECUTION_TIMEOUT_HOURS.get(
+        suite_name, _EXECUTION_DEFAULT_TIMEOUT_HOUR)
 
   def _get_final_build(self, **task_params):
     """Get the final build to kick off on a lab DUT.
@@ -208,7 +236,8 @@ class SwarmingRunner(object):
 
     return command
 
-  def _form_swarming_request(self, command, task_name, tags, priority):
+  def _form_swarming_request(self, command, task_name, tags, priority,
+                             execution_timeout_secs):
     """Form a raw request which will be sent to swarming API.
 
     Args:
@@ -216,6 +245,7 @@ class SwarmingRunner(object):
       task_name: the name of the swarming task.
       tags: the tags of the to-be-run swarming task.
       priority: the priority of the to-be-run swarming task.
+      execution_timeout_secs: the execution timeout seconds for swarming call.
 
     Returns:
       A json-compatible dict that can be parsed by swarming API.
@@ -224,10 +254,10 @@ class SwarmingRunner(object):
         command=command,
         dimensions=self.DIMENSIONS,
         env={},
-        execution_timeout_secs=_EXECUTION_TIMEOUT_SECONDS,
+        execution_timeout_secs=execution_timeout_secs,
         grace_period_secs=_GRACE_PERIOD_SECONDS,
         idempotent=False,
-        io_timeout_secs=_EXECUTION_TIMEOUT_SECONDS)
+        io_timeout_secs=execution_timeout_secs)
     task_request = NewTaskRequest(
         expiration_secs=_TASK_EXPIRATION_SECONDS,
         name=task_name,

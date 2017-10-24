@@ -126,12 +126,21 @@ class SwarmingLibTestCase(unittest.TestCase):
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
       raw_request = swarming_runner._form_swarming_request(
-          command, 'fake_task_name', ['suite:fake_suite'], 10)
+          command, 'fake_task_name', ['suite:fake_suite'], 10, 100)
       self.assertEqual(raw_request['priority'], 10)
       self.assertEqual(raw_request['name'], 'fake_task_name')
       self.assertEqual(raw_request['tags'], ['suite:fake_suite'])
       self.assertEqual(raw_request['properties']['command'], command)
+      self.assertEqual(raw_request['properties']['execution_timeout_secs'], 100)
+      self.assertEqual(raw_request['properties']['io_timeout_secs'], 100)
 
+  def testGetExecutionTimeoutForCTS(self):
+    with mock.patch('rest_client.SwarmingRestClient',
+                    return_value=None):
+      suite = 'arc-cts-qual'
+      swarming_runner = swarming_lib.SwarmingRunner()
+      self.assertEqual(swarming_runner._get_execution_timeout(suite),
+                       60 * 60 * swarming_lib._EXECUTION_TIMEOUT_HOURS[suite])
 
 if __name__ == '__main__':
   unittest.main()
