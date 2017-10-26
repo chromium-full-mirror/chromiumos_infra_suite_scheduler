@@ -8,7 +8,9 @@ import collections
 import logging
 
 import build_lib
+import config_reader
 import constants
+import file_getter
 import rest_client
 
 
@@ -104,6 +106,9 @@ class SwarmingRunner(object):
             constants.RestClient.SWARMING_CLIENT.service_name,
             constants.RestClient.SWARMING_CLIENT.service_version),
         self.SERVICE_URL)
+    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+        file_getter.LAB_CONFIG_FILE))
+    self._afe_server = lab_config.get_dedicated_afe()
 
   def run(self, **task_params):
     """Perform a run to swarming proxy service.
@@ -143,7 +148,7 @@ class SwarmingRunner(object):
     tags = ['task_name:dummy_run']
     execution_timeout_secs = self._get_execution_timeout('fake_suite')
     raw_request = self._form_swarming_request(
-        [self.RUN_SUITE_PATH, '--do_nothing'],
+        [self.RUN_SUITE_PATH, '--web', self._afe_server, '--do_nothing'],
         DUMMY_TASK_NAME, tags, DUMMY_PRIORITY, execution_timeout_secs)
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
@@ -217,7 +222,8 @@ class SwarmingRunner(object):
                '--max_runtime_mins', str(max_runtime_mins),
                '--no_wait', task_params['no_wait_for_results'],
                '--test_source_build', task_params['test_source_build'],
-               '--retry', task_params['job_retry']]
+               '--retry', task_params['job_retry'],
+               '--web', self._afe_server]
 
     # Swarming calls from suite_scheduler should creat and return immediately.
     command.extend(['-c'])

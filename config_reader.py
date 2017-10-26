@@ -508,6 +508,9 @@ class LabConfig(object):
     """
     self._config_reader = config_reader
 
+  def get_dedicated_afe(self):
+    return self._config_reader.getstring(CROS_SETTINGS, 'afe_server')
+
   def get_android_board_list(self):
     """Get the android board list from lab config file.
 
