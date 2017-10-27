@@ -20,6 +20,9 @@ STR_TIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 # The format for calendar timestamp.
 CALENDAR_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
+# The format for stackdriver logging timestamp.
+STACKDRIVER_TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+
 UTC_TZ = pytz.utc
 PST_TZ = pytz.timezone('America/Los_Angeles')
 

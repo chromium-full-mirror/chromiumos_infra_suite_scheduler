@@ -70,6 +70,11 @@ class RestClient(object):
        'swarming',
        'v1'])
 
+  STACKDRIVER_CLIENT = RestClientInfo._make(
+      ['https://www.googleapis.com/auth/logging.read',
+       'logging',
+       'v2'])
+
 
 class RunningEnv(object):
   """Constants related to app engine running environment."""
