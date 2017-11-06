@@ -30,8 +30,8 @@ class MainDashboard(webapp2.RequestHandler):
     self.response.write(template.render(template_values))
 
 
-class TriggerLog(webapp2.RequestHandler):
-  """Log page for suite scheduler cron job: trigger_event."""
+class Logger(webapp2.RequestHandler):
+  """Log page for suite scheduler's jobs."""
 
   def get(self):
     self.response.headers['Content-Type'] = 'text/plain'
@@ -68,5 +68,5 @@ class TriggerLog(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/', MainDashboard),
-    ('/trigger_event_log', TriggerLog),
+    ('/logger', Logger),
 ], debug=True)

@@ -139,3 +139,14 @@ def application_id(parse=True):
     return app_id.split(':')[1]
   else:
     return app_id
+
+
+def server_name():
+  """Return server name.
+
+  Returns:
+    If this instance is running locally, return 'localhost:xxxx'.
+    If this instance is running on GAE, return '***.googleplex.com' or
+    '***.appspot.com'.
+  """
+  return app_identity.get_default_version_hostname()

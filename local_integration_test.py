@@ -90,11 +90,11 @@ class IntegrationTest(unittest.TestCase):
         ['curl', '%s/test_push/swarming' % DEV_APPSERVER_URL])
     self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
 
-  def testTriggerEventLogs(self):
-    """RPC test for trigger_event_log."""
+  def testWebLogger(self):
+    """RPC test for logger."""
     current_time = time_converter.utc_now()
     start_time = current_time - datetime.timedelta(hours=12)
-    log_format = ('%s/trigger_event_log?start_time=%s&end_time=%s&'
+    log_format = ('%s/logger?start_time=%s&end_time=%s&'
                   'resource=%s&app_id=%s')
     log_url = log_format % (
         DEV_APPSERVER_URL,

@@ -7,6 +7,7 @@
 import os
 
 
+# The format of loggings.
 LOGGING_FORMAT = ('%(time)s %(levelname)-5.5s|%(module)'
                   '18.18s:%(lineno)4.4s| %(message)s')
 
