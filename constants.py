@@ -115,15 +115,26 @@ def environment():
     return RunningEnv.ENV_STANDALONE
 
 
-def application_id():
+def application_id(parse=True):
   """Get current running application id.
 
+  Args:
+    parse: whether to parse prefix of application id.
+
   Returns:
-      If it's a Google internal GAE whose id format is 'google.com:<name>',
-      return <name>; Otherwise, return the full id.
+      If the id == 'None', return None;
+      If it's a Google internal GAE whose id format is 'google.com:<name>' and
+      parse is specified as True, return <name>;
+      Otherwise, return the full id.
   """
   app_id = app_identity.get_application_id()
   logging.info('app_id: %s', app_id)
+  if app_id == 'None':
+    return None
+
+  if not parse:
+    return app_id
+
   if app_id is not None and len(app_id.split(':')) > 1:
     return app_id.split(':')[1]
   else:

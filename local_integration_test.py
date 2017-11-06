@@ -4,12 +4,16 @@
 
 """Module for local integration tests."""
 
+import datetime
 import logging
 import os
 import subprocess
 import unittest
 
+import constants
+import stackdriver_lib
 import swarming_lib
+import time_converter
 import utils
 
 
@@ -26,6 +30,7 @@ DEBUG_MODE = logging.getLogger().getEffectiveLevel() <= logging.DEBUG
 # The url to start local dev appserver.
 DEV_APPSERVER_PORT = 8888
 DEV_APPSERVER_URL = 'http://localhost:%d' % DEV_APPSERVER_PORT
+DEV_APPSERVER_ADMIN_PORT = 8001
 
 
 def _subprocess_wrapper(func, cmd, **kwargs):
@@ -60,8 +65,9 @@ class IntegrationTest(unittest.TestCase):
     try:
       cls.dev_app_proc = _subprocess_wrapper(
           subprocess.Popen,
-          ['%s %s --port %d --log_level=debug' %
-           (LOCAL_DEV_APPSERVER, INTEGRATION_TEST_CONFIG, DEV_APPSERVER_PORT)],
+          ['%s %s --port %d --admin_port %d --log_level=debug' %
+           (LOCAL_DEV_APPSERVER, INTEGRATION_TEST_CONFIG,
+            DEV_APPSERVER_PORT, DEV_APPSERVER_ADMIN_PORT)],
           shell=True)
 
       # Wait for dev_appserver to start locally.
@@ -83,6 +89,22 @@ class IntegrationTest(unittest.TestCase):
         subprocess.check_output,
         ['curl', '%s/test_push/swarming' % DEV_APPSERVER_URL])
     self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
+
+  def testTriggerEventLogs(self):
+    """RPC test for trigger_event_log."""
+    current_time = time_converter.utc_now()
+    start_time = current_time - datetime.timedelta(hours=12)
+    log_format = ('%s/trigger_event_log?start_time=%s&end_time=%s&'
+                  'resource=%s&app_id=%s')
+    log_url = log_format % (
+        DEV_APPSERVER_URL,
+        start_time.strftime(time_converter.STACKDRIVER_TIME_FORMAT),
+        current_time.strftime(time_converter.STACKDRIVER_TIME_FORMAT),
+        '/cron/test_push',
+        'google.com:%s' % constants.AppID.STAGING_APP)
+    output = _subprocess_wrapper(subprocess.check_output, ['curl', log_url])
+    self.assertEqual(len(output.splitlines()[0].split('|')),
+                     len(stackdriver_lib.LOGGING_FORMAT.split('|')))
 
 
 if __name__ == '__main__':
