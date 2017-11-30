@@ -24,11 +24,7 @@ SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH,
                                            'suite_scheduler.ini')
 
 # The suite scheduler config file for testing.
-# TODO(xixuan): after suite scheduler's configs are fully migrated, will
-# change this file to SUITE_SCHEDULER_CONFIG_FILE. In another words, we
-# want to use real config file for testing.
-TEST_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(
-    CONFIG_PATH, 'suite_scheduler_test.ini')
+TEST_SUITE_SCHEDULER_CONFIG_FILE = SUITE_SCHEDULER_CONFIG_FILE
 
 # Lab config file
 LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
