@@ -31,6 +31,7 @@ class SwarmingLibTestCase(unittest.TestCase):
     self.suite_job_parameters = {
         'suite': 'fake_suite',
         'board': 'fake_board',
+        'model': 'fake_model',
         build_lib.BuildVersionKey.CROS_VERSION: 'fake_cros_build',
         build_lib.BuildVersionKey.FW_RW_VERSION: 'fake_firmware_rw_build',
         build_lib.BuildVersionKey.FW_RO_VERSION: 'fake_firmware_ro_build',
@@ -76,6 +77,18 @@ class SwarmingLibTestCase(unittest.TestCase):
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
       self.assertNotIn('--pre_check', command)
+
+  def testFormCommandWithEmptyModel(self):
+    self.suite_job_parameters['model'] = None
+    task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    with mock.patch('rest_client.SwarmingRestClient',
+                    return_value=None):
+      swarming_runner = swarming_lib.SwarmingRunner()
+      params = tasks[0].extract_params()
+      final_build = swarming_runner._get_final_build(**params)
+      command = swarming_runner._form_run_suite_command(final_build, **params)
+      self.assertNotIn('--model', command)
 
   def testFormCommandWithEmptyNum(self):
     self.suite_job_parameters['num'] = None

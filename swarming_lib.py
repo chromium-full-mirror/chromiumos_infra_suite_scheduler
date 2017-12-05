@@ -231,6 +231,9 @@ class SwarmingRunner(object):
     if task_params['force'] != 'True':
       command.extend(['--pre_check'])
 
+    if task_params['model'] != 'None':
+      command.extend(['--model', task_params['model']])
+
     if task_params['num'] != 'None':
       command.extend(['--num', task_params['num']])
 

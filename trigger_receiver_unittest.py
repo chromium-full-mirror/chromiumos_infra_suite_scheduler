@@ -146,6 +146,10 @@ class FakeLabConfig(object):
     del release_board  # unused
     return 'firmware1,firmware2'
 
+  def get_cros_model_map(self):
+    """Mock config_reader.LabConfig.get_cros_model_map."""
+    return {}
+
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
 

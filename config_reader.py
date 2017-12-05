@@ -547,6 +547,32 @@ class LabConfig(object):
                            for board in board_list.split(',')])
     return cros_board_list - android_board_list
 
+  def get_cros_model_map(self):
+    """Gets a map of CrOS boards onto a list of their corresponding models.
+
+    Returns:
+      A map of CrOS board names onto a list of models
+    """
+    result = {}
+    if not self._config_reader:
+      return result
+
+    encoded_map = self._config_reader.getstring(CROS_SETTINGS, 'model_list')
+    if encoded_map is None:
+      return result
+
+    # Models are encoded in form boardName_modelName
+    for full_model in encoded_map.split(','):
+      model_tokens = full_model.strip().split('_')
+      board_name = model_tokens[0]
+      model_name = model_tokens[1]
+      if board_name in result:
+        result[board_name].append(model_name)
+      else:
+        result[board_name] = [model_name]
+
+    return result
+
   def get_firmware_ro_build_list(self, release_board):
     """Get firmware ro build list from config file.
 

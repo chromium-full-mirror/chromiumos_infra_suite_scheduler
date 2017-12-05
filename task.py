@@ -323,13 +323,21 @@ class Task(object):
                       'board %s: %s', spec, board, str(e))
       return None
 
-  def _push_suite(self, board=None, cros_build=None, firmware_rw_build=None,
-                  firmware_ro_build=None, test_source_build=None,
-                  launch_control_build=None, run_prod_code=False):
+  def _push_suite(
+      self,
+      board=None,
+      model=None,
+      cros_build=None,
+      firmware_rw_build=None,
+      firmware_ro_build=None,
+      test_source_build=None,
+      launch_control_build=None,
+      run_prod_code=False):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
       board: the board against which this suite job run.
+      model: the model name for unibuild.
       cros_build: the CrOS build of this suite job.
       firmware_rw_build: Firmware RW build to run this suite job with.
       firmware_ro_build: Firmware RO build to run this suite job with.
@@ -359,6 +367,7 @@ class Task(object):
     suite_job_parameters = {
         'suite': self.suite,
         'board': board,
+        'model': model,
         build_lib.BuildVersionKey.CROS_VERSION: cros_build,
         build_lib.BuildVersionKey.FW_RW_VERSION: firmware_rw_build,
         build_lib.BuildVersionKey.FW_RO_VERSION: firmware_ro_build,
@@ -391,6 +400,7 @@ class Task(object):
       lab_config: a config.LabConfig object, to read lab config file.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
     """
+    models_by_board = lab_config.get_cros_model_map() if lab_config else {}
     for (board, build_type,
          milestone), manifest in branch_builds.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -428,11 +438,15 @@ class Task(object):
         # scheduler settings, where run_prod_code is always False.
         test_source_build = cros_build
 
-      self._push_suite(board=board,
-                       cros_build=cros_build,
-                       firmware_rw_build=firmware_rw_build,
-                       firmware_ro_build=firmware_ro_build,
-                       test_source_build=test_source_build)
+      models = models_by_board.get(board, [None])
+
+      for model in models:
+        self._push_suite(board=board,
+                         model=model,
+                         cros_build=cros_build,
+                         firmware_rw_build=firmware_rw_build,
+                         firmware_ro_build=firmware_ro_build,
+                         test_source_build=test_source_build)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.

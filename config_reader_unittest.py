@@ -305,6 +305,20 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertRaises(ValueError,
                       lab_config.get_firmware_ro_build_list, 'link')
 
+  def testGetCrOSModelMap(self):
+    """Ensure cros_model_map can be correctly fetched."""
+    self.config.set(config_reader.CROS_SETTINGS, 'model_list',
+                    '\ncoral_astronaut,\ncoral_robo360')
+    lab_config = config_reader.LabConfig(self.config)
+    result = lab_config.get_cros_model_map()
+    self.assertEqual(len(result), 1)
+    self.assertEqual(result['coral'], ['astronaut', 'robo360'])
+
+  def testGetEmptyCrOSModelMap(self):
+    """Ensure cros_model_map can be correctly fetched."""
+    lab_config = config_reader.LabConfig(self.config)
+    self.assertEqual(lab_config.get_cros_model_map(), {})
+
 
 if __name__ == '__main__':
   unittest.main()
