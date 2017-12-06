@@ -45,6 +45,9 @@ class TimedEventTestCase(unittest.TestCase):
 class NightlyEventTestCase(TimedEventTestCase):
 
   _KLASS = timed_event.Nightly
+  _DEFAULT_PST_HOUR = _KLASS.DEFAULT_PST_HOUR
+  _DEFAULT_UTC_HOUR = time_converter.convert_time_info(
+      time_converter.TimeInfo(None, _DEFAULT_PST_HOUR)).hour
 
   def testCreateNightlyEventWithoutLastExec(self):
     """Create a nightly event without last_exec_utc in datastore."""
@@ -193,10 +196,7 @@ class NightlyEventTestCase(TimedEventTestCase):
 
   def testFilterTasksWithDefaultHourForNightlyEvent(self):
     """Test filter_tasks with tasks which don't contain settings of hour."""
-    default_pst_hour = config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR
-    default_utc_hour = time_converter.convert_time_info(
-        time_converter.TimeInfo(None, default_pst_hour)).hour
-    utc_now = datetime.datetime(2017, 8, 1, default_utc_hour, 15,
+    utc_now = datetime.datetime(2017, 8, 1, self._DEFAULT_UTC_HOUR, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
     event = self._KLASS(
@@ -204,9 +204,9 @@ class NightlyEventTestCase(TimedEventTestCase):
         datetime.datetime(2017, 8, 1, 3, tzinfo=time_converter.UTC_TZ))
 
     # It's in PST time.
-    task_list = [FakeTask('test1', day=None, hour=default_pst_hour - 1),
-                 FakeTask('test2', day=None, hour=default_pst_hour),
-                 FakeTask('test3', day=None, hour=default_pst_hour + 1),
+    task_list = [FakeTask('test1', day=None, hour=self._DEFAULT_PST_HOUR - 1),
+                 FakeTask('test2', day=None, hour=self._DEFAULT_PST_HOUR),
+                 FakeTask('test3', day=None, hour=self._DEFAULT_PST_HOUR + 1),
                  FakeTask('test4', day=None, hour=None)]
     event.set_task_list(task_list)
     self.assertEqual(len(event.task_list), len(task_list))
@@ -246,17 +246,14 @@ class NightlyEventTestCase(TimedEventTestCase):
     event = self._KLASS(
         config_reader.EventSettings(True, None), None)
 
-    default_pst_hour = config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR
-    default_utc_hour = time_converter.convert_time_info(
-        time_converter.TimeInfo(None, default_pst_hour)).hour
     # It's in PST time.
-    task_list = [FakeTask('test1', day=None, hour=default_pst_hour),
+    task_list = [FakeTask('test1', day=None, hour=self._DEFAULT_PST_HOUR),
                  FakeTask('test2', day=None, hour=0),
-                 FakeTask('test3', day=None, hour=default_pst_hour+1),
+                 FakeTask('test3', day=None, hour=self._DEFAULT_PST_HOUR+1),
                  FakeTask('test4', day=None, hour=None)]
     event.set_task_list(task_list)
     tasks_with_default_utc_hour = [
-        t.name for t in event.task_list if t.hour == default_utc_hour]
+        t.name for t in event.task_list if t.hour == self._DEFAULT_UTC_HOUR]
     self.assertEqual(sorted(tasks_with_default_utc_hour),
                      ['test1', 'test4'])
 
@@ -264,13 +261,19 @@ class NightlyEventTestCase(TimedEventTestCase):
 class WeeklyEventTestCase(TimedEventTestCase):
 
   _KLASS = timed_event.Weekly
+  _DEFAULT_PST_DAY = _KLASS.DEFAULT_PST_DAY
+  _DEFAULT_PST_HOUR = _KLASS.DEFAULT_PST_HOUR
+  _DEFAULT_UTC_TIMEINFO = time_converter.convert_time_info(
+      time_converter.TimeInfo(_DEFAULT_PST_DAY, _DEFAULT_PST_HOUR))
+  _DEFAULT_UTC_DAY = _DEFAULT_UTC_TIMEINFO.weekday
+  _DEFAULT_UTC_HOUR = _DEFAULT_UTC_TIMEINFO.hour
 
   def testCreateWeeklyEventWithoutLastExec(self):
     """Create a weekly event without last_exec_utc in datastore."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -286,8 +289,8 @@ class WeeklyEventTestCase(TimedEventTestCase):
     """Test an event without last exec can be handled in testing on GAE."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -303,10 +306,10 @@ class WeeklyEventTestCase(TimedEventTestCase):
 
   def testCreateWeeklyEventWithValidLastExecShouldNotHandle(self):
     """Create a weekly event with last_exec_utc but shouldn't be handled."""
-    utc_now = datetime.datetime(2017, 8, 1, 4, 15,
+    utc_now = datetime.datetime(2017, 8, 1, self._DEFAULT_UTC_HOUR-1, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -324,8 +327,8 @@ class WeeklyEventTestCase(TimedEventTestCase):
     """Test a can't-be-handled event can be handled in testing on GAE."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -340,14 +343,14 @@ class WeeklyEventTestCase(TimedEventTestCase):
       self.assertEqual(event.last_exec_utc, expected_last_exec_utc)
       self.assertTrue(event.should_handle)
 
-  def testCreateNightlyEventWithValidLastExecShouldHandle(self):
+  def testCreateWeeklyEventWithValidLastExecShouldHandle(self):
     """Create a nightly event with last_exec_utc and should be handled."""
-    utc_now = datetime.datetime(2017, 8, 1, 6, 15,
+    utc_now = datetime.datetime(2017, 8, 1, self._DEFAULT_UTC_HOUR, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
-    expected_cur_exec_utc = datetime.datetime(2017, 8, 1, 6,
-                                              tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+    expected_cur_exec_utc = datetime.datetime(
+        2017, 8, 1, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -365,8 +368,8 @@ class WeeklyEventTestCase(TimedEventTestCase):
     """Create a weekly event with outdated last_exec_utc."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -385,8 +388,8 @@ class WeeklyEventTestCase(TimedEventTestCase):
     """Test an event with old last exec can be handled in testing on GAE."""
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 6,
-                                               tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -407,12 +410,14 @@ class WeeklyEventTestCase(TimedEventTestCase):
     self.config.add_section(self._KLASS.section_name())
     # Set weekly default kick off time to everyday 14:00 PST (21:00 UTC).
     self.config.set(self._KLASS.section_name(), 'hour', '14')
-    utc_now = datetime.datetime(2017, 8, 1, 21, 15,
+    expected_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(self._DEFAULT_PST_DAY, 14)).hour
+    utc_now = datetime.datetime(2017, 8, 1, expected_utc_hour, 15,
                                 tzinfo=time_converter.UTC_TZ)
-    expected_last_exec_utc = datetime.datetime(2017, 7, 31, 21,
-                                               tzinfo=time_converter.UTC_TZ)
-    expected_cur_exec_utc = datetime.datetime(2017, 8, 1, 21,
-                                              tzinfo=time_converter.UTC_TZ)
+    expected_last_exec_utc = datetime.datetime(
+        2017, 7, 31, expected_utc_hour, tzinfo=time_converter.UTC_TZ)
+    expected_cur_exec_utc = datetime.datetime(
+        2017, 8, 1, expected_utc_hour, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -428,12 +433,13 @@ class WeeklyEventTestCase(TimedEventTestCase):
 
   def testFilterTasksWithTaskDayForWeeklyEvent(self):
     """Test filter_tasks with tasks which contain settings of day."""
-    utc_now = datetime.datetime(2017, 8, 6, 6, 15,
+    utc_now = datetime.datetime(2017, 8, 6, self._DEFAULT_UTC_HOUR, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
     event = self._KLASS(
         config_reader.EventSettings(True, None),
-        datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
+        datetime.datetime(2017, 8, 5, self._DEFAULT_UTC_HOUR,
+                          tzinfo=time_converter.UTC_TZ))
 
     # It's in PST time.
     task_list = [FakeTask('test1', day=5),
@@ -451,12 +457,13 @@ class WeeklyEventTestCase(TimedEventTestCase):
 
   def testFilterTasksWithDefaultDayForWeeklyEvent(self):
     """Test filter_tasks with tasks which don't contain settings of day."""
-    utc_now = datetime.datetime(2017, 8, 6, 6, 15,
+    utc_now = datetime.datetime(2017, 8, 6, self._DEFAULT_UTC_HOUR, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
     event = self._KLASS(
         config_reader.EventSettings(True, None),
-        datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
+        datetime.datetime(2017, 8, 5, self._DEFAULT_UTC_HOUR,
+                          tzinfo=time_converter.UTC_TZ))
 
     # It's in PST time.
     task_list = [FakeTask('test1', day=5),
@@ -476,14 +483,15 @@ class WeeklyEventTestCase(TimedEventTestCase):
 
   def testFilterTasksWithTaskDayWithGAETesting(self):
     """Verify all tasks are kept in testing on GAE."""
-    utc_now = datetime.datetime(2017, 8, 6, 6, 15,
+    utc_now = datetime.datetime(2017, 8, 6, self._DEFAULT_UTC_HOUR, 15,
                                 tzinfo=time_converter.UTC_TZ)
     self._mock_utc_now.return_value = utc_now
 
     with mock.patch('global_config.GAE_TESTING', return_value=True):
       event = self._KLASS(
           config_reader.EventSettings(True, None),
-          datetime.datetime(2017, 8, 5, 6, tzinfo=time_converter.UTC_TZ))
+          datetime.datetime(2017, 8, 5, self._DEFAULT_UTC_HOUR,
+                            tzinfo=time_converter.UTC_TZ))
       task_list = [FakeTask('test1', day=6),
                    FakeTask('test2', day=0),
                    FakeTask('test3', day=3),
@@ -502,18 +510,14 @@ class WeeklyEventTestCase(TimedEventTestCase):
     event = self._KLASS(
         config_reader.EventSettings(True, None), None)
 
-    default_pst_day = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY
-    default_pst_hour = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR
-    default_utc_day = time_converter.convert_time_info(
-        time_converter.TimeInfo(default_pst_day, default_pst_hour)).weekday
     # It's in PST time.
-    task_list = [FakeTask('test1', day=default_pst_day),
+    task_list = [FakeTask('test1', day=self._DEFAULT_PST_DAY),
                  FakeTask('test2', day=0),
-                 FakeTask('test3', day=default_pst_day-1),
+                 FakeTask('test3', day=self._DEFAULT_PST_DAY-1),
                  FakeTask('test4', day=None)]
     event.set_task_list(task_list)
     tasks_with_default_utc_day = [
-        t.name for t in event.task_list if t.day == default_utc_day]
+        t.name for t in event.task_list if t.day == self._DEFAULT_UTC_DAY]
     self.assertEqual(sorted(tasks_with_default_utc_day),
                      ['test1', 'test4'])
 
@@ -524,16 +528,13 @@ class WeeklyEventTestCase(TimedEventTestCase):
     event = self._KLASS(
         config_reader.EventSettings(True, None), None)
 
-    default_pst_day = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY
-    default_pst_hour = config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR
-    default_utc_hour = time_converter.convert_time_info(
-        time_converter.TimeInfo(default_pst_day, default_pst_hour)).hour
     # It's in PST time.
-    task_list = [FakeTask('test1', day=default_pst_day),
-                 FakeTask('test2', day=default_pst_day, hour=0),
-                 FakeTask('test3', day=default_pst_day, hour=default_pst_hour)]
+    task_list = [FakeTask('test1', day=self._DEFAULT_PST_DAY),
+                 FakeTask('test2', day=self._DEFAULT_PST_DAY, hour=0),
+                 FakeTask('test3', day=self._DEFAULT_PST_DAY,
+                          hour=self._DEFAULT_PST_HOUR)]
     event.set_task_list(task_list)
     tasks_with_default_utc_hour = [
-        t.name for t in event.task_list if t.hour == default_utc_hour]
+        t.name for t in event.task_list if t.hour == self._DEFAULT_UTC_HOUR]
     self.assertEqual(sorted(tasks_with_default_utc_hour),
                      ['test1', 'test3'])
