@@ -62,7 +62,6 @@ class SwarmingLibTestCase(unittest.TestCase):
       command = swarming_runner._form_run_suite_command(final_build, **params)
       self.assertIn('-c', command)
       self.assertIn('--pre_check', command)
-      self.assertIn('--num', command)
       self.assertIn('--firmware_rw_build', command)
       self.assertIn('--firmware_ro_build', command)
 

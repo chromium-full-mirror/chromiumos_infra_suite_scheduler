@@ -234,9 +234,6 @@ class SwarmingRunner(object):
     if task_params['model'] != 'None':
       command.extend(['--model', task_params['model']])
 
-    if task_params['num'] != 'None':
-      command.extend(['--num', task_params['num']])
-
     if fw_rw_build != 'None':
       command.extend(['--firmware_rw_build', fw_rw_build])
 
