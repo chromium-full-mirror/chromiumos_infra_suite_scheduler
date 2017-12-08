@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Module for setup environemtn for local testing & Goole App Engine."""
+"""Module for setup environemtn for local testing & Google App Engine."""
 
+
+from __future__ import print_function
 
 import argparse
 import os
@@ -15,7 +17,7 @@ import local_import  # pylint: disable=unused-import
 try:
   from chromite.lib import gs  # pylint: disable=g-import-not-at-top
 except ImportError:
-  print 'Cannot import chromite'
+  print('Cannot import chromite')
   gs = None
 
 
@@ -38,11 +40,18 @@ def _install_third_party_lib(input_args):
     os.rmdir(third_party_lib_path)
 
   if not os.path.exists(third_party_lib_path):
-    print 'Creating lib path: %s' % third_party_lib_path
+    print('Creating lib path: %s' % third_party_lib_path)
     os.mkdir(third_party_lib_path)
-    print 'Installing packages'
-    subprocess.check_call(
-        ['pip', 'install', '-t', 'lib', '-r', 'requirements.txt'])
+    print('Installing packages')
+    cmd = ['pip', 'install', '-t', 'lib', '-r', 'requirements.txt']
+    try:
+      subprocess.check_call(cmd)
+    except subprocess.CalledProcessError:
+      # TODO(crbug.com/792690): this is a workround of fixing installing
+      # third-party packages on different versions of Ubuntu/Debian.
+      print("Failed to run '%s'; trying a different command." % ' '.join(cmd))
+      subprocess.check_call(['pip', 'install', '-t', 'lib', '--system',
+                             '-r', 'requirements.txt'])
 
 
 def _fetch_service_credentials(input_args):
@@ -69,11 +78,11 @@ def _fetch_service_credentials(input_args):
       ctx = gs.GSContext(init_boto=True)
       ctx.Copy(input_args.creds_gs_path + '*', credentials_path)
     except gs.GSCommandError as e:
-      print ('The GS credentials is not configured properly. '
-             'Please contact ChromeOS Infrastructure'
-             'team for more info about it.')
-      print ('Failed to get suite_scheduler service credentials: %r.'
-             'Deleting %s' % (str(e), credentials_path))
+      print('The GS credentials is not configured properly. '
+            'Please contact ChromeOS Infrastructure'
+            'team for more info about it.')
+      print('Failed to get suite_scheduler service credentials: %r.'
+            'Deleting %s' % (str(e), credentials_path))
       os.rmdir(credentials_path)
 
 

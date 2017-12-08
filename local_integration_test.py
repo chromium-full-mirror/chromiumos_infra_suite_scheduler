@@ -102,6 +102,7 @@ class IntegrationTest(unittest.TestCase):
         current_time.strftime(time_converter.STACKDRIVER_TIME_FORMAT),
         '/cron/test_push',
         'google.com:%s' % constants.AppID.STAGING_APP)
+
     output = _subprocess_wrapper(subprocess.check_output, ['curl', log_url])
     self.assertEqual(len(output.splitlines()[0].split('|')),
                      len(stackdriver_lib.LOGGING_FORMAT.split('|')))
