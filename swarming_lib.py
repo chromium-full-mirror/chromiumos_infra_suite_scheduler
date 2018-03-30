@@ -69,6 +69,7 @@ SwarmingTaskInfo = collections.namedtuple(
 # is 1 week.
 _EXECUTION_TIMEOUT_HOURS = {
     'arc-cts-qual': 49,
+    'arc-cts-follower': 10,
     'arc-gts-qual': 49,
 }
 _EXECUTION_DEFAULT_TIMEOUT_HOUR = 2
