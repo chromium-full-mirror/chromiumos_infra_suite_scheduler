@@ -10,6 +10,8 @@ import logging
 import webapp2
 
 import constants
+import config_reader
+import file_getter
 import global_config
 import rest_client
 import task_executor
@@ -82,7 +84,11 @@ class ExecuteTask(webapp2.RequestHandler):
     if global_config.is_in_staging():
       return
 
-    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+        file_getter.LAB_CONFIG_FILE))
+    afe_server = lab_config.get_dedicated_afe()
+    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
+                                                 afe_server)
     task_processor.batch_execute()
 
 

@@ -8,9 +8,7 @@ import collections
 import logging
 
 import build_lib
-import config_reader
 import constants
-import file_getter
 import rest_client
 
 
@@ -100,16 +98,14 @@ class SwarmingRunner(object):
   RUN_SUITE_PATH = '/usr/local/autotest/site_utils/run_suite.py'
   DIMENSIONS = {'os': 'Ubuntu-14.04', 'pool': 'suite-scheduler'}
 
-  def __init__(self):
+  def __init__(self, afe_server):
     self._client = rest_client.SwarmingRestClient(
         rest_client.BaseRestClient(
             constants.RestClient.SWARMING_CLIENT.scopes,
             constants.RestClient.SWARMING_CLIENT.service_name,
             constants.RestClient.SWARMING_CLIENT.service_version),
         self.SERVICE_URL)
-    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
-        file_getter.LAB_CONFIG_FILE))
-    self._afe_server = lab_config.get_dedicated_afe()
+    self._afe_server = afe_server
 
   def run(self, **task_params):
     """Perform a run to swarming proxy service.

@@ -26,14 +26,15 @@ class TaskProcessor(object):
   represented by tasks' params through ChromeOS swarming proxy server.
   """
 
-  def __init__(self, queue_name):
+  def __init__(self, queue_name, afe_server):
     """Initialize a task executor for further pulling & execution.
 
     Args:
       queue_name: the name of a pull queue.
+      afe_server: A str- the address of the afe_server.
     """
     self.queue = taskqueue.Queue(queue_name)
-    self.swarming = swarming_lib.SwarmingRunner()
+    self.swarming = swarming_lib.SwarmingRunner(afe_server)
 
   def batch_execute(self):
     try:

@@ -10,6 +10,8 @@ import os
 import unittest
 
 import build_lib
+import config_reader
+import file_getter
 import swarming_lib
 import task_executor
 
@@ -56,7 +58,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -71,7 +76,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -83,7 +91,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -95,7 +106,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -107,7 +121,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -123,7 +140,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       self.assertRaises(swarming_lib.SwarmingRunError,
                         swarming_runner.run, **params)
@@ -133,7 +153,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -150,7 +173,10 @@ class SwarmingLibTestCase(unittest.TestCase):
     with mock.patch('rest_client.SwarmingRestClient',
                     return_value=None):
       suite = 'arc-cts-qual'
-      swarming_runner = swarming_lib.SwarmingRunner()
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(afe_server)
       self.assertEqual(swarming_runner._get_execution_timeout(suite),
                        60 * 60 * swarming_lib._EXECUTION_TIMEOUT_HOURS[suite])
 
