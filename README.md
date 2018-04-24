@@ -49,3 +49,44 @@
 4. Run tests with debug mode:
 
         python runner.py --debug
+
+5. Run suite scheduler v2 in local development server:
+
+   If you want to verify any APIs locally, you can run suite scheduler v2 in
+   local development server
+   (https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
+
+
+      Assuming you already get credentials/cloud_sql_credentials.txt by
+      running 'setup_environment.py':
+
+          CONNECTION_NAME = connection_name in [CIDB]
+          USER = user in [CIDB]
+
+      a. Test locally on your workstation to make sure you're whitelisted:
+
+          /google/data/ro/projects/speckle/mysql -S /cloudsql/CONNECTION_NAME -u USER || echo "You may need to run prodaccess"
+
+      b. Start dev_appserver.py in a window:
+
+          dev_appserver.py app.yaml --port=8888 --admin_port=8001 --log_level=debug
+
+
+      c. Start the cloud_sql_proxy in a new window:
+
+          ./cloud_sql_proxy -dir=/cloudsql -instances=CONNECTION_NAME &
+          -credential_file=./credentials/suite-scheduler_client_secret_service_account.json &
+
+      d. Test it:
+
+          curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
+
+    Please note that once a dev_appserver is started, it simulates data_store &
+    task_queue, which causes:
+
+      a. The datastore doesn't contain any previous cron run's information, so
+      the first round of cron/trigger_event won't trigger any event.
+
+      b. The task queue is newly created with 0 tasks in it unless
+      cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
+      local task queue to get purged.
