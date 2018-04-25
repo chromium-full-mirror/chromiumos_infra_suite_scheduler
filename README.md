@@ -1,10 +1,10 @@
 # Setup
 
-1. Put your Google gCloud SDK to `~/google-cloud-sdk`.
+1. Put your Google gCloud SDK in `~/google-cloud-sdk`.
 
    [SDK download page](https://cloud.google.com/sdk/docs/)
 
-2. Install App Engine SDK to `~/google-cloud-sdk`:
+2. Install App Engine SDK in `~/google-cloud-sdk`:
 
         ~/google-cloud-sdk/bin/gcloud components install app-engine-python
 
@@ -50,39 +50,63 @@
 
         python runner.py --debug
 
-5. Run suite scheduler v2 in local development server:
+5. Run suite scheduler v2 as a local development server:
 
-   If you want to verify any APIs locally, you can run suite scheduler v2 in
+   If you want to verify any APIs locally, you can run suite scheduler v2 as a
    local development server
    (https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
 
 
-      Assuming you already get credentials/cloud_sql_credentials.txt by
-      running 'setup_environment.py':
+      Assuming you already got credentials/cloud_sql_credentials.txt by
+      running 'setup_environment.py', set up some variables based on the
+      database instance you want to connect to:
 
-          CONNECTION_NAME = connection_name in [CIDB]
-          USER = user in [CIDB]
+          # Set up CONNECTION_NAME based on the cloudsql project/instance
+          # name.  For more details, see:
+          # https://docs.google.com/document/d/1e_3mcsxdRKECYuYaIfpHcqf_TjnxxfHDKtidn900dEg/edit
+          CONNECTION_NAME='cosmic-strategy-646:us-central1:cidb-gen2-replica2'
+
+          # Set up USER based on the user you want to log in.  If you use
+          # readonly_nopw, grab the password from (as of April, 2018):
+          # https://valentine.corp.google.com/#/show/1493156766394660?tab=metadata
+          USER='readonly_nopw' # [CIDB username]
 
       a. Test locally on your workstation to make sure you're whitelisted:
 
-          /google/data/ro/projects/speckle/mysql -S /cloudsql/CONNECTION_NAME -u USER || echo "You may need to run prodaccess"
+          /google/data/ro/projects/speckle/mysql \
+              -S /cloudsql/${CONNECTION_NAME} \
+              -u ${USER} \
+              || echo "You may need to run prodaccess"
 
-      b. Start dev_appserver.py in a window:
+      b. Start the cloud_sql_proxy in a new window to let your service talk
+         to cloud sql.  Note that cloud_sql_proxy needs to be downloaded from
+         Google's public cloud website:
+         https://cloud.google.com/sql/docs/mysql/sql-proxy
 
-          dev_appserver.py app.yaml --port=8888 --admin_port=8001 --log_level=debug
+          # Create the /cloudsql directory, since the suite scheduler assumes
+          # that this is where to find it's socket.
+          sudo mkdir /cloudsql
+          sudo chmod 1777 /cloudsql
 
+          # Start the cloud sql proxy.
+          ./cloud_sql_proxy \
+              -dir=/cloudsql \
+              -instances=${CONNECTION_NAME} \
+              -credential_file=./credentials/suite-scheduler_client_secret_service_account.json &
 
-      c. Start the cloud_sql_proxy in a new window:
+      c. Finally, start dev_appserver.py in a window:
 
-          ./cloud_sql_proxy -dir=/cloudsql -instances=CONNECTION_NAME &
-          -credential_file=./credentials/suite-scheduler_client_secret_service_account.json &
+          dev_appserver.py app.yaml \
+              --port=8888 \
+              --admin_port=8001 \
+              --log_level=debug
 
       d. Test it:
 
           curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
 
     Please note that once a dev_appserver is started, it simulates data_store &
-    task_queue, which causes:
+    task_queue, which means:
 
       a. The datastore doesn't contain any previous cron run's information, so
       the first round of cron/trigger_event won't trigger any event.
@@ -90,3 +114,4 @@
       b. The task queue is newly created with 0 tasks in it unless
       cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
       local task queue to get purged.
+
