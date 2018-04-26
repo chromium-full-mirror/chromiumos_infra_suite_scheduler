@@ -37,6 +37,7 @@ class TaskProcessor(object):
     self.swarming = swarming_lib.SwarmingRunner(afe_server)
 
   def batch_execute(self):
+    """Execute tasks."""
     try:
       tasks = self.queue.lease_tasks(3600, BATCH_SIZE, deadline=60)
     except (taskqueue.UnknownQueueError,

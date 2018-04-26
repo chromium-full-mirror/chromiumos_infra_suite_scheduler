@@ -83,15 +83,16 @@ class TriggerReceiver(object):
       event: a kind of event, which contains its tasks that should be
         scheduled.
     """
-    cros_builds = event.get_cros_builds(self._lab_config, self._cidb_client)
-    logging.debug('Found CrOS builds: %r', cros_builds)
+    cros_builds_tuple = event.get_cros_builds(
+        self._lab_config, self._cidb_client)
+    logging.debug('Found CrOS builds: %r', cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)
     logging.debug('Found launch_control_builds: %r', launch_control_builds)
 
     self.event_results[event.KEYWORD] = event.process_tasks(
         launch_control_builds=launch_control_builds,
-        cros_builds=cros_builds,
+        cros_builds_tuple=cros_builds_tuple,
         lab_config=self._lab_config,
         db_client=self._cidb_client)
     logging.info('Finished processing all tasks')

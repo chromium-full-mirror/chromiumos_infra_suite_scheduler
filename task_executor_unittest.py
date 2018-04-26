@@ -18,6 +18,7 @@ from google.appengine.ext import testbed
 
 class FakeSwarmingLib(object):
 
+  # pylint: disable=g-deprecated-member-used
   def __init__(self, success_num=sys.maxint, error_num=0):
     self.success_num = success_num
     self.error_num = error_num

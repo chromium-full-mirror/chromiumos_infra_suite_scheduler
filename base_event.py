@@ -83,7 +83,7 @@ class BaseEvent(object):
       db_client: a cloud_sql_client.CIDBClient object, to call CIDB.
 
     Returns:
-      A dict containing cros builds, see return from
+      A two-tuples of dicts containing cros builds, see return from
         |build_lib.get_cros_builds_since_date_from_db|.
     """
     return build_lib.get_cros_builds_since_date_from_db(
@@ -105,15 +105,15 @@ class BaseEvent(object):
         android_client, lab_config.get_android_board_list(),
         self.launch_control_branch_targets)
 
-  def process_tasks(self, launch_control_builds, cros_builds,
+  def process_tasks(self, launch_control_builds, cros_builds_tuple,
                     lab_config, db_client):
     """Schedule tasks in task_list.
 
     Args:
       launch_control_builds: the build dict for Android boards, see
         return value of |get_launch_control_builds|.
-      cros_builds: the build dict for ChromeOS boards, see return
-        value of |get_cros_builds|.
+      cros_builds_tuple: a two-tuple of build dicts for ChromeOS boards,
+        see return value of |get_cros_builds|.
       lab_config: a config.LabConfig object, to read lab config file.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
 
@@ -123,7 +123,7 @@ class BaseEvent(object):
     scheduled_tasks = []
     for per_task in self.task_list:
       try:
-        if per_task.schedule(launch_control_builds, cros_builds,
+        if per_task.schedule(launch_control_builds, cros_builds_tuple,
                              lab_config, db_client):
           scheduled_tasks.append(per_task.name)
         else:

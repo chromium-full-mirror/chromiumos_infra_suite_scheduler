@@ -97,6 +97,7 @@ class Task(object):
     self.testbed_dut_count = task_info.testbed_dut_count
     self.hour = task_info.hour
     self.day = task_info.day
+    self.only_hwtest_sanity_required = task_info.only_hwtest_sanity_required
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -122,15 +123,15 @@ class Task(object):
 
     self._set_spec_compare_info()
 
-  def schedule(self, launch_control_builds, branch_builds, lab_config,
+  def schedule(self, launch_control_builds, cros_builds_tuple, lab_config,
                db_client):
     """Schedule the task by its settings.
 
     Args:
       launch_control_builds: the build dict for Android boards, see
         return value of |get_launch_control_builds|.
-      branch_builds: the build dict for ChromeOS boards, see return
-        value of |get_cros_builds|.
+      cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
+        see return value of |get_cros_builds|.
       lab_config: a config.LabConfig object, to read lab config file.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
 
@@ -144,12 +145,17 @@ class Task(object):
     assert lab_config is not None
     self.is_pushed = False
 
+    branch_builds, relaxed_builds = cros_builds_tuple
+    builds_dict = branch_builds
+    if self.only_hwtest_sanity_required:
+      builds_dict = relaxed_builds
+
     logging.info('######## Scheduling task %s ########', self.name)
     if self.os_type == build_lib.OS_TYPE_CROS:
-      if not branch_builds:
+      if not builds_dict:
         logging.info('No CrOS build to run, skip running.')
       else:
-        self._schedule_cros_builds(branch_builds, lab_config, db_client)
+        self._schedule_cros_builds(builds_dict, lab_config, db_client)
     else:
       if not launch_control_builds:
         logging.info('No Android build to run, skip running.')
@@ -309,7 +315,7 @@ class Task(object):
         #     CROS/RELEASED_RO_BUILDS_[board].
         # For example, for spec 'released_ro_2', and lab config file
         # CROS/RELEASED_RO_BUILDS_veyron_jerry: build1,build2,
-        # return firmare RO build should be 'build2'.
+        # return firmware RO build should be 'build2'.
         return self._get_latest_firmware_build_from_lab_config(
             spec, board, lab_config)
       else:
@@ -391,18 +397,18 @@ class Task(object):
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
-  def _schedule_cros_builds(self, branch_builds, lab_config, db_client):
+  def _schedule_cros_builds(self, build_dict, lab_config, db_client):
     """Schedule tasks with branch builds.
 
     Args:
-      branch_builds: the build dict for ChromeOS boards, see return
+      build_dict: the build dict for ChromeOS boards, see return
         value of |build_lib.get_cros_builds_since_date_from_db|.
       lab_config: a config.LabConfig object, to read lab config file.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
     """
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
     for (board, build_type,
-         milestone), manifest in branch_builds.iteritems():
+         milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
                                            manifest))
       logging.info('Running %s on %s', self.name, cros_build)

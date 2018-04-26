@@ -5,6 +5,7 @@
 """Module for trigger_receiver unittests."""
 
 import datetime
+import logging
 import os
 import unittest
 
@@ -13,9 +14,11 @@ import config_reader
 import datastore_client
 import file_getter
 import mock
+import task_executor
 import time_converter
 import trigger_receiver
 
+from google.appengine.api import taskqueue
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
@@ -120,6 +123,12 @@ class FakeCIDBClient(object):
     del build_config  # unused
     return cloud_sql_client.BuildInfo('link', '62', '9868.0.0', build_config)
 
+  def get_relaxed_pased_builds_since_date(self, since_date):
+    """Mock cloud_sql_client.CIDBClient.get_relaxed_pased_builds_since_date."""
+    del since_date  # unused
+    return [cloud_sql_client.BuildInfo('grunt', '63', '9968.0.0',
+                                       'grunt-release')]
+
 
 class FakeAndroidBuildRestClient(object):
   """Mock rest_client.AndroidBuildRestClient."""
@@ -139,7 +148,7 @@ class FakeLabConfig(object):
 
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_android_board_list."""
-    return ('link', 'peppy', 'daisy')
+    return ('grunt', 'link', 'peppy', 'daisy')
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -295,6 +304,120 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(suite_trigger.event_results['weekly']), 1)
     self.assertEqual(suite_trigger.event_results['weekly'][0],
                      self._FAKE_WEEKLY_TASK_NAME)
+
+
+class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
+  """Test the new_build functionality."""
+
+  _TEST_PST_HOUR = 20
+  _TEST_PST_DAY = 4  # Friday
+
+  def setUp(self):
+    """Set up for a test."""
+    super(TriggerReceiverFakeBuildTestCase, self).setUp()
+
+    # Construct a fake config so that we don't depend on the
+    # production configs not changing.
+    self.fake_config = config_reader.ConfigReader(None)
+    self._add_build_tasks(self.fake_config)
+    mock_config_reader = mock.patch('config_reader.ConfigReader')
+    self._mock_config_reader = mock_config_reader.start()
+    self.addCleanup(mock_config_reader.stop)
+    self._mock_config_reader.return_value = self.fake_config
+
+  def _add_build_tasks(self, fake_config):
+    """Add the build tasks to the fake config."""
+    fsnbt_name = 'FakeStrictNewBuildTask'
+    fake_config.add_section(fsnbt_name)
+    fake_config.set(fsnbt_name, 'run_on', 'new_build')
+    fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    frnbt_name = 'FakeRelaxedNewBuildTask'
+    fake_config.add_section(frnbt_name)
+    fake_config.set(frnbt_name, 'run_on', 'new_build')
+    fake_config.set(frnbt_name, 'suite', 'fake_suite_relaxed')
+    fake_config.set(frnbt_name, 'only_hwtest_sanity_required', 'True')
+
+  def testNewBuild(self):
+    """Test the new_build functionality."""
+    self._mock_utc_now.return_value = datetime.datetime.now(
+        time_converter.UTC_TZ)
+
+    # Fake out the TotMilestoneManager so we don't hit the discovery api.
+    # This will keep the test more hermetic.
+    mock_tot_mgr = mock.patch('config_reader.tot_manager.TotMilestoneManager')
+    mock_tot_mgr.start()
+    self.addCleanup(mock_tot_mgr.stop)
+
+    given_utc_hour = time_converter.convert_time_info(
+        time_converter.TimeInfo(None, self._TEST_PST_HOUR)).hour
+    utc_now = datetime.datetime(2017, 8, 6, given_utc_hour,
+                                tzinfo=time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'nightly', utc_now - datetime.timedelta(hours=1))
+    self._mock_utc_now.return_value = utc_now
+    start_time = datetime.datetime.now(time_converter.UTC_TZ)
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+
+    # Run the trigger once.  On the first run, it skips out
+    # early because it doesn't know when the last time it ran.
+    # This isn't really what this test is validating, but we're
+    # working around the current implementation.
+    self._mock_utc_now.return_value = start_time
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+    # Validate the assumption that it skipped out early and didn't
+    # enqueue anything because if this assumption changes, the
+    # test probably needs to be fixed.
+    self.assertEqual(len(suite_trigger.event_results), 0)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 0)
+
+    # Run again, this time it'll notice that it hasn't run in 30
+    # minutes and should enqueue some events.
+    self._mock_utc_now.return_value = (
+        start_time + datetime.timedelta(minutes=30))
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    # Validate that the expected tests got kicked off.
+    logging.info('event_results: %s',
+                 suite_trigger.event_results)
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     ['FakeStrictNewBuildTask',
+                      'FakeRelaxedNewBuildTask'])
+
+    # Now, make sure the expected tests get queued up based on the
+    # input we provided.
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    logging.info('tasks: %s', tasks)
+    self.assertEqual(len(tasks), 2)
+
+    # If this starts breaking, you'll want to look at this.
+    logging.info('payload0: %s', tasks[0].payload)
+    logging.info('payload1: %s', tasks[1].payload)
+
+    # The number of builds that matched the base (success) Task.
+    count_base = 0
+    # The number of builds that matched the relaxed Task.
+    count_relaxed = 0
+    for task in tasks:
+      if 'fake_suite_base' in task.payload:
+        # Make sure it matched the expected build only.
+        self.assertIn('link-release', task.payload)
+        self.assertNotIn('grunt-release', task.payload)
+        count_base += 1
+
+      if 'fake_suite_relaxed' in task.payload:
+        self.assertIn('grunt-release', task.payload)
+        self.assertNotIn('link_release', task.payload)
+        count_relaxed += 1
+
+    # Make each case matched precisely one event.
+    self.assertEqual(1, count_base)
+    self.assertEqual(1, count_relaxed)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

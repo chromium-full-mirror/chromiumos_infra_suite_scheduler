@@ -148,28 +148,22 @@ def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
         (board, suffix, str(e)))
 
 
-def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
-  """Get branch builds for ChromeOS boards.
+def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
+  """Validate and convert a list of BuildInfo to branch build dict.
 
   Args:
-    db_client: a cloud_sql_client.CIDBClient object, to read cidb
-      build infos.
     cros_board_list: The board list including all CrOS boards.
-    since_date: a datetime.datetime object in UTC to indicate since when CrOS
-      builds will be fetched.
+    buildinfo_list: A list of BuildInfo objects obtained from CIDB.
 
   Returns:
-    a branch build dict:
-    key: a tuple of (board, build_type, milestone), like:
-      ('wolf', 'release', '58')
-    value: the latest manifest for the given tuple, like:
-      '9242.0.0'.
+    A branch build dict:
+        key: a tuple of (board, build_type, milestone), like:
+          ('wolf', 'release', '58')
+        value: the latest manifest for the given tuple, like:
+          '9242.0.0'.
   """
-  # CIDB use UTC timezone
-  all_branch_builds = db_client.get_passed_builds_since_date(since_date)
-
   branch_build_dict = {}
-  for build in all_branch_builds:
+  for build in buildinfo_list:
     try:
       build_config_info = parse_cros_build_config(build.board,
                                                   build.build_config)
@@ -196,6 +190,39 @@ def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
       branch_build_dict[build_key] = build.platform
 
   return branch_build_dict
+
+
+def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
+  """Get branch builds for ChromeOS boards.
+
+  Args:
+    db_client: a cloud_sql_client.CIDBClient object, to read cidb
+      build infos.
+    cros_board_list: The board list including all CrOS boards.
+    since_date: a datetime.datetime object in UTC to indicate since when CrOS
+      builds will be fetched.
+
+  Returns:
+    a two-tuple of branch build dicts.  Each branch build dict has
+    keys and value described below.  The first build_dict describes
+    successful builds and the second describes builds that failed
+    but met the relaxed success requirement (a successful 'HWTest [sanity]'
+    stage).
+        key: a tuple of (board, build_type, milestone), like:
+          ('wolf', 'release', '58')
+        value: the latest manifest for the given tuple, like:
+          '9242.0.0'.
+  """
+  # CIDB use UTC timezone
+  all_branch_builds = db_client.get_passed_builds_since_date(since_date)
+  relaxed_builds = db_client.get_relaxed_pased_builds_since_date(since_date)
+
+  branch_builds_dict = buildinfo_list_to_branch_build_dict(
+      cros_board_list, all_branch_builds)
+  relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
+      cros_board_list, relaxed_builds)
+
+  return branch_builds_dict, relaxed_builds_dict
 
 
 def get_latest_launch_control_build(android_client, branch, target):

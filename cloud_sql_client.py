@@ -127,7 +127,43 @@ class CIDBClient(object):
     else:
       since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
 
-    logging.info('Get passed builds since %s', since_date_str)
+    logging.info('Got passed builds since %s', since_date_str)
+    self._connection.cursor.execute(sql, [since_date_str])
+    builds = self._connection.cursor.fetchall()
+    return [BuildInfo(board, milestone, platform, build_config)
+            for board, milestone, platform, build_config in builds]
+
+  def get_relaxed_pased_builds_since_date(self, since_date):
+    """Get builds with successful "HWTest [sanity]" stages since a given date.
+
+    Args:
+      since_date: a datetime.datetime object in UTC.
+
+    Returns:
+      A list of BuildInfo objects.
+
+    Raises:
+      MySQLdb.OperationalError if connection operations are not valid.
+    """
+    sql = """\
+        select bo.board, bu.milestone_version,
+        bu.platform_version, bu.build_config
+        from buildTable as bu, boardPerBuildTable as bo,
+        buildStageTable as bs
+        where bu.finish_time > %s and
+        bu.suite_scheduling=1 and
+        bu.id=bo.build_id and bu.id=bs.build_id and
+        ((bu.status='fail' and bs.name = 'HWTest [sanity]'
+          and bs.status = 'pass') OR
+        bu.status='pass')
+    """
+    if global_config.GAE_TESTING:
+      since_date_str = '2017-08-01 00:00:00'
+      sql += 'limit 10'
+    else:
+      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+
+    logging.info('Got passed builds since %s', since_date_str)
     self._connection.cursor.execute(sql, [since_date_str])
     builds = self._connection.cursor.fetchall()
     return [BuildInfo(board, milestone, platform, build_config)

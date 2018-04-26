@@ -47,16 +47,17 @@ CommonTaskEntries = ['boards',
                      'day',
                      'firmware_ro_build_spec',
                      'firmware_rw_build_spec',
+                     'force',
                      'hour',
                      'job_retry',
                      'lc_branches',
                      'lc_targets',
                      'no_delay',
-                     'force',
                      'num',
                      'os_type',
                      'pool',
                      'priority',
+                     'only_hwtest_sanity_required',
                      'suite',
                      'test_source',
                      'timeout']
@@ -296,6 +297,9 @@ class TaskConfig(object):
     if timeout is None:
       timeout = EVENT_CLASSES[keyword].TIMEOUT
 
+    only_hwtest_sanity_required = self._config_reader.getstring(
+        section, 'only_hwtest_sanity_required')
+
     try:
       num = self._config_reader.getint(section, 'num')
     except ValueError as e:
@@ -344,7 +348,8 @@ class TaskConfig(object):
                     lc_branches=lc_branches,
                     lc_targets=lc_targets,
                     os_type=os_type,
-                    testbed_dut_count=testbed_dut_count)
+                    testbed_dut_count=testbed_dut_count,
+                    only_hwtest_sanity_required=only_hwtest_sanity_required)
 
   def _validate_task_section(self, task_info):
     """Validate a task section.

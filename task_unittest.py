@@ -261,7 +261,8 @@ class TaskPushTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
-        [], branch_builds, config_reader.LabConfig(None), FakeCIDBClient()))
+        [], (branch_builds, []), config_reader.LabConfig(None),
+        FakeCIDBClient()))
 
   def testScheduleLaunchControlIsPushSuccessfully(self):
     """Test IS_PUSHED is changed if some launch control suites are scheduled."""
@@ -272,11 +273,13 @@ class TaskPushTestCase(TaskBaseTestCase):
         t.lstrip() for t in lc_branches.split(',')]
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.assertTrue(self.task.schedule(
-        lc_builds, [], config_reader.LabConfig(None), FakeCIDBClient()))
+        lc_builds, ([], []), config_reader.LabConfig(None), FakeCIDBClient()))
 
   def testScheduleCrosIsPushInvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
-    branch_builds = {('%s_2' % self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = (
+        {('%s_2' % self.BOARD, 'release', '56'): '0000.00.00'}, {},
+    )
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertFalse(self.task.schedule(
         [], branch_builds, config_reader.LabConfig(None), FakeCIDBClient()))
@@ -292,4 +295,4 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.task._schedule_launch_control_builds(lc_builds)
     self.assertFalse(self.task.schedule(
-        lc_builds, [], config_reader.LabConfig(None), FakeCIDBClient()))
+        lc_builds, ([], []), config_reader.LabConfig(None), FakeCIDBClient()))
