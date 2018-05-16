@@ -44,6 +44,7 @@ class FakeCIDBClient(object):
 class TaskBaseTestCase(unittest.TestCase):
 
   BOARD = 'fake_board'
+  EXCLUDE_BOARD = 'exclude_fake_board'
   NAME = 'fake_name'
   SUITE = 'fake_suite'
   POOL = 'fake_pool'
@@ -66,6 +67,7 @@ class TaskBaseTestCase(unittest.TestCase):
         pool=self.POOL,
         num=self.NUM,
         boards=self.BOARD,
+        exclude_boards=self.EXCLUDE_BOARD,
         priority=self.PRIORITY,
         timeout=self.TIMEOUT))
 
@@ -179,6 +181,14 @@ class TaskTestCase(TaskBaseTestCase):
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
+  def testScheduleCrosExcludeBoard(self):
+    """Test schedule no cros builds due to board is excluded."""
+    branch_builds = {(self.EXCLUDE_BOARD, 'release', '56'): '0000.00.00'}
+    self.task._schedule_cros_builds(branch_builds,
+                                    config_reader.LabConfig(None),
+                                    FakeCIDBClient())
+    self.assertEqual(self._mock_push.call_count, 0)
+
   def testScheduleCrosNonValidSpec(self):
     """Test schedule no cros builds due to non-allowed branch milestone."""
     branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
@@ -239,6 +249,17 @@ class TaskTestCase(TaskBaseTestCase):
   def testScheduleLaunchControlNonvalidBoard(self):
     """Test schedule none of launch control builds due to board check."""
     lc_builds = {'%s_2' % self.BOARD:
+                 ['git_nyc-mr2-release/shamu-userdebug/3844975',
+                  'git_nyc-mr1-release/shamu-userdebug/3783920']}
+    lc_branches = 'git_nyc-mr1-release,git_nyc-mr2-release'
+    self.task.launch_control_branches = [
+        t.lstrip() for t in lc_branches.split(',')]
+    self.task._schedule_launch_control_builds(lc_builds)
+    self.assertEqual(self._mock_push.call_count, 0)
+
+  def testScheduleLaunchControlExcludeBoard(self):
+    """Test schedule none of launch control builds due to board check."""
+    lc_builds = {self.EXCLUDE_BOARD:
                  ['git_nyc-mr2-release/shamu-userdebug/3844975',
                   'git_nyc-mr1-release/shamu-userdebug/3783920']}
     lc_branches = 'git_nyc-mr1-release,git_nyc-mr2-release'

@@ -45,6 +45,8 @@ class Task(object):
             be an Integer or None. By default it's None.
           boards, a comma separated list of boards to run this task on. Default
             is None, which allows this task to run on all boards.
+          exclude_boards, a comma separated list of boards not to run this task
+            on. Default is None, which allows this task to run on all boards.
           priority, the string name of a priority from constants.Priorities.
           timeout, the max lifetime of the suite in hours.
           cros_build_spec, spec used to determine the ChromeOS build to test
@@ -115,6 +117,12 @@ class Task(object):
       self.boards = [t.strip() for t in task_info.boards.split(',')]
     else:
       self.boards = []
+
+    if task_info.exclude_boards:
+      self.exclude_boards = [
+          t.strip() for t in task_info.exclude_boards.split(',')]
+    else:
+      self.exclude_boards = []
 
     if tot is None:
       self.tot_manager = tot_manager.TotMilestoneManager()
@@ -412,6 +420,10 @@ class Task(object):
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
                                            manifest))
       logging.info('Running %s on %s', self.name, cros_build)
+      if self.exclude_boards and board in self.exclude_boards:
+        logging.debug('Board %s is in excluded board list: %s',
+                      board, self.exclude_boards)
+        continue
       if self.boards and board not in self.boards:
         logging.debug('Board %s is not in supported board list: %s',
                       board, self.boards)
@@ -462,6 +474,10 @@ class Task(object):
     """
     for board, launch_control_build in launch_control_builds.iteritems():
       logging.debug('Running %s on %s', self.name, board)
+      if self.exclude_boards and board in self.exclude_boards:
+        logging.debug('Board %s is in excluded board list: %s',
+                      board, self.exclude_boards)
+        continue
       if self.boards and board not in self.boards:
         logging.debug('Board %s is not in supported board list: %s',
                       board, self.boards)

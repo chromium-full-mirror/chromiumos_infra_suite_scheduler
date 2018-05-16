@@ -45,6 +45,7 @@ CommonTaskEntries = ['boards',
                      'branch_specs',
                      'cros_build_spec',
                      'day',
+                     'exclude_boards',
                      'firmware_ro_build_spec',
                      'firmware_rw_build_spec',
                      'force',
@@ -265,6 +266,8 @@ class TaskConfig(object):
     suite = self._config_reader.getstring(section, 'suite')
     pool = self._config_reader.getstring(section, 'pool')
     boards = self._config_reader.getstring(section, 'boards')
+    exclude_boards = self._config_reader.getstring(section,
+                                                   'exclude_boards')
     cros_build_spec = self._config_reader.getstring(
         section, 'cros_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
@@ -332,6 +335,7 @@ class TaskConfig(object):
                     suite=suite,
                     pool=pool,
                     boards=boards,
+                    exclude_boards=exclude_boards,
                     priority=priority,
                     timeout=timeout,
                     job_retry=job_retry,
