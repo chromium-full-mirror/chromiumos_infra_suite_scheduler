@@ -45,7 +45,16 @@ class BaseTaskConfigReaderTestCase(unittest.TestCase):
     tot_patcher = mock.patch('tot_manager.TotMilestoneManager')
     self._tot = tot_patcher.start()
     self._tot.return_value = FakeTotMilestoneManager(True)
+
+    board_family_patcher = mock.patch(
+        'build_lib.get_board_family_mapping_from_gs')
+    board_family_getter = board_family_patcher.start()
+    board_family_getter.return_value = {
+        'nyan': ['nyan', 'nyan_blaze', 'nyan_big'],
+        'ivybridge': ['link', 'link_freon']}
+
     self.addCleanup(tot_patcher.stop)
+    self.addCleanup(board_family_patcher.stop)
 
 
 class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
@@ -252,6 +261,14 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     self.assertRaises(config_reader.MalformedConfigEntryError,
                       task_config._check_testbed_parameter,
                       task_info)
+
+  def testInvalidBoardFamily(self):
+    """Ensure to raise exception when a board family is invalid."""
+    self.config.set(self._TASK_NAME, 'board_family', 'fake_one')
+    task_config = config_reader.TaskConfig(self.config)
+    self.assertRaises(config_reader.MalformedConfigEntryError,
+                      task_config._read_task_section,
+                      self._TASK_NAME)
 
 
 class LabReaderTestCase(unittest.TestCase):

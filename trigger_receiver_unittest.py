@@ -5,7 +5,6 @@
 """Module for trigger_receiver unittests."""
 
 import datetime
-import logging
 import os
 import unittest
 
@@ -116,7 +115,9 @@ class FakeCIDBClient(object):
     """Mock cloud_sql_client.CIDBClient.get_passed_builds_since_date."""
     del since_date  # unused
     return [cloud_sql_client.BuildInfo('link', '62', '9868.0.0',
-                                       'link-release')]
+                                       'link-release'),
+            cloud_sql_client.BuildInfo('zako', '62', '9868.0.0',
+                                       'zako-release')]
 
   def get_latest_passed_builds(self, build_config):
     """Mock cloud_sql_client.CIDBClient.get_latest_passed_builds."""
@@ -148,7 +149,7 @@ class FakeLabConfig(object):
 
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_android_board_list."""
-    return ('grunt', 'link', 'peppy', 'daisy')
+    return ('grunt', 'link', 'peppy', 'daisy', 'zako')
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -194,6 +195,14 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_cidb_client.return_value = FakeCIDBClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
     self._mock_lab_config.return_value = FakeLabConfig()
+
+    board_family_patcher = mock.patch(
+        'build_lib.get_board_family_mapping_from_gs')
+    board_family_getter = board_family_patcher.start()
+    board_family_getter.return_value = {
+        'nyan': ['nyan', 'nyan_blaze', 'nyan_big'],
+        'ivybridge': ['link', 'link_freon']}
+    self.addCleanup(board_family_patcher.stop)
 
 
 class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
@@ -309,95 +318,48 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
 class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
   """Test the new_build functionality."""
 
-  _TEST_PST_HOUR = 20
-  _TEST_PST_DAY = 4  # Friday
-
   def setUp(self):
     """Set up for a test."""
     super(TriggerReceiverFakeBuildTestCase, self).setUp()
 
-    # Construct a fake config so that we don't depend on the
-    # production configs not changing.
+    self._prepare()
+
+  def _prepare(self):
     self.fake_config = config_reader.ConfigReader(None)
-    self._add_build_tasks(self.fake_config)
     mock_config_reader = mock.patch('config_reader.ConfigReader')
     self._mock_config_reader = mock_config_reader.start()
     self.addCleanup(mock_config_reader.stop)
-    self._mock_config_reader.return_value = self.fake_config
 
-  def _add_build_tasks(self, fake_config):
-    """Add the build tasks to the fake config."""
-    fsnbt_name = 'FakeStrictNewBuildTask'
-    fake_config.add_section(fsnbt_name)
-    fake_config.set(fsnbt_name, 'run_on', 'new_build')
-    fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
-    frnbt_name = 'FakeRelaxedNewBuildTask'
-    fake_config.add_section(frnbt_name)
-    fake_config.set(frnbt_name, 'run_on', 'new_build')
-    fake_config.set(frnbt_name, 'suite', 'fake_suite_relaxed')
-    fake_config.set(frnbt_name, 'only_hwtest_sanity_required', 'True')
-
-  def testNewBuild(self):
-    """Test the new_build functionality."""
-    self._mock_utc_now.return_value = datetime.datetime.now(
-        time_converter.UTC_TZ)
-
-    # Fake out the TotMilestoneManager so we don't hit the discovery api.
-    # This will keep the test more hermetic.
-    mock_tot_mgr = mock.patch('config_reader.tot_manager.TotMilestoneManager')
-    mock_tot_mgr.start()
-    self.addCleanup(mock_tot_mgr.stop)
-
-    given_utc_hour = time_converter.convert_time_info(
-        time_converter.TimeInfo(None, self._TEST_PST_HOUR)).hour
-    utc_now = datetime.datetime(2017, 8, 6, given_utc_hour,
-                                tzinfo=time_converter.UTC_TZ)
+    # Set last execution time for new_build events.
+    utc_now = datetime.datetime.now(time_converter.UTC_TZ)
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
-        'nightly', utc_now - datetime.timedelta(hours=1))
+        'new_build', utc_now - datetime.timedelta(hours=1))
     self._mock_utc_now.return_value = utc_now
-    start_time = datetime.datetime.now(time_converter.UTC_TZ)
+
+  def testNewBuildForHWTestSanityRequired(self):
+    """Test the new_build functionality."""
+    # Construct a fake config with only_hwtest_sanity_required.
+    fsnbt_name = 'FakeStrictNewBuildTask'
+    self.fake_config.add_section(fsnbt_name)
+    self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
+    self.fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    frnbt_name = 'FakeRelaxedNewBuildTask'
+    self.fake_config.add_section(frnbt_name)
+    self.fake_config.set(frnbt_name, 'run_on', 'new_build')
+    self.fake_config.set(frnbt_name, 'suite', 'fake_suite_relaxed')
+    self.fake_config.set(frnbt_name, 'only_hwtest_sanity_required', 'True')
+
+    self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-
-    # Run the trigger once.  On the first run, it skips out
-    # early because it doesn't know when the last time it ran.
-    # This isn't really what this test is validating, but we're
-    # working around the current implementation.
-    self._mock_utc_now.return_value = start_time
-    suite_trigger = trigger_receiver.TriggerReceiver()
-    suite_trigger.cron()
-    # Validate the assumption that it skipped out early and didn't
-    # enqueue anything because if this assumption changes, the
-    # test probably needs to be fixed.
-    self.assertEqual(len(suite_trigger.event_results), 0)
-    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 0)
-
-    # Run again, this time it'll notice that it hasn't run in 30
-    # minutes and should enqueue some events.
-    self._mock_utc_now.return_value = (
-        start_time + datetime.timedelta(minutes=30))
     suite_trigger = trigger_receiver.TriggerReceiver()
     suite_trigger.cron()
 
     # Validate that the expected tests got kicked off.
-    logging.info('event_results: %s',
-                 suite_trigger.event_results)
     self.assertEqual(len(suite_trigger.event_results), 1)
-    self.assertEqual(suite_trigger.event_results['new_build'],
-                     ['FakeStrictNewBuildTask',
-                      'FakeRelaxedNewBuildTask'])
-
-    # Now, make sure the expected tests get queued up based on the
-    # input we provided.
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    logging.info('tasks: %s', tasks)
-    self.assertEqual(len(tasks), 2)
-
-    # If this starts breaking, you'll want to look at this.
-    logging.info('payload0: %s', tasks[0].payload)
-    logging.info('payload1: %s', tasks[1].payload)
+    self.assertEqual(len(tasks), 3)
 
     # The number of builds that matched the base (success) Task.
     count_base = 0
@@ -406,18 +368,91 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     for task in tasks:
       if 'fake_suite_base' in task.payload:
         # Make sure it matched the expected build only.
-        self.assertIn('link-release', task.payload)
         self.assertNotIn('grunt-release', task.payload)
         count_base += 1
 
       if 'fake_suite_relaxed' in task.payload:
         self.assertIn('grunt-release', task.payload)
-        self.assertNotIn('link_release', task.payload)
         count_relaxed += 1
 
     # Make each case matched precisely one event.
-    self.assertEqual(1, count_base)
+    self.assertEqual(2, count_base)
     self.assertEqual(1, count_relaxed)
+
+  def testNewBuildWithExistingBoardFamily(self):
+    """Test the new_build suite with an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(link_suite, 'board_family', 'ivybridge')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('link-release', tasks[0].payload)
+
+  def testNewBuildWithExistingBoardFamilyAndBoards(self):
+    """Test the new_build suite with an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(link_suite, 'board_family', 'ivybridge')
+    self.fake_config.set(link_suite, 'boards', 'asuka, paine, banon')
+    self._mock_config_reader.return_value = self.fake_config
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    boards = suite_trigger.events['new_build'].task_list[0].boards
+    self.assertIn('asuka', boards)
+    self.assertIn('link', boards)
+
+  def testNewBuildWithNonExistingBoardFamily(self):
+    """Test the new_build suite with an non-existing board family."""
+    nyan_suite = 'FakeNonExistBoardFamilyNewBuildTask'
+    self.fake_config.add_section(nyan_suite)
+    self.fake_config.set(nyan_suite, 'run_on', 'new_build')
+    self.fake_config.set(nyan_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(nyan_suite, 'board_family', 'nyan')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 0)
+
+  def testNewBuildWithNonSpecifiedBoardFamily(self):
+    """Test the new_build suite with an non-specified board family."""
+    normal_suite = 'FakeBoardFamilyNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 2)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

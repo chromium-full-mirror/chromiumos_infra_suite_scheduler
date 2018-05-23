@@ -7,6 +7,7 @@
 
 from distutils import version
 import collections
+import json
 import logging
 import re
 
@@ -52,6 +53,9 @@ _GS_BUCKET = 'chromeos-image-archive'
 
 # The file in Google Storage to fetch the latest build.
 _LATEST_MASTER = 'LATEST-master'
+
+# The bucket for ChromeOS build release boards. Maintained by GoldenEye.
+_GE_RELEASE_BUILD_BUCKET = 'chromeos-build-release-console'
 
 # Special android target to board map.
 _ANDROID_TARGET_TO_BOARD_MAP = {
@@ -146,6 +150,45 @@ def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
     raise NoBuildError(
         'Cannot find latest build for board %s, suffix %s: %s' %
         (board, suffix, str(e)))
+
+
+def get_board_family_mapping_from_gs(storage_client):
+  """Get board_family to boards mapping from Google Storage.
+
+  Args:
+    storage_client: a rest_client.StorageRestClient object.
+
+  Returns:
+    a dictionary of mapping between board family name to boards, e.g.
+      {'nyan': ['nyan', 'nyan_big', 'nyan_blaze', ..]}
+
+  Raises:
+    HttpError if error happens in interacting with Google Storage.
+  """
+  try:
+    boards = storage_client.read_object(_GE_RELEASE_BUILD_BUCKET, 'boards.json')
+    json_object = json.loads(boards)
+    board_family = {}
+    for board in json_object['boards']:
+      group = board['reference_group']
+      if not group:
+        continue
+
+      # This is to change boards like nyan-blaze to nyan_blaze, which is
+      # actually used in lab.
+      board_name = board['public_codename'].replace('-', '_')
+      if group not in board_family:
+        board_family[group] = []
+
+      board_family[group].append(board_name)
+
+    logging.info('Successfully get following board families from GS: %r',
+                 board_family.keys())
+    return board_family
+  except apiclient.errors.HttpError as e:
+    logging.error('Cannot load boards.json in bucket %s: %s',
+                  _GE_RELEASE_BUILD_BUCKET, str(e))
+    raise
 
 
 def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):

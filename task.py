@@ -4,6 +4,7 @@
 
 """Module for tasks triggered by suite scheduler."""
 # pylint: disable=g-bad-import-order
+# pylint: disable=dangerous-default-value
 
 from distutils import version
 import MySQLdb
@@ -31,7 +32,7 @@ class Task(object):
   Task. Each instance has enough information to schedule itself.
   """
 
-  def __init__(self, task_info, tot=None):
+  def __init__(self, task_info, board_families={}, tot=None):
     """Initialize a task instance.
 
     Args:
@@ -75,6 +76,8 @@ class Task(object):
             launch control builds. The argument is required and only
             applicable for android/brillo builds.
           testbed_dut_count, number of duts to test when using a testbed.
+      board_families: A board family dictionary mapping board_family name to
+        its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
     """
@@ -117,6 +120,10 @@ class Task(object):
       self.boards = [t.strip() for t in task_info.boards.split(',')]
     else:
       self.boards = []
+
+    if task_info.board_family:
+      # Finetune the allowed boards list with board_families & boards.
+      self.boards += board_families.get(task_info.board_family, [])
 
     if task_info.exclude_boards:
       self.exclude_boards = [
