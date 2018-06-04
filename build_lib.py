@@ -40,7 +40,7 @@ CrOSBuildConfigInfo = collections.namedtuple(
     ])
 
 # The default build type for fetching latest build.
-_DEFAULT_BUILD_SUFFIX = '-paladin'
+_DEFAULT_BUILD_SUFFIX = '-release'
 
 # The default setting of board for fetching latest build.
 _DEFAULT_MASTER = 'master'
