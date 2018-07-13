@@ -154,8 +154,8 @@ class Task(object):
       SchedulingError: if tasks that should be scheduled fail to schedule.
 
     Returns:
-      A boolean indicator to show whether there're suites related to this task
-        get pushed into the suites queue.
+      A boolean indicator; true if there were any suites related to this
+        task which got pushed into the suites queue.
     """
     assert lab_config is not None
     self.is_pushed = False
@@ -458,9 +458,9 @@ class Task(object):
       if self.test_source == build_lib.BuildType.FIRMWARE_RW:
         test_source_build = firmware_rw_build
       else:
-        # Default test source build to CrOS build if it's not specified and
-        # run_prod_code is set to False, which is the case in current suite
-        # scheduler settings, where run_prod_code is always False.
+        # Default test source build to CrOS build if it's not specified.
+        # Past versions chose based on run_prod_code, but we no longer respect
+        # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
       models = models_by_board.get(board, [None])
