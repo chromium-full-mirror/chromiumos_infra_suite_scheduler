@@ -44,11 +44,12 @@ DBInfo = collections.namedtuple(
 
 # Common task entries
 CommonTaskEntries = ['boards',
-                     'board_family',
+                     'board_families',
                      'branch_specs',
                      'cros_build_spec',
                      'day',
                      'exclude_boards',
+                     'exclude_board_families',
                      'firmware_ro_build_spec',
                      'firmware_rw_build_spec',
                      'force',
@@ -157,7 +158,7 @@ class TaskConfig(object):
     """
     self._config_reader = config_reader
     self._tot_manager = tot_manager.TotMilestoneManager()
-    self._board_families = build_lib.get_board_family_mapping_from_gs(
+    self._board_family_config = build_lib.get_board_family_mapping_from_gs(
         rest_client.StorageRestClient(
             rest_client.BaseRestClient(
                 constants.RestClient.STORAGE_CLIENT.scopes,
@@ -280,7 +281,9 @@ class TaskConfig(object):
     boards = self._config_reader.getstring(section, 'boards')
     exclude_boards = self._config_reader.getstring(section,
                                                    'exclude_boards')
-    board_family = self._config_reader.getstring(section, 'board_family')
+    board_families = self._config_reader.getstring(section, 'board_families')
+    exclude_board_families = self._config_reader.getstring(
+        section, 'exclude_board_families')
     cros_build_spec = self._config_reader.getstring(
         section, 'cros_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
@@ -343,10 +346,15 @@ class TaskConfig(object):
     if lc_boards is not None:
       boards = lc_boards
 
-    if board_family and board_family not in self._board_families:
+    families = set()
+    if board_families:
+      families.update(board_families.split(','))
+    if exclude_board_families:
+      families.update(exclude_board_families.split(','))
+    if any(family not in self._board_family_config for family in families):
       raise MalformedConfigEntryError(
-          'Invalid board family: %s\nBoard family name should be in %r' %
-          (board_family, self._board_families.keys()))
+          'Invalid board family in list: %r\nBoard family name should be in '
+          '%r' % (families, self._board_family_config.keys()))
 
     return TaskInfo(name=section,
                     keyword=keyword,
@@ -354,7 +362,8 @@ class TaskConfig(object):
                     pool=pool,
                     boards=boards,
                     exclude_boards=exclude_boards,
-                    board_family=board_family,
+                    board_families=board_families,
+                    exclude_board_families=exclude_board_families,
                     priority=priority,
                     timeout=timeout,
                     job_retry=job_retry,
@@ -522,7 +531,8 @@ class TaskConfig(object):
     task_info = self._read_task_section(section)
     self._validate_task_section(task_info)
 
-    return task.Task(task_info, board_families=self._board_families,
+    return task.Task(task_info,
+                     board_family_config=self._board_family_config,
                      tot=self._tot_manager)
 
 

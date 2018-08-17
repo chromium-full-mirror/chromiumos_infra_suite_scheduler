@@ -262,9 +262,17 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
                       task_config._check_testbed_parameter,
                       task_info)
 
-  def testInvalidBoardFamily(self):
+  def testInvalidBoardFamilies(self):
     """Ensure to raise exception when a board family is invalid."""
-    self.config.set(self._TASK_NAME, 'board_family', 'fake_one')
+    self.config.set(self._TASK_NAME, 'board_families', 'fake_one')
+    task_config = config_reader.TaskConfig(self.config)
+    self.assertRaises(config_reader.MalformedConfigEntryError,
+                      task_config._read_task_section,
+                      self._TASK_NAME)
+
+  def testInvalidExcludeBoardFamilies(self):
+    """Ensure to raise exception when an exclude board family is invalid."""
+    self.config.set(self._TASK_NAME, 'exclude_board_families', 'fake_one')
     task_config = config_reader.TaskConfig(self.config)
     self.assertRaises(config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,

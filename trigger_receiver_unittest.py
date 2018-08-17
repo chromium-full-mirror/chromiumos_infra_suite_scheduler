@@ -383,13 +383,13 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(2, count_base)
     self.assertEqual(1, count_relaxed)
 
-  def testNewBuildWithExistingBoardFamily(self):
+  def testNewBuildWithExistingBoardFamilies(self):
     """Test the new_build suite with an existing board family."""
     link_suite = 'FakeLinkNewBuildTask'
     self.fake_config.add_section(link_suite)
     self.fake_config.set(link_suite, 'run_on', 'new_build')
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
-    self.fake_config.set(link_suite, 'board_family', 'ivybridge')
+    self.fake_config.set(link_suite, 'board_families', 'ivybridge')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
@@ -403,13 +403,13 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(tasks), 1)
     self.assertIn('link-release', tasks[0].payload)
 
-  def testNewBuildWithExistingBoardFamilyAndBoards(self):
+  def testNewBuildWithExistingBoardFamiliesAndBoards(self):
     """Test the new_build suite with an existing board family."""
     link_suite = 'FakeLinkNewBuildTask'
     self.fake_config.add_section(link_suite)
     self.fake_config.set(link_suite, 'run_on', 'new_build')
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
-    self.fake_config.set(link_suite, 'board_family', 'ivybridge')
+    self.fake_config.set(link_suite, 'board_families', 'ivybridge')
     self.fake_config.set(link_suite, 'boards', 'asuka, paine, banon')
     self._mock_config_reader.return_value = self.fake_config
 
@@ -423,13 +423,13 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertIn('asuka', boards)
     self.assertIn('link', boards)
 
-  def testNewBuildWithNonExistingBoardFamily(self):
+  def testNewBuildWithNonExistingBoardFamilies(self):
     """Test the new_build suite with an non-existing board family."""
-    nyan_suite = 'FakeNonExistBoardFamilyNewBuildTask'
+    nyan_suite = 'FakeNonExistBoardFamiliesNewBuildTask'
     self.fake_config.add_section(nyan_suite)
     self.fake_config.set(nyan_suite, 'run_on', 'new_build')
     self.fake_config.set(nyan_suite, 'suite', 'fake_suite_base')
-    self.fake_config.set(nyan_suite, 'board_family', 'nyan')
+    self.fake_config.set(nyan_suite, 'board_families', 'nyan')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
@@ -442,7 +442,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
 
   def testNewBuildWithNonSpecifiedBoardFamily(self):
     """Test the new_build suite with an non-specified board family."""
-    normal_suite = 'FakeBoardFamilyNewBuildTask'
+    normal_suite = 'FakeBoardFamiliesNewBuildTask'
     self.fake_config.add_section(normal_suite)
     self.fake_config.set(normal_suite, 'run_on', 'new_build')
     self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
@@ -457,6 +457,90 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
                      [normal_suite])
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 2)
+
+  def testNewBuildExcludingExistingBoardFamilies(self):
+    """Test the new_build suite excluding an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertNotIn('link-release', tasks[0].payload)
+    self.assertIn('zako-release', tasks[0].payload)
+
+  def testNewBuildExcludingExistingBoardFamiliesAndBoards(self):
+    """Test the new_build suite with an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
+    self.fake_config.set(link_suite, 'exclude_boards', 'asuka, paine, banon')
+    self._mock_config_reader.return_value = self.fake_config
+
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertNotIn('link-release', tasks[0].payload)
+    self.assertNotIn('asuka-release', tasks[0].payload)
+    self.assertIn('zako-release', tasks[0].payload)
+
+  def testNewBuildExcludingNonExistingBoardFamilies(self):
+    """Test the new_build suite excluding an non-existing board family."""
+    nyan_suite = 'FakeNonExistExcludeBoardFamiliesNewBuildTask'
+    self.fake_config.add_section(nyan_suite)
+    self.fake_config.set(nyan_suite, 'run_on', 'new_build')
+    self.fake_config.set(nyan_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(nyan_suite, 'exclude_board_families', 'nyan')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 2)
+
+  def testNewBuildWithBoardExcludeBoardCollision(self):
+    """Test the new_build suite specified same board in boards and
+       exclude_boards."""
+    normal_suite = 'FakeBoardExludingBoardCollisionNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'boards', 'zako, asuka')
+    self.fake_config.set(normal_suite, 'exclude_boards', 'asuka')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    # self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertNotIn('asuka-release', tasks[0].payload)
+    self.assertIn('zako-release', tasks[0].payload)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

@@ -32,7 +32,7 @@ class Task(object):
   Task. Each instance has enough information to schedule itself.
   """
 
-  def __init__(self, task_info, board_families={}, tot=None):
+  def __init__(self, task_info, board_family_config={}, tot=None):
     """Initialize a task instance.
 
     Args:
@@ -44,10 +44,20 @@ class Task(object):
           pool, the pool of machines to schedule tasks. Default is None.
           num, the number of devices to shard the test suite. It could
             be an Integer or None. By default it's None.
+          board_families, a common separated list of board family to run this
+            task on. Boards belong to one of the board family in this list
+            would be added to task_info.boards.
           boards, a comma separated list of boards to run this task on. Default
-            is None, which allows this task to run on all boards.
+            is None, which allows this task to run on all boards. If same board
+            is specified in 'boards' and 'exclude_boards', we exclude this
+            board.
+          exclude_board_families, a common separated list of board family not to
+            run task on. Boards belong to one of the board family in this list
+            would be added to task_info.exclude_boards.
           exclude_boards, a comma separated list of boards not to run this task
             on. Default is None, which allows this task to run on all boards.
+            If same board is specified in 'boards' and 'exclude_boards', we
+            exclude this board.
           priority, the string name of a priority from constants.Priorities.
           timeout, the max lifetime of the suite in hours.
           cros_build_spec, spec used to determine the ChromeOS build to test
@@ -76,7 +86,7 @@ class Task(object):
             launch control builds. The argument is required and only
             applicable for android/brillo builds.
           testbed_dut_count, number of duts to test when using a testbed.
-      board_families: A board family dictionary mapping board_family name to
+      board_family_config: A board family dictionary mapping board_family name to
         its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
@@ -121,15 +131,25 @@ class Task(object):
     else:
       self.boards = []
 
-    if task_info.board_family:
-      # Finetune the allowed boards list with board_families & boards.
-      self.boards += board_families.get(task_info.board_family, [])
-
     if task_info.exclude_boards:
       self.exclude_boards = [
           t.strip() for t in task_info.exclude_boards.split(',')]
     else:
       self.exclude_boards = []
+
+    if task_info.board_families:
+      # Finetune the allowed boards list with board_families & boards.
+      families = [family.strip()
+                  for family in task_info.board_families.split(',')]
+      for family in families:
+        self.boards += board_family_config.get(family, [])
+    if task_info.exclude_board_families:
+      # Finetune the disallowed boards list with exclude_board_families
+      # & exclude_boards.
+      families = [family.strip()
+                  for family in task_info.exclude_board_families.split(',')]
+      for family in families:
+        self.exclude_boards += board_family_config.get(family, [])
 
     if tot is None:
       self.tot_manager = tot_manager.TotMilestoneManager()
