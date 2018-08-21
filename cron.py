@@ -14,6 +14,7 @@ import config_reader
 import file_getter
 import global_config
 import rest_client
+import swarming_lib
 import task_executor
 import time_converter
 import trigger_receiver
@@ -87,8 +88,10 @@ class ExecuteTask(webapp2.RequestHandler):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
         file_getter.LAB_CONFIG_FILE))
     afe_server = lab_config.get_dedicated_afe()
-    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                 afe_server)
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        afe_server,
+        swarming_lib.CHROME_SWARMING_SERVER)
     task_processor.batch_execute()
 
 
@@ -124,8 +127,10 @@ class TestPush(webapp2.RequestHandler):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
         file_getter.LAB_CONFIG_FILE))
     afe_server = lab_config.get_dedicated_afe()
-    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                 afe_server)
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        afe_server,
+        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
     task_processor.batch_execute()
     # In testing, after one round of batch_execute() to execute all tasks,
     # the suite queue will be purged.

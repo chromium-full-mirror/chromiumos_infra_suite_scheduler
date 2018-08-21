@@ -65,7 +65,8 @@ class TaskExecutorTestCase(unittest.TestCase):
                     return_value=FakeSwarmingLib()):
       with mock.patch('global_config.GAE_TESTING', return_value=True):
         task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                     'invalidhostname')
+                                                     'invalidhostname',
+                                                     'skylab_swarming_server')
         task_processor.batch_execute()
         self.assertEqual(task_executor.BATCH_SIZE,
                          task_processor.swarming.dummy_run_count)
@@ -84,7 +85,8 @@ class TaskExecutorTestCase(unittest.TestCase):
     with mock.patch('swarming_lib.SwarmingRunner',
                     return_value=FakeSwarmingLib()):
       task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                   'invalidhostname')
+                                                   'invalidhostname',
+                                                   'skylab_swarming_server')
       task_processor.batch_execute()
       # After batch_execute succeeds, only extra_num tasks left.
       tasks = self.taskqueue_stub.get_filtered_tasks()
@@ -104,7 +106,8 @@ class TaskExecutorTestCase(unittest.TestCase):
     with mock.patch('swarming_lib.SwarmingRunner',
                     return_value=FakeSwarmingLib(0, error_num=len(tasks))):
       task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                   'invalidhostname')
+                                                   'invalidhostname',
+                                                   'skylab_swarming_server')
       task_processor.batch_execute()
       # After batch_execute, no tasks are deleted from task queue, due
       # to they're all failed to kick off.
@@ -127,7 +130,8 @@ class TaskExecutorTestCase(unittest.TestCase):
     with mock.patch('swarming_lib.SwarmingRunner',
                     return_value=FakeSwarmingLib(success_num, error_num)):
       task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE,
-                                                   'invalidhostname')
+                                                   'invalidhostname',
+                                                   'skylab_swarming_server')
       task_processor.batch_execute()
       # After batch_execute, only failed suites and extra suites are
       # kept in task queue.
@@ -142,7 +146,8 @@ class TaskExecutorTestCase(unittest.TestCase):
     with mock.patch('swarming_lib.SwarmingRunner',
                     return_value=FakeSwarmingLib(False)):
       task_processor = task_executor.TaskProcessor('nonExistentQueue',
-                                                   'invalidhostname')
+                                                   'invalidhostname',
+                                                   'skylab_swarming_server')
       self.assertRaises(taskqueue.UnknownQueueError,
                         task_processor.batch_execute)
       # After batch_execute fails, no tasks are deleted from task queue.

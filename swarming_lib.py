@@ -86,6 +86,11 @@ KEY = 'key'
 VALUE = 'value'
 ENV = 'env'
 
+# Swarming server URLs
+CHROMEOS_SWARMING_SERVER = 'https://chromeos-proxy.appspot.com/_ah/api'
+CHROME_SWARMING_SERVER = 'https://chrome-swarming.appspot.com/_ah/api'
+CHROME_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
+
 
 class SwarmingRunError(Exception):
   """Raised when interactions with swarming server fail."""
@@ -94,17 +99,22 @@ class SwarmingRunError(Exception):
 class SwarmingRunner(object):
   """A class capable of connecting to chromeos-proxy swarming server."""
 
-  SERVICE_URL = 'https://chromeos-proxy.appspot.com/_ah/api'
   RUN_SUITE_PATH = '/usr/local/autotest/site_utils/run_suite.py'
   DIMENSIONS = {'os': 'Ubuntu-14.04', 'pool': 'suite-scheduler'}
 
-  def __init__(self, afe_server):
+  def __init__(self, afe_server, skylab_swarming_server):
     self._client = rest_client.SwarmingRestClient(
         rest_client.BaseRestClient(
             constants.RestClient.SWARMING_CLIENT.scopes,
             constants.RestClient.SWARMING_CLIENT.service_name,
             constants.RestClient.SWARMING_CLIENT.service_version),
-        self.SERVICE_URL)
+        CHROMEOS_SWARMING_SERVER)
+    self._skylab_client = rest_client.SwarmingRestClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.SWARMING_CLIENT.scopes,
+            constants.RestClient.SWARMING_CLIENT.service_name,
+            constants.RestClient.SWARMING_CLIENT.service_version),
+        skylab_swarming_server)
     self._afe_server = afe_server
 
   def run(self, **task_params):
