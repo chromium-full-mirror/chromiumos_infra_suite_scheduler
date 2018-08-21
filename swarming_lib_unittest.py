@@ -168,7 +168,7 @@ class SwarmingLibTestCase(unittest.TestCase):
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
       raw_request = swarming_runner._form_swarming_request(
-          command, 'fake_task_name', ['suite:fake_suite'], 10, 100)
+          command, {}, 'fake_task_name', ['suite:fake_suite'], 10, 100)
       self.assertEqual(raw_request['priority'], 10)
       self.assertEqual(raw_request['name'], 'fake_task_name')
       self.assertEqual(raw_request['tags'], ['suite:fake_suite'])

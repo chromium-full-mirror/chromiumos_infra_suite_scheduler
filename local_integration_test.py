@@ -4,16 +4,12 @@
 
 """Module for local integration tests."""
 
-import datetime
 import logging
 import os
 import subprocess
 import unittest
 
-import constants
-import stackdriver_lib
 import swarming_lib
-import time_converter
 import utils
 
 
@@ -83,29 +79,19 @@ class IntegrationTest(unittest.TestCase):
   def tearDownClass(cls):
     cls.dev_app_proc.terminate()
 
-  def testSwarmingDummyRun(self):
+  def testAFESwarmingDummyRun(self):
     """Swarming test with local configs and dev_appservers."""
     output = _subprocess_wrapper(
         subprocess.check_output,
-        ['curl', '%s/test_push/swarming' % DEV_APPSERVER_URL])
+        ['curl', '%s/test_push/afe_swarming' % DEV_APPSERVER_URL])
     self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
 
-  def testWebLogger(self):
-    """RPC test for logger."""
-    current_time = time_converter.utc_now()
-    start_time = current_time - datetime.timedelta(hours=12)
-    log_format = ('%s/logger?start_time=%s&end_time=%s&'
-                  'resource=%s&app_id=%s')
-    log_url = log_format % (
-        DEV_APPSERVER_URL,
-        start_time.strftime(time_converter.STACKDRIVER_TIME_FORMAT),
-        current_time.strftime(time_converter.STACKDRIVER_TIME_FORMAT),
-        '/cron/test_push',
-        'google.com:%s' % constants.AppID.STAGING_APP)
-
-    output = _subprocess_wrapper(subprocess.check_output, ['curl', log_url])
-    self.assertEqual(len(output.splitlines()[0].split('|')),
-                     len(stackdriver_lib.LOGGING_FORMAT.split('|')))
+  def testSkylabSwarmingDummyRun(self):
+    """Swarming test with local configs and dev_appservers."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/skylab_swarming' % DEV_APPSERVER_URL])
+    self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
 
 
 if __name__ == '__main__':

@@ -100,7 +100,9 @@ class SwarmingRunner(object):
   """A class capable of connecting to chromeos-proxy swarming server."""
 
   RUN_SUITE_PATH = '/usr/local/autotest/site_utils/run_suite.py'
+  RUN_SUITE_SKYLAB_PATH = '/usr/local/autotest/bin/run_suite_skylab'
   DIMENSIONS = {'os': 'Ubuntu-14.04', 'pool': 'suite-scheduler'}
+  SKYLAB_DIMENSIONS = {'os': 'Ubuntu-14.04', 'pool': 'ChromeOSSkylab-suite'}
 
   def __init__(self, afe_server, skylab_swarming_server):
     self._client = rest_client.SwarmingRestClient(
@@ -145,31 +147,43 @@ class SwarmingRunner(object):
     command = self._form_run_suite_command(final_build, **task_params)
     execution_timeout_secs = self._get_execution_timeout(suite_name)
     raw_request = self._form_swarming_request(
-        command, task_name, tags, int(task_params['priority']),
+        command, self.DIMENSIONS, task_name, tags, int(task_params['priority']),
         execution_timeout_secs)
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
 
-  def dummy_run(self):
-    """Perform a dummy run to swarming proxy service."""
+  def dummy_run(self, is_skylab=False):
+    """Perform a dummy run to swarming proxy service to AFE."""
     tags = ['task_name:dummy_run']
     execution_timeout_secs = self._get_execution_timeout('fake_suite')
-    raw_request = self._form_swarming_request(
-        [self.RUN_SUITE_PATH, '--web', self._afe_server, '--do_nothing'],
-        DUMMY_TASK_NAME, tags, DUMMY_PRIORITY, execution_timeout_secs)
-    logging.debug(raw_request)
-    return self._client.create_task(request=raw_request)
+    if is_skylab:
+      command = [self.RUN_SUITE_SKYLAB_PATH, '--board', 'fake_board', '--build',
+                 'fake_build', '--suite_name', 'fake_suite', '--do_nothing']
+      dimensions = self.SKYLAB_DIMENSIONS
+      client = self._skylab_client
+    else:
+      command = [self.RUN_SUITE_PATH, '--web', self._afe_server, '--do_nothing']
+      dimensions = self.DIMENSIONS
+      client = self._client
 
-  def query_task(self, task_id):
+    raw_request = self._form_swarming_request(
+        command, dimensions, DUMMY_TASK_NAME, tags, DUMMY_PRIORITY,
+        execution_timeout_secs)
+    logging.debug(raw_request)
+    return client.create_task(request=raw_request)
+
+  def query_task(self, task_id, is_skylab=False):
     """Get a kicked-off task's status.
 
     Args:
       task_id: an id of a swarming task.
+      is_skylab: A boolean to indicate whether it's querying task on skylab.
 
     Returns:
       a SwarmingTaskInfo object.
     """
-    response = self._client.get_task_result(task_id)
+    client = self._skylab_client if is_skylab else self._client
+    response = client.get_task_result(task_id)
     task_info_dict = {k: response.get(k) for k in SwarmingTaskInfo._fields}
     return SwarmingTaskInfo(**task_info_dict)
 
@@ -249,12 +263,13 @@ class SwarmingRunner(object):
 
     return command
 
-  def _form_swarming_request(self, command, task_name, tags, priority,
-                             execution_timeout_secs):
+  def _form_swarming_request(self, command, dimensions, task_name, tags,
+                             priority, execution_timeout_secs):
     """Form a raw request which will be sent to swarming API.
 
     Args:
       command: the command to be run by swarming bot.
+      dimensions: A dict indicating the dimensions of the task.
       task_name: the name of the swarming task.
       tags: the tags of the to-be-run swarming task.
       priority: the priority of the to-be-run swarming task.
@@ -265,7 +280,7 @@ class SwarmingRunner(object):
     """
     properties = TaskProperties(
         command=command,
-        dimensions=self.DIMENSIONS,
+        dimensions=dimensions,
         env={},
         execution_timeout_secs=execution_timeout_secs,
         grace_period_secs=_GRACE_PERIOD_SECONDS,

@@ -22,15 +22,19 @@ class FakeSwarmingLib(object):
   def __init__(self, success_num=sys.maxint, error_num=0):
     self.success_num = success_num
     self.error_num = error_num
-    self.dummy_run_count = 0
+    self.skylab_dummy_run_count = 0
+    self.afe_dummy_run_count = 0
 
   def run(self, **suite_kwargs):
     num = int(suite_kwargs.get('num', 0))
     if num > self.success_num and num <= self.success_num + self.error_num:
       raise ValueError('test')
 
-  def dummy_run(self):
-    self.dummy_run_count += 1
+  def dummy_run(self, is_skylab=False):
+    if is_skylab:
+      self.skylab_dummy_run_count += 1
+    else:
+      self.afe_dummy_run_count += 1
 
 
 class TaskExecutorTestCase(unittest.TestCase):
@@ -69,7 +73,9 @@ class TaskExecutorTestCase(unittest.TestCase):
                                                      'skylab_swarming_server')
         task_processor.batch_execute()
         self.assertEqual(task_executor.BATCH_SIZE,
-                         task_processor.swarming.dummy_run_count)
+                         task_processor.swarming.afe_dummy_run_count)
+        self.assertEqual(task_executor.BATCH_SIZE,
+                         task_processor.swarming.skylab_dummy_run_count)
 
   def testBatchExecuteTaskSuccessfully(self):
     """Test task_executor successfully execute tasks in batch."""

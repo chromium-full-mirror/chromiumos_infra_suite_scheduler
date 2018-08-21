@@ -11,7 +11,7 @@ import swarming_lib
 import webapp2
 
 
-class TestSwarmingAPI(webapp2.RequestHandler):
+class TestAFESwarmingAPI(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -20,11 +20,27 @@ class TestSwarmingAPI(webapp2.RequestHandler):
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
         swarming_lib.CHROME_STAGING_SWARMING_SERVER)
-    response = swarming_runner.dummy_run()
-    swarming_task_info = swarming_runner.query_task(response['task_id'])
-    self.response.write(swarming_task_info.name)
+    afe_response = swarming_runner.dummy_run()
+    afe_swarming_task_info = swarming_runner.query_task(afe_response['task_id'])
+    self.response.write(afe_swarming_task_info.name)
+
+
+class TestSkylabSwarmingAPI(webapp2.RequestHandler):
+
+  def get(self):
+    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+        file_getter.LAB_CONFIG_FILE))
+    afe_server = lab_config.get_dedicated_afe()
+    swarming_runner = swarming_lib.SwarmingRunner(
+        afe_server,
+        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+    skylab_response = swarming_runner.dummy_run(is_skylab=True)
+    skylab_swarming_task_info = swarming_runner.query_task(
+        skylab_response['task_id'], is_skylab=True)
+    self.response.write(skylab_swarming_task_info.name)
 
 
 app = webapp2.WSGIApplication([
-    ('/test_push/swarming', TestSwarmingAPI),
+    ('/test_push/afe_swarming', TestAFESwarmingAPI),
+    ('/test_push/skylab_swarming', TestSkylabSwarmingAPI),
     ], debug=True)

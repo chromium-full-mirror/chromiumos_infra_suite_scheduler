@@ -56,6 +56,7 @@ class TaskProcessor(object):
             params = task.extract_params()
             if global_config.GAE_TESTING:
               self.swarming.dummy_run()
+              self.swarming.dummy_run(is_skylab=True)
             else:
               self.swarming.run(**params)
 
