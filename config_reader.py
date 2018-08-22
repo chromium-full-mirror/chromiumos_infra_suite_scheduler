@@ -576,6 +576,24 @@ class LabConfig(object):
                            for board in board_list.split(',')])
     return cros_board_list - android_board_list
 
+  def get_skylab_board_list(self):
+    """Get the skylab board list from lab config file.
+
+    Returns:
+      A set of CrOS boards which should be scheduled on skylab:
+        (nyan_blaze, reef, ...)
+    """
+    if not self._config_reader:
+      return set([])
+
+    skylab_board_list = self._config_reader.getstring(
+        CROS_SETTINGS, 'skylab_board_list')
+    if skylab_board_list is None:
+      return set([])
+
+    return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
+                for board in skylab_board_list.split(',')])
+
   def get_cros_model_map(self):
     """Gets a map of CrOS boards onto a list of their corresponding models.
 

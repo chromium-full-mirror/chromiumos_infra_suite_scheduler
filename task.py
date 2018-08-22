@@ -353,7 +353,8 @@ class Task(object):
       firmware_ro_build=None,
       test_source_build=None,
       launch_control_build=None,
-      run_prod_code=False):
+      run_prod_code=False,
+      is_skylab=False):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
@@ -369,6 +370,8 @@ class Task(object):
         in prod aka the test code currently on the lab servers. If
         False, the control files and test code for this suite run will
         be retrieved from the build artifacts. Default is False.
+      is_skylab: If True, schedule this suite to skylab, otherwise schedule
+        it to AFE. Default is False.
     """
     android_build = None
     testbed_build = None
@@ -406,6 +409,7 @@ class Task(object):
         'no_delay': self.no_delay,
         'force': self.force,
         'run_prod_code': run_prod_code,
+        'is_skylab': is_skylab,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE, **suite_job_parameters)
@@ -422,6 +426,7 @@ class Task(object):
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
     """
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
+    skylab_boards = lab_config.get_skylab_board_list() if lab_config else []
     for (board, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -471,7 +476,8 @@ class Task(object):
                          cros_build=cros_build,
                          firmware_rw_build=firmware_rw_build,
                          firmware_ro_build=firmware_ro_build,
-                         test_source_build=test_source_build)
+                         test_source_build=test_source_build,
+                         is_skylab=board in skylab_boards)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.

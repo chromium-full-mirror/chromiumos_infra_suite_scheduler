@@ -331,6 +331,16 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertEqual(len(result), 1)
     self.assertEqual(result['coral'], ['astronaut', 'robo360'])
 
+  def testGetSkylabBoardList(self):
+    """Ensure skylab_board_list can be correctly fetched."""
+    self.config.set(config_reader.CROS_SETTINGS, 'skylab_board_list',
+                    '\nnyan_blaze,\nreef')
+    lab_config = config_reader.LabConfig(self.config)
+    result = lab_config.get_skylab_board_list()
+    self.assertEqual(len(result), 2)
+    self.assertIn('nyan_blaze', result)
+    self.assertIn('reef', result)
+
   def testGetEmptyCrOSModelMap(self):
     """Ensure cros_model_map can be correctly fetched."""
     lab_config = config_reader.LabConfig(self.config)
