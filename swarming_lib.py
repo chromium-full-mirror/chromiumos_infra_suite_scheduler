@@ -65,6 +65,7 @@ SwarmingTaskInfo = collections.namedtuple(
         'state',
         'bot_id',
         'created_ts',
+        'tags',
     ])
 
 # The theoretical maximum time for executing a swarming task.
@@ -107,10 +108,10 @@ CHROME_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api
 # be special tasks. The upper bound for priority is 255.
 # Use the same priorities mapping as chromite/lib/constants.py
 SKYLAB_HWTEST_PRIORITIES_MAP = {
-    constants.Priorities.WEEKLY: 230,
-    constants.Priorities.DAILY: 200,
-    constants.Priorities.POSTBUILD: 170,
-    constants.Priorities.DEFAULT: 140,
+    str(constants.Priorities.WEEKLY): 230,
+    str(constants.Priorities.DAILY): 200,
+    str(constants.Priorities.POSTBUILD): 170,
+    str(constants.Priorities.DEFAULT): 140,
 }
 
 
@@ -156,9 +157,9 @@ class SwarmingRunner(object):
     # To be compatible with old suite parameters.
     is_skylab = task_params.get('is_skylab', 'False')
     if is_skylab == 'True':
-      self._run_with_skylab(**task_params)
+      return self._run_with_skylab(**task_params)
     else:
-      self._run_with_afe(**task_params)
+      return self._run_with_afe(**task_params)
 
   def _parse_task_params(self, **task_params):
     """Parse the task params for swarming request."""
@@ -174,10 +175,11 @@ class SwarmingRunner(object):
     tags.append('board:%s' % task_params['board'])
     tags.append('build:%s' % final_build)
     tags.append('task_name:%s' % task_name)
+    tags.append('luci_project:chromiumos')
 
     return SwarmingTaskParams(
         final_build=final_build,
-        execution_timeout_sec=self._get_execution_timeout(suite_name),
+        execution_timeout_secs=self._get_execution_timeout(suite_name),
         task_name=task_name,
         tags=tags,
         priority=int(task_params['priority']))
@@ -190,7 +192,7 @@ class SwarmingRunner(object):
       raise SwarmingRunError('Priority %s is not accepted by run_suite_skylab.'
                              % str(priority))
 
-    task_params['priority'] = SKYLAB_HWTEST_PRIORITIES_MAP[priority]
+    task_params['priority'] = str(SKYLAB_HWTEST_PRIORITIES_MAP[priority])
 
     parsed_task_params = self._parse_task_params(**task_params)
     command = self._form_run_suite_skylab_command(
@@ -211,7 +213,7 @@ class SwarmingRunner(object):
     return self._client.create_task(request=raw_request)
 
   def dummy_run(self, is_skylab=False):
-    """Perform a dummy run to swarming proxy service to AFE."""
+    """Perform a dummy run to swarming proxy service."""
     if is_skylab:
       command = [self.RUN_SUITE_SKYLAB_PATH, '--board', 'fake_board', '--build',
                  'fake_build', '--suite_name', 'fake_suite', '--do_nothing']
@@ -232,6 +234,30 @@ class SwarmingRunner(object):
         command, dimensions, dummy_task_params)
     logging.debug(raw_request)
     return client.create_task(request=raw_request)
+
+  def dummy_run_sanity(self, is_skylab=False):
+    """Perform a dummy run of sutie sanity to swarming proxy service."""
+    task_params = {
+        'board': 'nyan_blaze',
+        'model': 'None',
+        'suite': 'sanity',
+        'pool': 'suites',
+        'timeout_mins': '30',
+        'max_runtime_mins': '30',
+        'no_wait_for_results': 'True',
+        'test_source_build': '',
+        'job_retry': 'False',
+        'priority': str(constants.Priorities.POSTBUILD),
+        'force': 'True',
+        'is_skylab': str(is_skylab),
+        build_lib.BuildVersionKey.CROS_VERSION: (
+            'nyan_blaze-release/R69-10895.33.0'),
+        build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: 'None',
+        build_lib.BuildVersionKey.TESTBED_BUILD_VERSION: 'None',
+        build_lib.BuildVersionKey.FW_RO_VERSION: 'None',
+        build_lib.BuildVersionKey.FW_RW_VERSION: 'None',
+    }
+    return self.run(**task_params)
 
   def query_task(self, task_id, is_skylab=False):
     """Get a kicked-off task's status.
@@ -303,11 +329,17 @@ class SwarmingRunner(object):
                '--pool', task_params['pool'],
                '--priority', task_params['priority'],
                '--timeout_mins', str(timeout_mins),
-               '--test_source_build', task_params['test_source_build'],
-               '--test_retry', task_params['job_retry']]
+               '--test_source_build', task_params['test_source_build']]
+
+    if task_params['job_retry'] == 'True':
+      command.extend(['--test_retry'])
 
     # Swarming calls from suite_scheduler should creat and return immediately.
     command.extend(['--create_and_return'])
+
+    # Swarming calls from suite_scheduler should use fallback request to force
+    # a provision on DUT before the tests are run.
+    command.extend(['--use_fallback'])
 
     if task_params['force'] != 'True':
       command.extend(['--pre_check'])

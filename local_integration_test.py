@@ -83,15 +83,29 @@ class IntegrationTest(unittest.TestCase):
     """Swarming test with local configs and dev_appservers."""
     output = _subprocess_wrapper(
         subprocess.check_output,
-        ['curl', '%s/test_push/afe_swarming' % DEV_APPSERVER_URL])
+        ['curl', '%s/test_push/afe_dummy' % DEV_APPSERVER_URL])
     self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
 
   def testSkylabSwarmingDummyRun(self):
     """Swarming test with local configs and dev_appservers."""
     output = _subprocess_wrapper(
         subprocess.check_output,
-        ['curl', '%s/test_push/skylab_swarming' % DEV_APPSERVER_URL])
+        ['curl', '%s/test_push/skylab_dummy' % DEV_APPSERVER_URL])
     self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
+
+  def testAFESwarmingSanity(self):
+    """Swarming test with local configs and dev_appservers."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/afe_sanity' % DEV_APPSERVER_URL])
+    self.assertIn('sanity', output)
+
+  def testSkylabSwarmingSanity(self):
+    """Swarming test with local configs and dev_appservers."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/skylab_sanity' % DEV_APPSERVER_URL])
+    self.assertIn('sanity', output)
 
 
 if __name__ == '__main__':
