@@ -341,6 +341,16 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertIn('nyan_blaze', result)
     self.assertIn('reef', result)
 
+  def testGetSkylabSuiteList(self):
+    """Ensure skylab_suite_list can be correctly fetched."""
+    self.config.set(config_reader.CROS_SETTINGS, 'skylab_suite_list',
+                    '\nent-nightly,\nent-perbuild')
+    lab_config = config_reader.LabConfig(self.config)
+    result = lab_config.get_skylab_suite_list()
+    self.assertEqual(len(result), 2)
+    self.assertIn('ent-nightly', result)
+    self.assertIn('ent-perbuild', result)
+
   def testGetEmptyCrOSModelMap(self):
     """Ensure cros_model_map can be correctly fetched."""
     lab_config = config_reader.LabConfig(self.config)

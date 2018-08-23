@@ -155,6 +155,10 @@ class FakeLabConfig(object):
     """Mock config_reader.LabConfig.get_skylab_board_list."""
     return set(['nyan_blaze'])
 
+  def get_skylab_suite_list(self):
+    """Mock config_reader.LabConfig.get_skylab_suite_list."""
+    return set(['ent-nightly'])
+
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
     del release_board  # unused

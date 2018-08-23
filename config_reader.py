@@ -594,6 +594,23 @@ class LabConfig(object):
     return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
                 for board in skylab_board_list.split(',')])
 
+  def get_skylab_suite_list(self):
+    """Get the skylab suite list from lab config file.
+
+    Returns:
+      A set of CrOS suites which should be scheduled on skylab:
+        (ent-nightly, ent-perbuild, ...)
+    """
+    if not self._config_reader:
+      return set([])
+
+    skylab_board_list = self._config_reader.getstring(
+        CROS_SETTINGS, 'skylab_suite_list')
+    if skylab_board_list is None:
+      return set([])
+
+    return set([board.strip() for board in skylab_board_list.split(',')])
+
   def get_cros_model_map(self):
     """Gets a map of CrOS boards onto a list of their corresponding models.
 
