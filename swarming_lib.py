@@ -18,6 +18,17 @@ DUMMY_TASK_NAME = 'suite_scheduler_dummy_run'
 # The priority for dummy swarming task, make it highest.
 DUMMY_PRIORITY = 100
 
+# Representing a swarming task params dict after parsing.
+SwarmingTaskParams = collections.namedtuple(
+    'SwarmingTaskParams',
+    [
+        'task_name',
+        'final_build',
+        'execution_timeout_secs',
+        'tags',
+        'priority',
+    ])
+
 # Representing swarming task properties, coming from chrome_infra repo:
 # ./appengine/swarming/swarming_rpcs.py.
 TaskProperties = collections.namedtuple(
@@ -91,6 +102,17 @@ CHROMEOS_SWARMING_SERVER = 'https://chromeos-proxy.appspot.com/_ah/api'
 CHROME_SWARMING_SERVER = 'https://chrome-swarming.appspot.com/_ah/api'
 CHROME_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
 
+# A mapping of priorities for skylab hwtest tasks. In swarming,
+# lower number means high priorities. Priority lower than 48 will
+# be special tasks. The upper bound for priority is 255.
+# Use the same priorities mapping as chromite/lib/constants.py
+SKYLAB_HWTEST_PRIORITIES_MAP = {
+    constants.Priorities.WEEKLY: 230,
+    constants.Priorities.DAILY: 200,
+    constants.Priorities.POSTBUILD: 170,
+    constants.Priorities.DEFAULT: 140,
+}
+
 
 class SwarmingRunError(Exception):
   """Raised when interactions with swarming server fail."""
@@ -131,6 +153,15 @@ class SwarmingRunner(object):
     Raises:
       SwarmingRunError: if failing to create swarming task.
     """
+    # To be compatible with old suite parameters.
+    is_skylab = task_params.get('is_skylab', 'False')
+    if is_skylab == 'True':
+      self._run_with_skylab(**task_params)
+    else:
+      self._run_with_afe(**task_params)
+
+  def _parse_task_params(self, **task_params):
+    """Parse the task params for swarming request."""
     final_build = self._get_final_build(**task_params)
     if final_build == 'None':
       raise SwarmingRunError('No proper build in task params: %r' %
@@ -144,18 +175,43 @@ class SwarmingRunner(object):
     tags.append('build:%s' % final_build)
     tags.append('task_name:%s' % task_name)
 
-    command = self._form_run_suite_command(final_build, **task_params)
-    execution_timeout_secs = self._get_execution_timeout(suite_name)
+    return SwarmingTaskParams(
+        final_build=final_build,
+        execution_timeout_sec=self._get_execution_timeout(suite_name),
+        task_name=task_name,
+        tags=tags,
+        priority=int(task_params['priority']))
+
+  def _run_with_skylab(self, **task_params):
+    """Kick off suite to skylab."""
+    # TODO(xixuan): deal with the random integer priority for cts suites.
+    priority = task_params['priority']
+    if priority not in SKYLAB_HWTEST_PRIORITIES_MAP:
+      raise SwarmingRunError('Priority %s is not accepted by run_suite_skylab.'
+                             % str(priority))
+
+    task_params['priority'] = SKYLAB_HWTEST_PRIORITIES_MAP[priority]
+
+    parsed_task_params = self._parse_task_params(**task_params)
+    command = self._form_run_suite_skylab_command(
+        parsed_task_params.final_build, **task_params)
     raw_request = self._form_swarming_request(
-        command, self.DIMENSIONS, task_name, tags, int(task_params['priority']),
-        execution_timeout_secs)
+        command, self.SKYLAB_DIMENSIONS, parsed_task_params)
+    logging.debug(raw_request)
+    return self._skylab_client.create_task(request=raw_request)
+
+  def _run_with_afe(self, **task_params):
+    """Kick off suite to AFE."""
+    parsed_task_params = self._parse_task_params(**task_params)
+    command = self._form_run_suite_command(
+        parsed_task_params.final_build, **task_params)
+    raw_request = self._form_swarming_request(
+        command, self.DIMENSIONS, parsed_task_params)
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
 
   def dummy_run(self, is_skylab=False):
     """Perform a dummy run to swarming proxy service to AFE."""
-    tags = ['task_name:dummy_run']
-    execution_timeout_secs = self._get_execution_timeout('fake_suite')
     if is_skylab:
       command = [self.RUN_SUITE_SKYLAB_PATH, '--board', 'fake_board', '--build',
                  'fake_build', '--suite_name', 'fake_suite', '--do_nothing']
@@ -166,9 +222,14 @@ class SwarmingRunner(object):
       dimensions = self.DIMENSIONS
       client = self._client
 
+    dummy_task_params = SwarmingTaskParams(
+        final_build='',
+        execution_timeout_secs=self._get_execution_timeout('fake_suite'),
+        tags=['task_name:dummy_run'],
+        task_name=DUMMY_TASK_NAME,
+        priority=DUMMY_PRIORITY)
     raw_request = self._form_swarming_request(
-        command, dimensions, DUMMY_TASK_NAME, tags, DUMMY_PRIORITY,
-        execution_timeout_secs)
+        command, dimensions, dummy_task_params)
     logging.debug(raw_request)
     return client.create_task(request=raw_request)
 
@@ -214,6 +275,53 @@ class SwarmingRunner(object):
     testbed_build = task_params[
         build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
     return cros_build or android_build or testbed_build
+
+  def _form_run_suite_skylab_command(self, final_build, **task_params):
+    """Form the Skylab swarming call command based on task_params.
+
+    TODO (xixuan): To reduce the refactor work, I keep some duplicated codes
+    in both this function and |_form_run_suite_command|. When skylab is fully
+    launched, I will remove |_form_run_suite_command| completely.
+
+    Args:
+      final_build: The build to run with the suite.
+      **task_params: The parameters of a task got from suite queue.
+
+    Returns:
+      A list of command to run on swarming.
+    """
+
+    fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
+    fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
+    timeout_mins = (task_params['timeout_mins'] or
+                    task_params['timeout'] * 60)
+
+    command = [self.RUN_SUITE_SKYLAB_PATH,
+               '--build', final_build,
+               '--board', task_params['board'],
+               '--suite_name', task_params['suite'],
+               '--pool', task_params['pool'],
+               '--priority', task_params['priority'],
+               '--timeout_mins', str(timeout_mins),
+               '--test_source_build', task_params['test_source_build'],
+               '--test_retry', task_params['job_retry']]
+
+    # Swarming calls from suite_scheduler should creat and return immediately.
+    command.extend(['--create_and_return'])
+
+    if task_params['force'] != 'True':
+      command.extend(['--pre_check'])
+
+    if task_params['model'] != 'None':
+      command.extend(['--model', task_params['model']])
+
+    if fw_rw_build != 'None':
+      command.extend(['--firmware_rw_build', fw_rw_build])
+
+    if fw_ro_build != 'None':
+      command.extend(['--firmware_ro_build', fw_ro_build])
+
+    return command
 
   def _form_run_suite_command(self, final_build, **task_params):
     """Form the swarming call command based on task_params.
@@ -263,17 +371,13 @@ class SwarmingRunner(object):
 
     return command
 
-  def _form_swarming_request(self, command, dimensions, task_name, tags,
-                             priority, execution_timeout_secs):
+  def _form_swarming_request(self, command, dimensions, parsed_task_params):
     """Form a raw request which will be sent to swarming API.
 
     Args:
       command: the command to be run by swarming bot.
       dimensions: A dict indicating the dimensions of the task.
-      task_name: the name of the swarming task.
-      tags: the tags of the to-be-run swarming task.
-      priority: the priority of the to-be-run swarming task.
-      execution_timeout_secs: the execution timeout seconds for swarming call.
+      parsed_task_params: A SwarmingTaskParams object.
 
     Returns:
       A json-compatible dict that can be parsed by swarming API.
@@ -282,16 +386,16 @@ class SwarmingRunner(object):
         command=command,
         dimensions=dimensions,
         env={},
-        execution_timeout_secs=execution_timeout_secs,
+        execution_timeout_secs=parsed_task_params.execution_timeout_secs,
         grace_period_secs=_GRACE_PERIOD_SECONDS,
         idempotent=False,
-        io_timeout_secs=execution_timeout_secs)
+        io_timeout_secs=parsed_task_params.execution_timeout_secs)
     task_request = NewTaskRequest(
         expiration_secs=_TASK_EXPIRATION_SECONDS,
-        name=task_name,
-        priority=priority,
+        name=parsed_task_params.task_name,
+        priority=parsed_task_params.priority,
         properties=properties,
-        tags=tags,
+        tags=parsed_task_params.tags,
         user=USER)
     return _to_raw_request(task_request)
 
