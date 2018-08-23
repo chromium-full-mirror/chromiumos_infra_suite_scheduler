@@ -217,8 +217,8 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
           final_build, **params)
       self.assertIn('--create_and_return', command)
       self.assertIn('--pre_check', command)
-      self.assertIn('--test_retry', command)
       self.assertIn('--firmware_ro_build', command)
+      self.assertNotIn('--test_retry', command)
       self.assertNotIn('-c', command)
 
   def testFormSkylabCommandWithForce(self):
