@@ -86,8 +86,8 @@ class Task(object):
             launch control builds. The argument is required and only
             applicable for android/brillo builds.
           testbed_dut_count, number of duts to test when using a testbed.
-      board_family_config: A board family dictionary mapping board_family name to
-        its corresponding boards.
+      board_family_config: A board family dictionary mapping board_family name
+        to its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
     """
@@ -448,6 +448,8 @@ class Task(object):
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
     skylab_boards = lab_config.get_skylab_board_list() if lab_config else []
     skylab_suites = lab_config.get_skylab_suite_list() if lab_config else []
+    logging.info('Skylab_boards: %r', skylab_boards)
+    logging.info('Skylab suites: %r', skylab_suites)
     for (board, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -490,6 +492,7 @@ class Task(object):
         test_source_build = cros_build
 
       models = models_by_board.get(board, [None])
+      is_skylab = (board in skylab_boards) and (self.suite in skylab_suites)
 
       for model in models:
         self._push_suite(
@@ -499,8 +502,7 @@ class Task(object):
             firmware_rw_build=firmware_rw_build,
             firmware_ro_build=firmware_ro_build,
             test_source_build=test_source_build,
-            is_skylab=((board in skylab_boards) and
-                       (self.suite in skylab_suites)))
+            is_skylab=is_skylab)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
