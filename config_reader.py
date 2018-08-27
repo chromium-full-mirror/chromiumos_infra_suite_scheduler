@@ -614,12 +614,12 @@ class LabConfig(object):
     if not self._config_reader:
       return set([])
 
-    skylab_board_list = self._config_reader.getstring(
+    skylab_suite_list = self._config_reader.getstring(
         CROS_SETTINGS, 'skylab_suite_list')
-    if skylab_board_list is None:
+    if skylab_suite_list is None:
       return set([])
 
-    return set([board.strip() for board in skylab_board_list.split(',')])
+    return set([suite.strip() for suite in skylab_suite_list.split(',')])
 
   def get_cros_model_map(self):
     """Gets a map of CrOS boards onto a list of their corresponding models.
