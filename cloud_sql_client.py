@@ -146,7 +146,7 @@ class CIDBClient(object):
       MySQLdb.OperationalError if connection operations are not valid.
     """
     sql = """\
-        select bo.board, bu.milestone_version,
+        select distinct bo.board, bu.milestone_version,
         bu.platform_version, bu.build_config
         from buildTable as bu, boardPerBuildTable as bo,
         buildStageTable as bs
@@ -154,8 +154,7 @@ class CIDBClient(object):
         bu.suite_scheduling=1 and
         bu.id=bo.build_id and bu.id=bs.build_id and
         ((bu.status='fail' and bs.name = 'HWTest [sanity]'
-          and bs.status = 'pass') OR
-        bu.status='pass')
+          and bs.status = 'pass'))
     """
     if global_config.GAE_TESTING:
       since_date_str = '2017-08-01 00:00:00'

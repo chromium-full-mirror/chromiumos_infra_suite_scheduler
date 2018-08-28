@@ -263,7 +263,7 @@ def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)
   relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, relaxed_builds)
+      cros_board_list, relaxed_builds + all_branch_builds)
 
   return branch_builds_dict, relaxed_builds_dict
 
