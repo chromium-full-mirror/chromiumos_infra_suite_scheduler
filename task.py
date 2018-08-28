@@ -450,7 +450,7 @@ class Task(object):
     skylab_suites = lab_config.get_skylab_suite_list() if lab_config else []
     logging.info('Skylab_boards: %r', skylab_boards)
     logging.info('Skylab suites: %r', skylab_suites)
-    for (board, build_type,
+    for (board, passed_model, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
                                            manifest))
@@ -459,6 +459,7 @@ class Task(object):
         logging.debug('Board %s is in excluded board list: %s',
                       board, self.exclude_boards)
         continue
+
       if self.boards and board not in self.boards:
         logging.debug('Board %s is not in supported board list: %s',
                       board, self.boards)
@@ -495,14 +496,16 @@ class Task(object):
       is_skylab = (board in skylab_boards) and (self.suite in skylab_suites)
 
       for model in models:
-        self._push_suite(
-            board=board,
-            model=model,
-            cros_build=cros_build,
-            firmware_rw_build=firmware_rw_build,
-            firmware_ro_build=firmware_ro_build,
-            test_source_build=test_source_build,
-            is_skylab=is_skylab)
+        if ((passed_model is not None and model == passed_model) or
+            passed_model is None):
+          self._push_suite(
+              board=board,
+              model=model,
+              cros_build=cros_build,
+              firmware_rw_build=firmware_rw_build,
+              firmware_ro_build=firmware_ro_build,
+              test_source_build=test_source_build,
+              is_skylab=is_skylab)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.

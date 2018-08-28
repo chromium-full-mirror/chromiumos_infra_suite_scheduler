@@ -20,10 +20,38 @@ BuildInfo = collections.namedtuple(
     'BuildInfo',
     [
         'board',
+        'model',
         'milestone',
         'platform',
         'build_config',
     ])
+
+
+def _parse_model(build_stage_name):
+  """Parse model name from the build stage name.
+
+  It's only used for HWTest Sanity stage. An example build_stage_name will
+  be 'HWTest [sanity] [whitetip]'.
+  Args:
+    build_stage_name: The stage name of a HWTest sanity stage, e.g.
+      "HWTest [sanity] [whitetip]".
+
+  Returns:
+    A model name, e.g. "[whitetip]" or None.
+  """
+  if 'HWTest [sanity]' not in build_stage_name:
+    return None
+
+  try:
+    model = build_stage_name.strip().split()[-1][1:-1]
+    if not model:
+      logging.warning('Cannot parse build stage name: %s', build_stage_name)
+      return None
+
+    return model
+  except IndexError:
+    logging.error('Cannot parse build stage name: %s', build_stage_name)
+    return None
 
 
 class DBConnection(object):
@@ -130,7 +158,7 @@ class CIDBClient(object):
     logging.info('Got passed builds since %s', since_date_str)
     self._connection.cursor.execute(sql, [since_date_str])
     builds = self._connection.cursor.fetchall()
-    return [BuildInfo(board, milestone, platform, build_config)
+    return [BuildInfo(board, None, milestone, platform, build_config)
             for board, milestone, platform, build_config in builds]
 
   def get_relaxed_pased_builds_since_date(self, since_date):
@@ -146,14 +174,14 @@ class CIDBClient(object):
       MySQLdb.OperationalError if connection operations are not valid.
     """
     sql = """\
-        select distinct bo.board, bu.milestone_version,
+        select distinct bu.unibuild, bs.name, bo.board, bu.milestone_version,
         bu.platform_version, bu.build_config
         from buildTable as bu, boardPerBuildTable as bo,
         buildStageTable as bs
         where bu.finish_time > %s and
         bu.suite_scheduling=1 and
         bu.id=bo.build_id and bu.id=bs.build_id and
-        ((bu.status='fail' and bs.name = 'HWTest [sanity]'
+        ((bu.status='fail' and bs.name like 'HWTest [sanity]%%'
           and bs.status = 'pass'))
     """
     if global_config.GAE_TESTING:
@@ -165,8 +193,17 @@ class CIDBClient(object):
     logging.info('Got passed builds since %s', since_date_str)
     self._connection.cursor.execute(sql, [since_date_str])
     builds = self._connection.cursor.fetchall()
-    return [BuildInfo(board, milestone, platform, build_config)
-            for board, milestone, platform, build_config in builds]
+    build_infos = []
+    for unibuild, name, board, milestone, platform, build_config in builds:
+      if unibuild:
+        model = _parse_model(name)
+      else:
+        model = None
+
+      build_infos.append(
+          BuildInfo(board, model, milestone, platform, build_config))
+
+    return build_infos
 
   def get_latest_passed_builds(self, build_config):
     """Get latest passed builds by build_config.
@@ -192,6 +229,7 @@ class CIDBClient(object):
       return None
     else:
       return BuildInfo(board=version_info[0][0],
+                       model=None,
                        milestone=version_info[0][1],
                        platform=version_info[0][2],
                        build_config=build_config)

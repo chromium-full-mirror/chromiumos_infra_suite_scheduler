@@ -224,7 +224,8 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
       logging.warning('%s is not a valid CrOS board.', build.board)
       continue
 
-    build_key = (build.board, build_config_info.type, build.milestone)
+    build_key = (build.board, build.model, build_config_info.type,
+                 build.milestone)
     cur_manifest = branch_build_dict.get(build_key)
     if cur_manifest is not None:
       branch_build_dict[build_key] = max(

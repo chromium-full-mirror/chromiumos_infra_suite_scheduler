@@ -114,9 +114,9 @@ class FakeCIDBClient(object):
   def get_passed_builds_since_date(self, since_date):
     """Mock cloud_sql_client.CIDBClient.get_passed_builds_since_date."""
     del since_date  # unused
-    return [cloud_sql_client.BuildInfo('link', '62', '9868.0.0',
+    return [cloud_sql_client.BuildInfo('link', None, '62', '9868.0.0',
                                        'link-release'),
-            cloud_sql_client.BuildInfo('zako', '62', '9868.0.0',
+            cloud_sql_client.BuildInfo('zako', None, '62', '9868.0.0',
                                        'zako-release')]
 
   def get_latest_passed_builds(self, build_config):
@@ -127,7 +127,7 @@ class FakeCIDBClient(object):
   def get_relaxed_pased_builds_since_date(self, since_date):
     """Mock cloud_sql_client.CIDBClient.get_relaxed_pased_builds_since_date."""
     del since_date  # unused
-    return [cloud_sql_client.BuildInfo('grunt', '63', '9968.0.0',
+    return [cloud_sql_client.BuildInfo('grunt', None, '63', '9968.0.0',
                                        'grunt-release')]
 
 
@@ -367,7 +367,8 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     # Validate that the expected tests got kicked off.
     self.assertEqual(len(suite_trigger.event_results), 1)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 3)
+    # 2 for strict passed builds, 3 for relaxed builds.
+    self.assertEqual(len(tasks), 5)
 
     # The number of builds that matched the base (success) Task.
     count_base = 0
@@ -380,12 +381,11 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
         count_base += 1
 
       if 'fake_suite_relaxed' in task.payload:
-        self.assertIn('grunt-release', task.payload)
         count_relaxed += 1
 
     # Make each case matched precisely one event.
     self.assertEqual(2, count_base)
-    self.assertEqual(1, count_relaxed)
+    self.assertEqual(3, count_relaxed)
 
   def testNewBuildWithExistingBoardFamilies(self):
     """Test the new_build suite with an existing board family."""
@@ -523,8 +523,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(tasks), 2)
 
   def testNewBuildWithBoardExcludeBoardCollision(self):
-    """Test the new_build suite specified same board in boards and
-       exclude_boards."""
+    """Test the case that the same board in boards and exclude_boards."""
     normal_suite = 'FakeBoardExludingBoardCollisionNewBuildTask'
     self.fake_config.add_section(normal_suite)
     self.fake_config.set(normal_suite, 'run_on', 'new_build')

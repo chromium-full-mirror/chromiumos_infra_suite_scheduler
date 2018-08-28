@@ -36,14 +36,29 @@ class FakeCIDBClient(object):
       raise MySQLdb.OperationalError('Failed to connect to db')
 
     return cloud_sql_client.BuildInfo(board=build_config.split('-')[0],
+                                      model=None,
                                       milestone=TaskTestCase.MILESTONE,
                                       platform=TaskTestCase.PLATFORM,
                                       build_config=build_config)
 
 
+class FakeLabConfig(object):
+  """Mock class for cloud_sql_client.CIDBClient."""
+
+  def get_skylab_board_list(self):
+    return []
+
+  def get_skylab_suite_list(self):
+    return []
+
+  def get_cros_model_map(self):
+    return {'coral': ['robo', 'nasher', 'lava']}
+
+
 class TaskBaseTestCase(unittest.TestCase):
 
   BOARD = 'fake_board'
+  UNIBUILD_BOARD = 'coral'
   EXCLUDE_BOARD = 'exclude_fake_board'
   NAME = 'fake_name'
   SUITE = 'fake_suite'
@@ -66,7 +81,7 @@ class TaskBaseTestCase(unittest.TestCase):
         branch_specs=[],
         pool=self.POOL,
         num=self.NUM,
-        boards=self.BOARD,
+        boards=','.join([self.BOARD, self.UNIBUILD_BOARD]),
         exclude_boards=self.EXCLUDE_BOARD,
         priority=self.PRIORITY,
         timeout=self.TIMEOUT))
@@ -166,8 +181,8 @@ class TaskTestCase(TaskBaseTestCase):
         'firmware', self.BOARD, None, FakeCIDBClient(success=False)))
 
   def testScheduleCrosSuccessfully(self):
-    """Test schedule cros builds successfully."""
-    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    """test schedule cros builds successfully."""
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     config_reader.LabConfig(None),
                                     FakeCIDBClient())
@@ -175,7 +190,7 @@ class TaskTestCase(TaskBaseTestCase):
 
   def testScheduleCrosNonvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
-    branch_builds = {('%s_2' % self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {('%s_2' % self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     config_reader.LabConfig(None),
                                     FakeCIDBClient())
@@ -183,15 +198,27 @@ class TaskTestCase(TaskBaseTestCase):
 
   def testScheduleCrosExcludeBoard(self):
     """Test schedule no cros builds due to board is excluded."""
-    branch_builds = {(self.EXCLUDE_BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {(self.EXCLUDE_BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     config_reader.LabConfig(None),
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
+  def testScheduleCrosSuccessfullyWithSpecifiedModel(self):
+    """Test schedule unibuild with specific model."""
+    self.task.board = self.UNIBUILD_BOARD
+    branch_builds = {(self.UNIBUILD_BOARD, 'robo', 'release', '56'):
+                     '0000.00.00',
+                     (self.UNIBUILD_BOARD, 'lava', 'release', '56'):
+                     '0000.00.00'}
+    self.task._schedule_cros_builds(branch_builds,
+                                    FakeLabConfig(),
+                                    FakeCIDBClient())
+    self.assertEqual(self._mock_push.call_count, 2)
+
   def testScheduleCrosNonValidSpec(self):
     """Test schedule no cros builds due to non-allowed branch milestone."""
-    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     # Only run tasks whose milestone = tot (R40)
     self.task.branch_specs = re.split(r'\s*,\s*', '==tot')
     self.task._set_spec_compare_info()
@@ -202,7 +229,7 @@ class TaskTestCase(TaskBaseTestCase):
 
   def testScheduleCrosSuccessfullyWithValidFirmware(self):
     """Test schedule cros builds successfully with valid firmware."""
-    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
                                     config_reader.LabConfig(None),
@@ -211,7 +238,7 @@ class TaskTestCase(TaskBaseTestCase):
 
   def testScheduleCrosWithNonValidFirmware(self):
     """Test schedule no cros builds due to non-existent firmware."""
-    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
                                     config_reader.LabConfig(None),
@@ -279,7 +306,7 @@ class TaskPushTestCase(TaskBaseTestCase):
 
   def testScheduleCrOSIsPushSuccessfully(self):
     """Test IS_PUSHED is changed if some CrOS suites are scheduled."""
-    branch_builds = {(self.BOARD, 'release', '56'): '0000.00.00'}
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
         [], (branch_builds, []), config_reader.LabConfig(None),
@@ -299,7 +326,7 @@ class TaskPushTestCase(TaskBaseTestCase):
   def testScheduleCrosIsPushInvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
     branch_builds = (
-        {('%s_2' % self.BOARD, 'release', '56'): '0000.00.00'}, {},
+        {('%s_2' % self.BOARD, None, 'release', '56'): '0000.00.00'}, {},
     )
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertFalse(self.task.schedule(
