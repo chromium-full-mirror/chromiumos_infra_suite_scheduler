@@ -68,7 +68,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -87,7 +87,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -103,7 +103,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -119,7 +119,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -139,7 +139,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       self.assertRaises(swarming_lib.SwarmingRunError,
                         swarming_runner.run, **params)
@@ -153,7 +153,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_command(final_build, **params)
@@ -180,7 +180,7 @@ class SwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       self.assertEqual(swarming_runner._get_execution_timeout(suite),
                        60 * 60 * swarming_lib._EXECUTION_TIMEOUT_HOURS[suite])
 
@@ -210,7 +210,7 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_skylab_command(
@@ -231,7 +231,7 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_skylab_command(
@@ -248,7 +248,7 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
       self.assertRaises(swarming_lib.SwarmingRunError,
                         swarming_runner.run, **params)

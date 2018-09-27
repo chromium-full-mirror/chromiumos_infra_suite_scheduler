@@ -91,7 +91,7 @@ class ExecuteTask(webapp2.RequestHandler):
     task_processor = task_executor.TaskProcessor(
         task_executor.SUITES_QUEUE,
         afe_server,
-        swarming_lib.CHROME_SWARMING_SERVER)
+        swarming_lib.SKYLAB_SWARMING_SERVER)
     task_processor.batch_execute()
 
 
@@ -130,7 +130,7 @@ class TestPush(webapp2.RequestHandler):
     task_processor = task_executor.TaskProcessor(
         task_executor.SUITES_QUEUE,
         afe_server,
-        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
     task_processor.batch_execute()
     # In testing, after one round of batch_execute() to execute all tasks,
     # the suite queue will be purged.

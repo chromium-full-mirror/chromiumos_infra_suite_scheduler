@@ -99,9 +99,9 @@ VALUE = 'value'
 ENV = 'env'
 
 # Swarming server URLs
-CHROMEOS_SWARMING_SERVER = 'https://chromeos-proxy.appspot.com/_ah/api'
-CHROME_SWARMING_SERVER = 'https://chrome-swarming.appspot.com/_ah/api'
-CHROME_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
+CHROMEOS_SWARMING_PROXY = 'https://chromeos-proxy.appspot.com/_ah/api'
+SKYLAB_SWARMING_SERVER = 'https://chrome-swarming.appspot.com/_ah/api'
+SKYLAB_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
 
 # A mapping of priorities for skylab hwtest tasks. In swarming,
 # lower number means high priorities. Priority lower than 48 will
@@ -133,7 +133,7 @@ class SwarmingRunner(object):
             constants.RestClient.SWARMING_CLIENT.scopes,
             constants.RestClient.SWARMING_CLIENT.service_name,
             constants.RestClient.SWARMING_CLIENT.service_version),
-        CHROMEOS_SWARMING_SERVER)
+        CHROMEOS_SWARMING_PROXY)
     self._skylab_client = rest_client.SwarmingRestClient(
         rest_client.BaseRestClient(
             constants.RestClient.SWARMING_CLIENT.scopes,

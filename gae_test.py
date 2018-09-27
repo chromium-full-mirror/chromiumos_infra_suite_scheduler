@@ -19,7 +19,7 @@ class TestAFESwarmingAPI(webapp2.RequestHandler):
     afe_server = lab_config.get_dedicated_afe()
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
-        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
     afe_response = swarming_runner.dummy_run()
     afe_swarming_task_info = swarming_runner.query_task(afe_response['task_id'])
     self.response.write(afe_swarming_task_info.name)
@@ -33,7 +33,7 @@ class TestSkylabSwarmingAPI(webapp2.RequestHandler):
     afe_server = lab_config.get_dedicated_afe()
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
-        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
     skylab_response = swarming_runner.dummy_run(is_skylab=True)
     skylab_swarming_task_info = swarming_runner.query_task(
         skylab_response['task_id'], is_skylab=True)
@@ -48,7 +48,7 @@ class TestAFEWithSanity(webapp2.RequestHandler):
     afe_server = lab_config.get_dedicated_afe()
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
-        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
     skylab_response = swarming_runner.dummy_run_sanity(is_skylab=False)
     skylab_swarming_task_info = swarming_runner.query_task(
         skylab_response['task_id'], is_skylab=False)
@@ -63,7 +63,7 @@ class TestSkylabWithSanity(webapp2.RequestHandler):
     afe_server = lab_config.get_dedicated_afe()
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
-        swarming_lib.CHROME_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
     skylab_response = swarming_runner.dummy_run_sanity(is_skylab=True)
     skylab_swarming_task_info = swarming_runner.query_task(
         skylab_response['task_id'], is_skylab=True)
