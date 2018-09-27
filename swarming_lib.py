@@ -100,7 +100,7 @@ ENV = 'env'
 
 # Swarming server URLs
 CHROMEOS_SWARMING_PROXY = 'https://chromeos-proxy.appspot.com/_ah/api'
-SKYLAB_SWARMING_SERVER = 'https://chrome-swarming.appspot.com/_ah/api'
+SKYLAB_SWARMING_SERVER = 'https://chromeos-swarming.appspot.com/_ah/api'
 SKYLAB_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
 
 # A mapping of priorities for skylab hwtest tasks. In swarming,
