@@ -175,7 +175,7 @@ class SwarmingRunner(object):
     tags.append('board:%s' % task_params['board'])
     tags.append('build:%s' % final_build)
     tags.append('task_name:%s' % task_name)
-    tags.append('luci_project:chromiumos')
+    tags.append('luci_project:chromeos')
 
     return SwarmingTaskParams(
         final_build=final_build,
