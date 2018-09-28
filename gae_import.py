@@ -9,11 +9,11 @@ import sys
 
 
 # Set GOOGLE_CLOUD_SDK_PATH in user's home directory ~/.
-GOOGLE_CLOUD_SDK_PATH = os.path.join(
-    os.path.expanduser('~'), 'google-cloud-sdk')
+GOOGLE_CLOUD_SDK_PATH = '/usr/lib/google-cloud-sdk'
 
 
 def import_appengine_config():
+  """Import AppEngine config."""
   # Loading appengine_config from the current project ensures that any
   # changes to configuration there are available to all tests (e.g.
   # sys.path modifications, namespaces, etc.)

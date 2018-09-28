@@ -95,7 +95,7 @@ if __name__ == '__main__':
     gae_import.import_sdk_path(args.sdk_path)
   except ImportError:
     args.sdk_path = raw_input('Cannot find google SDK in %s. Please specify '
-                              'your google SDK path: ' %
+                              'your Google Cloud SDK path: ' %
                               gae_import.GOOGLE_CLOUD_SDK_PATH)
 
   result = main(args)

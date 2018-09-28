@@ -1,14 +1,13 @@
 # Setup
 
-1. Put your Google gCloud SDK in `~/google-cloud-sdk`.
+1. Install Google Cloud SDK:
 
-   [SDK download page](https://cloud.google.com/sdk/docs/)
+    1. Follow the [instructions](https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu).
+    2. Install the Python App Engine component:
 
-2. Install App Engine SDK in `~/google-cloud-sdk`:
+            sudo apt-get install google-cloud-sdk-app-engine-python
 
-        ~/google-cloud-sdk/bin/gcloud components install app-engine-python
-
-3. Run `python setup_environment.py` to download third-party libraries and credentials.
+2. Run `python setup_environment.py` to download third-party libraries and credentials.
 
 # Known Issues
 
