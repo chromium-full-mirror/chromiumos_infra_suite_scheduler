@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 """Module for timed_event unittests."""
+# pylint: disable=g-missing-super-call
 
 import datetime
 import unittest
@@ -273,7 +274,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -290,7 +291,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -309,7 +310,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, self._DEFAULT_UTC_HOUR-1, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, self._DEFAULT_UTC_HOUR-1, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -328,7 +329,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -369,7 +370,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -389,7 +390,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, 15,
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
-        2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
+        2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     task_config = config_reader.TaskConfig(self.config)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()

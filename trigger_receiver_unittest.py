@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 """Module for trigger_receiver unittests."""
+# pylint: disable=g-missing-super-call
 
 import datetime
 import os
@@ -48,42 +49,20 @@ def now_generator(start_time, interval_min=30, last_days=7):
     cur_time += datetime.timedelta(minutes=interval_min)
 
 
-def _should_schedule_nightly_task(last_now, now):
-  """Check whether nightly task should be scheduled.
+def _should_schedule_timed_task(last_now, now):
+  """Check whether timed (weekly/nightly) task should be scheduled.
 
-  A nightly task should be schduled when next hour is coming.
+  A timed task should be schduled when next hour is coming.
 
   Args:
-    last_now: the last time to check if nightly task should be scheduled
+    last_now: the last time to check if timed task should be scheduled
       or not.
-    now: the current time to check if nightly task should be scheduled.
+    now: the current time to check if timed task should be scheduled.
 
   Returns:
     a boolean indicating whether there will be nightly tasks scheduled.
   """
   if last_now is not None and last_now.hour != now.hour:
-    return True
-
-  return False
-
-
-def _should_schedule_weekly_task(last_now, now, weekly_time_info):
-  """Check whether weekly task should be scheduled.
-
-  A weekly task should be schduled when it comes to the default weekly tasks
-  scheduling hour in next day.
-
-  Args:
-    last_now: the last time to check if weekly task should be scheduled
-      or not.
-    now: the current time to check if weekly task should be scheduled.
-    weekly_time_info: the default weekly tasks scheduling time info.
-
-  Returns:
-    a boolean indicating whether there will be weekly tasks scheduled.
-  """
-  if (last_now is not None and last_now.hour != now.hour and
-      now.hour == weekly_time_info.hour):
     return True
 
   return False
@@ -617,14 +596,6 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
   def testCronForWeeks(self):
     """Ensure cron job can be successfully scheduled for several weeks."""
     all_tasks = self._get_ground_truth_task_list_from_config()
-    nightly_time_info = time_converter.convert_time_info(
-        time_converter.TimeInfo(
-            config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_DAY,
-            config_reader.EVENT_CLASSES['nightly'].DEFAULT_PST_HOUR))
-    weekly_time_info = time_converter.convert_time_info(
-        time_converter.TimeInfo(
-            config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_DAY,
-            config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR))
     last_now = None
 
     for now in now_generator(datetime.datetime.now(time_converter.UTC_TZ)):
@@ -634,11 +605,9 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
         suite_trigger.cron()
 
       should_scheduled_nightly_tasks = [
-          t.name for t in all_tasks['nightly']
-          if (t.hour is not None and t.hour == now.hour) or
-          (t.hour is None and now.hour == nightly_time_info.hour)]
+          t.name for t in all_tasks['nightly'] if t.hour == now.hour]
 
-      if (_should_schedule_nightly_task(last_now, now) and
+      if (_should_schedule_timed_task(last_now, now) and
           should_scheduled_nightly_tasks):
         self.assertEqual(suite_trigger.event_results['nightly'],
                          should_scheduled_nightly_tasks)
@@ -648,9 +617,8 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
       # Verify weekly tasks
       should_scheduled_weekly_tasks = [
           t.name for t in all_tasks['weekly']
-          if (t.day is not None and now.weekday() == t.day) or
-          (t.day is None and now.weekday() == weekly_time_info.weekday)]
-      if (_should_schedule_weekly_task(last_now, now, weekly_time_info) and
+          if now.weekday() == t.day and now.hour == t.hour]
+      if (_should_schedule_timed_task(last_now, now) and
           should_scheduled_weekly_tasks):
         self.assertEqual(suite_trigger.event_results['weekly'],
                          should_scheduled_weekly_tasks)

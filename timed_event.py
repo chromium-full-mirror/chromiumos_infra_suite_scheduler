@@ -170,27 +170,9 @@ class Weekly(TimedEvent):
     if self.event_hour_pst is None:
       self.event_hour_pst = self.DEFAULT_PST_HOUR
 
-    utc_event_time_info = time_converter.convert_time_info(
-        time_converter.TimeInfo(None, self.event_hour_pst))
-    event_hour_utc = utc_event_time_info.hour
-
-    scheduled_exec_utc = datetime.datetime.combine(
-        datetime.datetime(now.year, now.month, now.day, now.hour),
-        datetime.time(event_hour_utc))
-    scheduled_exec_utc = scheduled_exec_utc.replace(
-        tzinfo=time_converter.UTC_TZ)
-
-    cur_exec_utc = datetime.datetime(
+    target_exec_utc = datetime.datetime(
         now.year, now.month, now.day, now.hour,
         tzinfo=time_converter.UTC_TZ)
-    if cur_exec_utc < scheduled_exec_utc:
-      # Don't kick off weekly event when everyday's timepoint hasn't
-      # arrived, so set target_exec_utc as the day before.
-      # Usually it's last_exec_utc saved in datastore.
-      target_exec_utc = scheduled_exec_utc - datetime.timedelta(
-          hours=self.LAST_EXEC_INTERVAL)
-    else:
-      target_exec_utc = scheduled_exec_utc
 
     super(Weekly, self).__init__(
         event_settings, last_exec_utc, target_exec_utc)
@@ -220,8 +202,9 @@ class Weekly(TimedEvent):
       super(Weekly, self).filter_tasks()
     else:
       cur_day = self.target_exec_utc.weekday()
+      cur_hour = self.target_exec_utc.hour
       logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
-      tasks = [t for t in self.task_list
-               if ((t.day is not None and cur_day == t.day) or
-                   (t.day is None and cur_day == self._default_utc_day))]
+      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+      tasks = [t for t in self.task_list if
+               (t.day == cur_day and t.hour == cur_hour)]
       self.task_list = tasks

@@ -404,10 +404,11 @@ class TaskConfig(object):
           '%s: |hour| must be an integer between 0 and 23.' %
           task_info.name)
 
-    if task_info.hour is not None and task_info.keyword != 'nightly':
+    if (task_info.hour is not None and
+        task_info.keyword not in ['nightly', 'weekly']):
       raise MalformedConfigEntryError(
           '%s: |hour| represents a timepoint of a day, that can '
-          'only apply to nightly event.' % task_info.name)
+          'only apply to nightly/weekly event.' % task_info.name)
 
     if task_info.day is not None and (
         task_info.day < 0 or task_info.day > 6):
