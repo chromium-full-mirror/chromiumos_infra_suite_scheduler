@@ -45,11 +45,13 @@ DBInfo = collections.namedtuple(
 # Common task entries
 CommonTaskEntries = ['boards',
                      'board_families',
+                     'models',
                      'branch_specs',
                      'cros_build_spec',
                      'day',
                      'exclude_boards',
                      'exclude_board_families',
+                     'exclude_models',
                      'firmware_ro_build_spec',
                      'firmware_rw_build_spec',
                      'force',
@@ -284,6 +286,8 @@ class TaskConfig(object):
     board_families = self._config_reader.getstring(section, 'board_families')
     exclude_board_families = self._config_reader.getstring(
         section, 'exclude_board_families')
+    models = self._config_reader.getstring(section, 'models')
+    exclude_models = self._config_reader.getstring(section, 'exclude_models')
     cros_build_spec = self._config_reader.getstring(
         section, 'cros_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
@@ -364,6 +368,8 @@ class TaskConfig(object):
                     exclude_boards=exclude_boards,
                     board_families=board_families,
                     exclude_board_families=exclude_board_families,
+                    models=models,
+                    exclude_models=exclude_models,
                     priority=priority,
                     timeout=timeout,
                     job_retry=job_retry,

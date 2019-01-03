@@ -58,6 +58,12 @@ class Task(object):
             on. Default is None, which allows this task to run on all boards.
             If same board is specified in 'boards' and 'exclude_boards', we
             exclude this board.
+          models, a comma separated list of models to run this task on. Default
+            is None, which allows this task to run on all models. If same model
+            is specified in 'models' and 'exclude_models', we exclude this
+            model.
+          exclude_models, a comma separated list of models not to run this task
+            on. Default is None, which allows this task to run on all models.
           priority, the string name of a priority from constants.Priorities.
           timeout, the max lifetime of the suite in hours.
           cros_build_spec, spec used to determine the ChromeOS build to test
@@ -137,12 +143,24 @@ class Task(object):
     else:
       self.exclude_boards = []
 
+    if task_info.models:
+      self.models = [t.strip() for t in task_info.models.split(',')]
+    else:
+      self.models = []
+
+    if task_info.exclude_models:
+      self.exclude_models = [
+          t.strip() for t in task_info.exclude_models.split(',')]
+    else:
+      self.exclude_models = []
+
     if task_info.board_families:
       # Finetune the allowed boards list with board_families & boards.
       families = [family.strip()
                   for family in task_info.board_families.split(',')]
       for family in families:
         self.boards += board_family_config.get(family, [])
+
     if task_info.exclude_board_families:
       # Finetune the disallowed boards list with exclude_board_families
       # & exclude_boards.
