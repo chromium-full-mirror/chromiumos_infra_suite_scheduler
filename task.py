@@ -454,6 +454,40 @@ class Task(object):
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
+  def _check_model(self, models_by_board, board, passed_model):
+    """Check whether this task should be run on the passed-in model.
+
+    Args:
+      models_by_board: The mapping from board to its models.
+      board: The board to check whether to run the task.
+      passed_model: the model to check whether to run the task.
+
+    Returns:
+      A list of valid model to run the task.
+    """
+    if passed_model is None:
+      logging.debug('Model is not set. Run the task with empty model.')
+      return [None]
+
+    all_models = models_by_board.get(board, [])
+    if passed_model not in all_models:
+      logging.debug('Model %s is not in valid model list %s', passed_model,
+                    all_models)
+      return []
+
+    full_model_name = '%s_%s' % (board, passed_model)
+    if self.exclude_models and full_model_name in self.exclude_models:
+      logging.debug('Model %s is in exclude board list %s', passed_model,
+                    self.exclude_models)
+      return []
+
+    if self.models and full_model_name not in self.models:
+      logging.debug('Model %s is not in support model list %s', passed_model,
+                    self.models)
+      return []
+
+    return [passed_model]
+
   def _schedule_cros_builds(self, build_dict, lab_config, db_client):
     """Schedule tasks with branch builds.
 
@@ -510,20 +544,17 @@ class Task(object):
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
-      models = models_by_board.get(board, [None])
       is_skylab = (board in skylab_boards) and (self.suite in skylab_suites)
 
-      for model in models:
-        if ((passed_model is not None and model == passed_model) or
-            passed_model is None):
-          self._push_suite(
-              board=board,
-              model=model,
-              cros_build=cros_build,
-              firmware_rw_build=firmware_rw_build,
-              firmware_ro_build=firmware_ro_build,
-              test_source_build=test_source_build,
-              is_skylab=is_skylab)
+      for model in self._check_model(models_by_board, board, passed_model):
+        self._push_suite(
+            board=board,
+            model=model,
+            cros_build=cros_build,
+            firmware_rw_build=firmware_rw_build,
+            firmware_ro_build=firmware_ro_build,
+            test_source_build=test_source_build,
+            is_skylab=is_skylab)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
