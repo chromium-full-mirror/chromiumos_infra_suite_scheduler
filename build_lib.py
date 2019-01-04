@@ -425,3 +425,33 @@ def get_board_by_android_target(target):
     a string android board mapped by ANDROID_TARGET_TO_BOARD_MAP.
   """
   return _ANDROID_TARGET_TO_BOARD_MAP.get(target, target)
+
+
+def to_full_model(board, model):
+  """Form a full model name with given board, model.
+
+  Args:
+    board: A string board name.
+    model: A string model name.
+
+  Returns:
+    A string full_model name.
+  """
+  return '%s_%s' % (board, model)
+
+
+def parse_full_model(full_model):
+  """Parse full model name to single board and model.
+
+  Args:
+    full_model: A string, whose format is like 'board_model'.
+
+  Returns:
+    A tuple (board, model).
+  """
+  model_tokens = full_model.strip().split('_')
+  try:
+    return model_tokens[0], model_tokens[1]
+  except IndexError:
+    logging.error('Invalid full_model format: %s', full_model)
+    raise

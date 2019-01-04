@@ -475,9 +475,9 @@ class Task(object):
                     all_models)
       return []
 
-    full_model_name = '%s_%s' % (board, passed_model)
+    full_model_name = build_lib.to_full_model(board, passed_model)
     if self.exclude_models and full_model_name in self.exclude_models:
-      logging.debug('Model %s is in exclude board list %s', passed_model,
+      logging.debug('Model %s is in exclude model list %s', passed_model,
                     self.exclude_models)
       return []
 

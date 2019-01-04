@@ -644,9 +644,7 @@ class LabConfig(object):
 
     # Models are encoded in form boardName_modelName
     for full_model in encoded_map.split(','):
-      model_tokens = full_model.strip().split('_')
-      board_name = model_tokens[0]
-      model_name = model_tokens[1]
+      board_name, model_name = build_lib.parse_full_model(full_model)
       if board_name in result:
         result[board_name].append(model_name)
       else:
