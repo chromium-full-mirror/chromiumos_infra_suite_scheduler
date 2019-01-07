@@ -628,6 +628,27 @@ class LabConfig(object):
 
     return set([suite.strip() for suite in skylab_suite_list.split(',')])
 
+  def get_skylab_model_map(self):
+    """Get the skylab model mapping from lab config file.
+
+    Returns:
+      A map of board names to a list of models, which should be run in skylab.
+    """
+    result = collections.defaultdict(list)
+    if not self._config_reader:
+      return result
+
+    skylab_model_list = self._config_reader.getstring(
+        CROS_SETTINGS, 'skylab_model_list')
+    if skylab_model_list is None:
+      return result
+
+    for full_model in skylab_model_list.split(','):
+      board, model = build_lib.parse_full_model(full_model)
+      result[board].append(model)
+
+    return result
+
   def get_cros_model_map(self):
     """Gets a map of CrOS boards onto a list of their corresponding models.
 

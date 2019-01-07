@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 """Module for task unittests."""
+# pylint: disable=g-missing-super-call
 
 import re
 import unittest
@@ -50,6 +51,9 @@ class FakeLabConfig(object):
 
   def get_skylab_suite_list(self):
     return []
+
+  def get_skylab_model_map(self):
+    return {}
 
   def get_cros_model_map(self):
     return {'coral': ['robo', 'nasher', 'lava']}

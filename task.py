@@ -488,6 +488,28 @@ class Task(object):
 
     return [passed_model]
 
+  def _check_is_in_skylab(self, skylab_boards, skylab_models, skylab_suites,
+                          board, model):
+    """Check whether this task should be run in skylab.
+
+    Args:
+      skylab_boards: A list of boards that should be run in skylab.
+      skylab_models: A map of models that should be run in skylab.
+      skylab_suites: A list of suites that should be run in skylab.
+      board: A string board name.
+      model: A string model name.
+
+    Returns:
+      A boolean variable to indicate whether this task should be run in skylab.
+    """
+    if self.suite not in skylab_suites:
+      return False
+
+    if model is None:
+      return board in skylab_boards
+    else:
+      return model in skylab_models.get(board, [])
+
   def _schedule_cros_builds(self, build_dict, lab_config, db_client):
     """Schedule tasks with branch builds.
 
@@ -500,8 +522,10 @@ class Task(object):
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
     skylab_boards = lab_config.get_skylab_board_list() if lab_config else []
     skylab_suites = lab_config.get_skylab_suite_list() if lab_config else []
+    skylab_models = lab_config.get_skylab_model_map() if lab_config else {}
     logging.info('Skylab_boards: %r', skylab_boards)
     logging.info('Skylab suites: %r', skylab_suites)
+    logging.info('Skylab models: %r', skylab_models)
     for (board, passed_model, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -544,7 +568,11 @@ class Task(object):
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
-      is_skylab = (board in skylab_boards) and (self.suite in skylab_suites)
+      is_skylab = self._check_is_in_skylab(skylab_boards,
+                                           skylab_models,
+                                           skylab_suites,
+                                           board,
+                                           passed_model)
 
       for model in self._check_model(models_by_board, board, passed_model):
         self._push_suite(

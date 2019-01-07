@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 """Module for config reader unittests."""
+# pylint: disable=g-missing-super-call
 
 import unittest
 
@@ -358,6 +359,15 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertEqual(len(result), 2)
     self.assertIn('ent-nightly', result)
     self.assertIn('ent-perbuild', result)
+
+  def testGetSkylabModelMap(self):
+    """Ensure skylab_board_list can be correctly fetched."""
+    self.config.set(config_reader.CROS_SETTINGS, 'skylab_model_list',
+                    '\ncoral_lava,\ncoral_santa')
+    lab_config = config_reader.LabConfig(self.config)
+    result = lab_config.get_skylab_model_map()
+    self.assertEqual(len(result), 1)
+    self.assertEqual(result['coral'], ['lava', 'santa'])
 
   def testGetEmptyCrOSModelMap(self):
     """Ensure cros_model_map can be correctly fetched."""
