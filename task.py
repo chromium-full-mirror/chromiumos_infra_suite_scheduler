@@ -502,6 +502,10 @@ class Task(object):
     Returns:
       A boolean variable to indicate whether this task should be run in skylab.
     """
+    # We're using link to drive skylab suites green. See crbug/922350
+    if board == 'link':
+      return True
+
     if self.suite not in skylab_suites:
       return False
 
