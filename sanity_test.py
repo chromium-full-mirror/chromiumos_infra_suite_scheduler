@@ -27,6 +27,33 @@ class ConfigSanityTest(unittest.TestCase):
       self.fail('Fail sanity check for %s:\n%s' % (
           suite_config_file, '\n'.join(exceptions)))
 
+  def testLabConfigParse(self):
+    reader = config_reader.LabConfig(
+        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
+    self.assertGreater(len(reader.get_skylab_board_list()), 0)
+    self.assertGreater(len(reader.get_skylab_suite_list()), 0)
+    self.assertGreater(len(reader.get_skylab_model_map()), 0)
+    self.assertGreater(len(reader.get_cros_model_map()), 0)
+
+  def testLabConfigModels(self):
+    reader = config_reader.LabConfig(
+        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
+    boards = set(reader.get_cros_board_list())
+    model_map = reader.get_cros_model_map()
+    skylab_boards = set(reader.get_skylab_board_list())
+    skylab_model_map = reader.get_skylab_model_map()
+
+    self.assertLessEqual(set(model_map.keys()), boards)
+    self.assertLessEqual(set(skylab_model_map.keys()), skylab_boards)
+
+    self.assertLessEqual(skylab_boards, boards)
+    self.assertLessEqual(
+        set(skylab_model_map.keys()),
+        set(model_map.keys()),
+    )
+    for sk_board, sk_models in skylab_model_map.iteritems():
+      self.assertLessEqual(set(sk_models), set(model_map[sk_board]))
+
 
 if __name__ == '__main__':
   unittest.main()
