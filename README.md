@@ -1,5 +1,7 @@
 # Setup
 
+Due to https://crbug.com/792690, this must be run outside the chroot.
+
 1. Install Google Cloud SDK:
 
     1. Follow the [instructions](https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu).
@@ -7,7 +9,12 @@
 
             sudo apt-get install google-cloud-sdk-app-engine-python
 
-2. Run `python setup_environment.py` to download third-party libraries and credentials.
+2. Log in to gcloud: `gcloud auth login LDAP@google.com`
+3. Install `pip`:
+
+        sudo apt-get install python-pip
+
+4. Run `python setup_environment.py` to download third-party libraries and credentials.
 
 # Known Issues
 
