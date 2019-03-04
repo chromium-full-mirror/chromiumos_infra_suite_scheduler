@@ -528,32 +528,6 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertNotIn('asuka-release', tasks[0].payload)
     self.assertIn('zako-release', tasks[0].payload)
 
-  def testNewBuildWithModelsInSkylab(self):
-    """Test the new_build suite in skylab."""
-    normal_suite = 'FakeModelsInSkylab'
-    self.fake_config.add_section(normal_suite)
-    self.fake_config.set(normal_suite, 'run_on', 'new_build')
-    self.fake_config.set(normal_suite, 'suite', 'ent-nightly')
-    self.fake_config.set(normal_suite, 'exclude_boards', 'link, zako')
-    self._mock_config_reader.return_value = self.fake_config
-
-    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
-    suite_trigger.cron()
-
-    self.assertEqual(len(suite_trigger.event_results), 1)
-    self.assertEqual(suite_trigger.event_results['new_build'],
-                     [normal_suite])
-    self.assertIn('new_build', suite_trigger.event_results)
-    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 2)
-    for t in tasks:
-      if 'model=santa' in t.payload:
-        self.assertIn('is_skylab=True', t.payload)
-
-      if 'model=astronaut' in t.payload:
-        self.assertIn('is_skylab=False', t.payload)
-
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
 
