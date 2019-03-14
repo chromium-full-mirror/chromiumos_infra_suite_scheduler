@@ -4,20 +4,26 @@
 
 """Module containing the constants to be reused throughout suite_scheduler."""
 
-from collections import namedtuple
+import collections
 import logging
 import os
 
 from google.appengine.api import app_identity
 
 # Namedtuple for storing rest client info.
-RestClientInfo = namedtuple(
+RestClientInfo = collections.namedtuple(
     'RestClientInfo', 'scopes, service_name, service_version')
 
 # Constants for detecting the running environment.
 _RUNNING_ENV = 'SERVER_SOFTWARE'
 _ENV_DEVELOPMENT_STR = 'Development'
 _ENV_APP_ENGINE_STR = 'Google App Engine/'
+
+
+class StorageBucket(object):
+  """Constants refer to Google storage bucket."""
+
+  PROD_SUITE_SCHEDULER = 'suite-scheduler.google.com.a.appspot.com'
 
 
 class AppID(object):

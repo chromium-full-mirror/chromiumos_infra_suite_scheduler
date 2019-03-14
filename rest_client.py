@@ -4,6 +4,7 @@
 
 """Module for interacting with google APIs."""
 # pylint: disable=g-bad-import-order
+# pylint: disable=g-bad-exception-name
 
 import httplib2
 
@@ -115,12 +116,14 @@ class StorageRestClient(object):
     self._rest_client = rest_client
     self._rest_client.create_service()
 
-  def read_object(self, input_bucket, input_object):
+  def read_object(self, bucket, object_path):
     """Read the contents of input_object in input_bucket.
 
     Args:
-      input_bucket: the bucket for fetching.
-      input_object: the object for checking the contents.
+      bucket: A string to indicate the bucket for fetching the object.
+        e.g. constants.StorageBucket.PROD_SUITE_SCHEDULER
+      object_path: A string to indicate the path of the object to read the
+        contents.
 
     Returns:
       the stripped string contents of the input object.
@@ -129,8 +132,30 @@ class StorageRestClient(object):
       apiclient.errors.HttpError
     """
     req = self._rest_client.service.objects().get_media(
-        bucket=input_bucket,
-        object=input_object)
+        bucket=bucket,
+        object=object_path)
+    return req.execute()
+
+  def upload_object(self, bucket, src_object_path, dest_object_path):
+    """Upload object_path to input_bucket.
+
+    Args:
+      bucket: A string to indicate the bucket for the object to be uploaded to.
+      src_object_path: A string the full path of the object to upload.
+      dest_object_path: A string path inside bucket to upload to.
+
+    Returns:
+      A dict of uploaded object info.
+
+    Raises:
+      apiclient.errors.HttpError
+    """
+    req = self._rest_client.service.objects().insert(
+        bucket=bucket,
+        name=dest_object_path,
+        media_body=src_object_path,
+        media_mime_type='text/plain',
+    )
     return req.execute()
 
 
