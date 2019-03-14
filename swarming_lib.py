@@ -173,6 +173,7 @@ class SwarmingRunner(object):
     tags = ['suite:%s' % task_params['suite']]
     tags.append('priority:%s' % task_params['priority'])
     tags.append('board:%s' % task_params['board'])
+    tags.append('model:%s' % task_params['model'])
     tags.append('build:%s' % final_build)
     tags.append('task_name:%s' % task_name)
     tags.append('luci_project:chromeos')
