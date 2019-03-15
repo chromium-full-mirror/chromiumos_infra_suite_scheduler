@@ -176,7 +176,7 @@ class Task(object):
 
     self._set_spec_compare_info()
 
-  def schedule(self, launch_control_builds, cros_builds_tuple, lab_config,
+  def schedule(self, launch_control_builds, cros_builds_tuple, configs,
                db_client):
     """Schedule the task by its settings.
 
@@ -185,7 +185,7 @@ class Task(object):
         return value of |get_launch_control_builds|.
       cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
-      lab_config: a config.LabConfig object, to read lab config file.
+      configs: a config_reader.Configs object.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
 
     Raises:
@@ -195,7 +195,7 @@ class Task(object):
       A boolean indicator; true if there were any suites related to this
         task which got pushed into the suites queue.
     """
-    assert lab_config is not None
+    assert configs.lab_config is not None
     self.is_pushed = False
 
     branch_builds, relaxed_builds = cros_builds_tuple
@@ -208,7 +208,7 @@ class Task(object):
       if not builds_dict:
         logging.info('No CrOS build to run, skip running.')
       else:
-        self._schedule_cros_builds(builds_dict, lab_config, db_client)
+        self._schedule_cros_builds(builds_dict, configs, db_client)
     else:
       if not launch_control_builds:
         logging.info('No Android build to run, skip running.')
@@ -480,19 +480,24 @@ class Task(object):
     else:
       return model in skylab_models.get(board, [])
 
-  def _schedule_cros_builds(self, build_dict, lab_config, db_client):
+  def _schedule_cros_builds(self, build_dict, configs, db_client):
     """Schedule tasks with branch builds.
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
         value of |build_lib.get_cros_builds_since_date_from_db|.
-      lab_config: a config.LabConfig object, to read lab config file.
+      configs: A config_reader.Configs object.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
     """
+    lab_config = configs.lab_config
+    migration_config = configs.migration_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
-    skylab_boards = lab_config.get_skylab_board_list() if lab_config else []
-    skylab_suites = lab_config.get_skylab_suite_list() if lab_config else []
-    skylab_models = lab_config.get_skylab_model_map() if lab_config else {}
+    skylab_boards = (migration_config.get_skylab_board_list()
+                     if migration_config else [])
+    skylab_suites = (migration_config.get_skylab_suite_list()
+                     if migration_config else [])
+    skylab_models = (migration_config.get_skylab_model_map()
+                     if migration_config else {})
     logging.info('Skylab_boards: %r', skylab_boards)
     logging.info('Skylab suites: %r', skylab_suites)
     logging.info('Skylab models: %r', skylab_models)

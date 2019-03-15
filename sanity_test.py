@@ -30,9 +30,6 @@ class ConfigSanityTest(unittest.TestCase):
   def testLabConfigParse(self):
     reader = config_reader.LabConfig(
         config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
-    self.assertGreater(len(reader.get_skylab_board_list()), 0)
-    self.assertGreater(len(reader.get_skylab_suite_list()), 0)
-    self.assertGreater(len(reader.get_skylab_model_map()), 0)
     self.assertGreater(len(reader.get_cros_model_map()), 0)
 
   def testLabConfigModels(self):
@@ -40,8 +37,24 @@ class ConfigSanityTest(unittest.TestCase):
         config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
     boards = set(reader.get_cros_board_list())
     model_map = reader.get_cros_model_map()
-    skylab_boards = set(reader.get_skylab_board_list())
-    skylab_model_map = reader.get_skylab_model_map()
+    self.assertLessEqual(set(model_map.keys()), boards)
+
+  def testMigrationConfigParse(self):
+    reader = config_reader.MigrationConfig(
+        config_reader.ConfigReader(file_getter.MIGRATION_CONFIG_FILE))
+    self.assertGreater(len(reader.get_skylab_board_list()), 0)
+    self.assertGreater(len(reader.get_skylab_suite_list()), 0)
+    self.assertGreater(len(reader.get_skylab_model_map()), 0)
+
+  def testMigrationConfigModels(self):
+    migration_config = config_reader.MigrationConfig(
+        config_reader.ConfigReader(file_getter.MIGRATION_CONFIG_FILE))
+    lab_config = config_reader.LabConfig(
+        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
+    boards = set(lab_config.get_cros_board_list())
+    model_map = lab_config.get_cros_model_map()
+    skylab_boards = set(migration_config.get_skylab_board_list())
+    skylab_model_map = migration_config.get_skylab_model_map()
 
     self.assertLessEqual(set(model_map.keys()), boards)
     self.assertLessEqual(set(skylab_model_map.keys()), skylab_boards)

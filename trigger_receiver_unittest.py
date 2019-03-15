@@ -120,27 +120,15 @@ class FakeAndroidBuildRestClient(object):
 
 
 class FakeLabConfig(object):
-  """Mock rest_client.AndroidBuildRestClient."""
+  """Mock config_reader.LabConfig."""
 
   def get_android_board_list(self):
     """Mock config_reader.LabConfig.get_android_board_list."""
     return ('android-angler', 'android-bullhead')
 
   def get_cros_board_list(self):
-    """Mock config_reader.LabConfig.get_android_board_list."""
+    """Mock config_reader.LabConfig.get_cros_board_list."""
     return ('grunt', 'link', 'peppy', 'daisy', 'zako')
-
-  def get_skylab_board_list(self):
-    """Mock config_reader.LabConfig.get_skylab_board_list."""
-    return set(['nyan_blaze'])
-
-  def get_skylab_suite_list(self):
-    """Mock config_reader.LabConfig.get_skylab_suite_list."""
-    return set(['ent-nightly'])
-
-  def get_skylab_model_map(self):
-    """Mock config_reader.LabConfig.get_skylab_model_map."""
-    return {'coral': ['santa']}
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -150,6 +138,22 @@ class FakeLabConfig(object):
   def get_cros_model_map(self):
     """Mock config_reader.LabConfig.get_cros_model_map."""
     return {}
+
+
+class FakeMigrationConfig(object):
+  """Mock config_reader.MigrationConfig."""
+
+  def get_skylab_board_list(self):
+    """Mock config_reader.LabConfig.get_skylab_board_list."""
+    return set(['zako'])
+
+  def get_skylab_suite_list(self):
+    """Mock config_reader.LabConfig.get_skylab_suite_list."""
+    return set(['ent-nightly'])
+
+  def get_skylab_model_map(self):
+    """Mock config_reader.LabConfig.get_skylab_model_map."""
+    return {'coral': ['santa']}
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
@@ -179,6 +183,10 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_lab_config = mock_lab_config.start()
     self.addCleanup(mock_lab_config.stop)
 
+    mock_migration_config = mock.patch('config_reader.MigrationConfig')
+    self._mock_migration_config = mock_migration_config.start()
+    self.addCleanup(mock_migration_config.stop)
+
     mock_utc_now = mock.patch('time_converter.utc_now')
     self._mock_utc_now = mock_utc_now.start()
     self.addCleanup(mock_utc_now.stop)
@@ -186,6 +194,7 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_cidb_client.return_value = FakeCIDBClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
     self._mock_lab_config.return_value = FakeLabConfig()
+    self._mock_migration_config.return_value = FakeMigrationConfig()
 
     board_family_patcher = mock.patch(
         'build_lib.get_board_family_mapping_from_gs')
@@ -522,11 +531,30 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(suite_trigger.event_results), 1)
     self.assertEqual(suite_trigger.event_results['new_build'],
                      [normal_suite])
-    # self.assertIn('new_build', suite_trigger.event_results)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 1)
     self.assertNotIn('asuka-release', tasks[0].payload)
     self.assertIn('zako-release', tasks[0].payload)
+
+  def testNewBuildWithSkylab(self):
+    """Test the case that suites run in skylab."""
+    normal_suite = 'FakeSkylabSuite'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'ent-nightly')
+    self.fake_config.set(normal_suite, 'boards', 'zako, asuka')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('is_skylab=True', tasks[0].payload)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

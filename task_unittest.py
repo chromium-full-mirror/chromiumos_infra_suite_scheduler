@@ -44,7 +44,14 @@ class FakeCIDBClient(object):
 
 
 class FakeLabConfig(object):
-  """Mock class for cloud_sql_client.CIDBClient."""
+  """Mock class for config_reader.LabConfig."""
+
+  def get_cros_model_map(self):
+    return {'coral': ['robo', 'nasher', 'lava']}
+
+
+class FakeMigrationConfig(object):
+  """Mock class for config_reader.MigrationConfig."""
 
   def get_skylab_board_list(self):
     return []
@@ -89,6 +96,13 @@ class TaskBaseTestCase(unittest.TestCase):
         exclude_boards=self.EXCLUDE_BOARD,
         priority=self.PRIORITY,
         timeout=self.TIMEOUT))
+
+    self._empty_configs = config_reader.Configs(
+        lab_config=config_reader.LabConfig(None),
+        migration_config=config_reader.MigrationConfig(None))
+    self._fake_configs = config_reader.Configs(
+        lab_config=FakeLabConfig(),
+        migration_config=FakeMigrationConfig())
 
 
 class TaskTestCase(TaskBaseTestCase):
@@ -188,7 +202,7 @@ class TaskTestCase(TaskBaseTestCase):
     """test schedule cros builds successfully."""
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
@@ -196,7 +210,7 @@ class TaskTestCase(TaskBaseTestCase):
     """Test schedule no cros builds due to non-allowed board."""
     branch_builds = {('%s_2' % self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
@@ -204,7 +218,7 @@ class TaskTestCase(TaskBaseTestCase):
     """Test schedule no cros builds due to board is excluded."""
     branch_builds = {(self.EXCLUDE_BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
@@ -216,7 +230,7 @@ class TaskTestCase(TaskBaseTestCase):
                      (self.UNIBUILD_BOARD, 'lava', 'release', '56'):
                      '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    FakeLabConfig(),
+                                    self._fake_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 2)
 
@@ -227,7 +241,7 @@ class TaskTestCase(TaskBaseTestCase):
     self.task.branch_specs = re.split(r'\s*,\s*', '==tot')
     self.task._set_spec_compare_info()
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
@@ -236,7 +250,7 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
@@ -245,7 +259,7 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
-                                    config_reader.LabConfig(None),
+                                    self._empty_configs,
                                     FakeCIDBClient(success=False))
     self.assertEqual(self._mock_push.call_count, 0)
 
@@ -313,7 +327,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
-        [], (branch_builds, []), config_reader.LabConfig(None),
+        [], (branch_builds, []), self._empty_configs,
         FakeCIDBClient()))
 
   def testScheduleLaunchControlIsPushSuccessfully(self):
@@ -325,7 +339,7 @@ class TaskPushTestCase(TaskBaseTestCase):
         t.lstrip() for t in lc_branches.split(',')]
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.assertTrue(self.task.schedule(
-        lc_builds, ([], []), config_reader.LabConfig(None), FakeCIDBClient()))
+        lc_builds, ([], []), self._empty_configs, FakeCIDBClient()))
 
   def testScheduleCrosIsPushInvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
@@ -334,7 +348,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     )
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertFalse(self.task.schedule(
-        [], branch_builds, config_reader.LabConfig(None), FakeCIDBClient()))
+        [], branch_builds, self._empty_configs, FakeCIDBClient()))
 
   def testScheduleLaunchControlIsPushInvalidBoard(self):
     """Test schedule none of launch control builds due to board check."""
@@ -347,4 +361,4 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.task._schedule_launch_control_builds(lc_builds)
     self.assertFalse(self.task.schedule(
-        lc_builds, ([], []), config_reader.LabConfig(None), FakeCIDBClient()))
+        lc_builds, ([], []), self._empty_configs, FakeCIDBClient()))

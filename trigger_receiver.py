@@ -36,6 +36,10 @@ class TriggerReceiver(object):
     lab_config_reader = config_reader.ConfigReader(
         file_getter.LAB_CONFIG_FILE)
     self._lab_config = config_reader.LabConfig(lab_config_reader)
+    migration_config_reader = config_reader.ConfigReader(
+        file_getter.MIGRATION_CONFIG_FILE)
+    self._migration_config = config_reader.MigrationConfig(
+        migration_config_reader)
 
     # Initialize events
     self.events = {}
@@ -93,6 +97,8 @@ class TriggerReceiver(object):
     self.event_results[event.KEYWORD] = event.process_tasks(
         launch_control_builds=launch_control_builds,
         cros_builds_tuple=cros_builds_tuple,
-        lab_config=self._lab_config,
+        configs=config_reader.Configs(
+            lab_config=self._lab_config,
+            migration_config=self._migration_config),
         db_client=self._cidb_client)
     logging.info('Finished processing all tasks')

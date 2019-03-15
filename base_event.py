@@ -106,7 +106,7 @@ class BaseEvent(object):
         self.launch_control_branch_targets)
 
   def process_tasks(self, launch_control_builds, cros_builds_tuple,
-                    lab_config, db_client):
+                    configs, db_client):
     """Schedule tasks in task_list.
 
     Args:
@@ -114,7 +114,8 @@ class BaseEvent(object):
         return value of |get_launch_control_builds|.
       cros_builds_tuple: a two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
-      lab_config: a config.LabConfig object, to read lab config file.
+      configs: a config_reader.Configs object, to contain several config
+        readers.
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
 
     Returns:
@@ -124,7 +125,7 @@ class BaseEvent(object):
     for per_task in self.task_list:
       try:
         if per_task.schedule(launch_control_builds, cros_builds_tuple,
-                             lab_config, db_client):
+                             configs, db_client):
           scheduled_tasks.append(per_task.name)
         else:
           logging.debug('No suites are scheduled in suites queue for '

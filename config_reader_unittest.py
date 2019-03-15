@@ -340,11 +340,23 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertEqual(len(result), 1)
     self.assertEqual(result['coral'], ['astronaut', 'robo360'])
 
+  def testGetEmptyCrOSModelMap(self):
+    """Ensure cros_model_map can be correctly fetched."""
+    lab_config = config_reader.LabConfig(self.config)
+    self.assertEqual(lab_config.get_cros_model_map(), {})
+
+
+class MigrationReaderTestCase(unittest.TestCase):
+
+  def setUp(self):
+    self.config = config_reader.ConfigReader(None)
+    self.config.add_section(config_reader.SKYLAB_SETTINGS)
+
   def testGetSkylabBoardList(self):
     """Ensure skylab_board_list can be correctly fetched."""
-    self.config.set(config_reader.CROS_SETTINGS, 'skylab_board_list',
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'board_list',
                     '\nnyan_blaze,\nreef')
-    lab_config = config_reader.LabConfig(self.config)
+    lab_config = config_reader.MigrationConfig(self.config)
     result = lab_config.get_skylab_board_list()
     self.assertEqual(len(result), 2)
     self.assertIn('nyan_blaze', result)
@@ -352,9 +364,9 @@ class LabReaderTestCase(unittest.TestCase):
 
   def testGetSkylabSuiteList(self):
     """Ensure skylab_suite_list can be correctly fetched."""
-    self.config.set(config_reader.CROS_SETTINGS, 'skylab_suite_list',
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'suite_list',
                     '\nent-nightly,\nent-perbuild')
-    lab_config = config_reader.LabConfig(self.config)
+    lab_config = config_reader.MigrationConfig(self.config)
     result = lab_config.get_skylab_suite_list()
     self.assertEqual(len(result), 2)
     self.assertIn('ent-nightly', result)
@@ -362,17 +374,12 @@ class LabReaderTestCase(unittest.TestCase):
 
   def testGetSkylabModelMap(self):
     """Ensure skylab_board_list can be correctly fetched."""
-    self.config.set(config_reader.CROS_SETTINGS, 'skylab_model_list',
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'model_list',
                     '\ncoral_lava,\ncoral_santa')
-    lab_config = config_reader.LabConfig(self.config)
+    lab_config = config_reader.MigrationConfig(self.config)
     result = lab_config.get_skylab_model_map()
     self.assertEqual(len(result), 1)
     self.assertEqual(result['coral'], ['lava', 'santa'])
-
-  def testGetEmptyCrOSModelMap(self):
-    """Ensure cros_model_map can be correctly fetched."""
-    lab_config = config_reader.LabConfig(self.config)
-    self.assertEqual(lab_config.get_cros_model_map(), {})
 
 
 if __name__ == '__main__':

@@ -42,6 +42,14 @@ DBInfo = collections.namedtuple(
         'password',
     ])
 
+# Config readers.
+Configs = collections.namedtuple(
+    'Configs',
+    [
+        'lab_config',
+        'migration_config',
+    ])
+
 # Common task entries
 CommonTaskEntries = ['boards',
                      'board_families',
@@ -81,6 +89,9 @@ ANDROID_SETTINGS = 'ANDROID'
 
 # The entries of CrOS settings in lab config file.
 CROS_SETTINGS = 'CROS'
+
+# The entries of Skylab settings in migration config file.
+SKYLAB_SETTINGS = 'SKYLAB'
 
 # The entry of release ro builds in lab config file.
 RELEASED_RO_BUILDS = 'RELEASED_RO_BUILDS'
@@ -550,7 +561,7 @@ class LabConfig(object):
     """Initialize a LabConfig to read lab info.
 
     Args:
-      config_reader: a config reader to read task config.
+      config_reader: a ConfigReader to read lab configs.
     """
     self._config_reader = config_reader
 
@@ -592,62 +603,6 @@ class LabConfig(object):
     cros_board_list = set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
                            for board in board_list.split(',')])
     return cros_board_list - android_board_list
-
-  def get_skylab_board_list(self):
-    """Get the skylab board list from lab config file.
-
-    Returns:
-      A set of CrOS boards which should be scheduled on skylab:
-        (nyan_blaze, reef, ...)
-    """
-    if not self._config_reader:
-      return set([])
-
-    skylab_board_list = self._config_reader.getstring(
-        CROS_SETTINGS, 'skylab_board_list')
-    if skylab_board_list is None:
-      return set([])
-
-    return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
-                for board in skylab_board_list.split(',')])
-
-  def get_skylab_suite_list(self):
-    """Get the skylab suite list from lab config file.
-
-    Returns:
-      A set of CrOS suites which should be scheduled on skylab:
-        (ent-nightly, ent-perbuild, ...)
-    """
-    if not self._config_reader:
-      return set([])
-
-    skylab_suite_list = self._config_reader.getstring(
-        CROS_SETTINGS, 'skylab_suite_list')
-    if skylab_suite_list is None:
-      return set([])
-
-    return set([suite.strip() for suite in skylab_suite_list.split(',')])
-
-  def get_skylab_model_map(self):
-    """Get the skylab model mapping from lab config file.
-
-    Returns:
-      A map of board names to a list of models, which should be run in skylab.
-    """
-    result = collections.defaultdict(list)
-    if not self._config_reader:
-      return result
-
-    skylab_model_list = self._config_reader.getstring(
-        CROS_SETTINGS, 'skylab_model_list')
-    if skylab_model_list is None:
-      return result
-
-    for full_model in skylab_model_list.split(','):
-      board, model = build_lib.parse_full_model(full_model)
-      result[board].append(model)
-
-    return result
 
   def get_cros_model_map(self):
     """Gets a map of CrOS boards onto a list of their corresponding models.
@@ -692,6 +647,74 @@ class LabConfig(object):
                        release_board)
 
     return board_list
+
+
+class MigrationConfig(object):
+  """Class for reading migration config file for suite scheduler."""
+
+  def __init__(self, config_reader):
+    """Initialize a MigrationConfig to read migration info.
+
+    Args:
+      config_reader: a ConfigReader object to read migration configs.
+    """
+    self._config_reader = config_reader
+
+  def get_skylab_board_list(self):
+    """Get the skylab board list from lab config file.
+
+    Returns:
+      A set of CrOS boards which should be scheduled on skylab:
+        (nyan_blaze, reef, ...)
+    """
+    if not self._config_reader:
+      return set([])
+
+    skylab_board_list = self._config_reader.getstring(
+        SKYLAB_SETTINGS, 'board_list')
+    if skylab_board_list is None:
+      return set([])
+
+    return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
+                for board in skylab_board_list.split(',')])
+
+  def get_skylab_suite_list(self):
+    """Get the skylab suite list from lab config file.
+
+    Returns:
+      A set of CrOS suites which should be scheduled on skylab:
+        (ent-nightly, ent-perbuild, ...)
+    """
+    if not self._config_reader:
+      return set([])
+
+    skylab_suite_list = self._config_reader.getstring(
+        SKYLAB_SETTINGS, 'suite_list')
+    if skylab_suite_list is None:
+      return set([])
+
+    return set([suite.strip() for suite in skylab_suite_list.split(',')])
+
+  def get_skylab_model_map(self):
+    """Get the skylab model mapping from lab config file.
+
+    Returns:
+      A map of board names to a list of models, which should be run in skylab.
+    """
+    result = collections.defaultdict(list)
+    if not self._config_reader:
+      return result
+
+    skylab_model_list = self._config_reader.getstring(
+        SKYLAB_SETTINGS, 'model_list')
+    if skylab_model_list is None:
+      return result
+
+    for full_model in skylab_model_list.split(','):
+      board, model = build_lib.parse_full_model(full_model)
+      result[board].append(model)
+
+    return result
 
 
 class DBConfig(object):
