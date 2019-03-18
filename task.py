@@ -11,6 +11,7 @@ import MySQLdb
 import logging
 
 import build_lib
+import skylab
 import task_executor
 import tot_manager
 
@@ -454,32 +455,6 @@ class Task(object):
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
-  def _check_is_in_skylab(self, skylab_boards, skylab_models, skylab_suites,
-                          board, model):
-    """Check whether this task should be run in skylab.
-
-    Args:
-      skylab_boards: A list of boards that should be run in skylab.
-      skylab_models: A map of models that should be run in skylab.
-      skylab_suites: A list of suites that should be run in skylab.
-      board: A string board name.
-      model: A string model name.
-
-    Returns:
-      A boolean variable to indicate whether this task should be run in skylab.
-    """
-    # We're using link to drive skylab suites green. See crbug/922350
-    if board == 'link':
-      return True
-
-    if self.suite not in skylab_suites:
-      return False
-
-    if model is None:
-      return board in skylab_boards
-    else:
-      return model in skylab_models.get(board, [])
-
   def _schedule_cros_builds(self, build_dict, configs, db_client):
     """Schedule tasks with branch builds.
 
@@ -543,11 +518,12 @@ class Task(object):
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
-      is_skylab = self._check_is_in_skylab(skylab_boards,
-                                           skylab_models,
-                                           skylab_suites,
-                                           board,
-                                           passed_model)
+      is_skylab = skylab.should_run_in_skylab(board,
+                                              passed_model,
+                                              self.suite,
+                                              skylab_boards,
+                                              skylab_models,
+                                              skylab_suites)
       models = models_by_board.get(board, [None])
 
       for model in models:
