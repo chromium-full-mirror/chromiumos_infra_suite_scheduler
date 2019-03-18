@@ -9,7 +9,7 @@ import collections
 import ConfigParser
 import re
 
-import build_lib
+import build_utils
 
 
 # Namedtuple for storing db info.
@@ -162,7 +162,7 @@ class LabConfig(object):
 
     # Models are encoded in form boardName_modelName
     for full_model in encoded_map.split(','):
-      board_name, model_name = build_lib.parse_full_model(full_model)
+      board_name, model_name = build_utils.parse_full_model(full_model)
       if board_name in result:
         result[board_name].append(model_name)
       else:
@@ -253,7 +253,7 @@ class MigrationConfig(object):
       return result
 
     for full_model in skylab_model_list.split(','):
-      board, model = build_lib.parse_full_model(full_model)
+      board, model = build_utils.parse_full_model(full_model)
       result[board].append(model)
 
     return result
