@@ -14,6 +14,7 @@ import config_reader
 import mock
 import MySQLdb
 import task
+import task_config_reader
 import tot_manager
 
 
@@ -86,7 +87,7 @@ class TaskBaseTestCase(unittest.TestCase):
     self.addCleanup(tot_patcher.stop)
     # Can't pass in False since storage_client is not mocked.
     self._mock_tot.return_value = FakeTotMilestoneManager(True)
-    self.task = task.Task(config_reader.TaskInfo(
+    self.task = task.Task(task_config_reader.TaskInfo(
         name=self.NAME,
         suite=self.SUITE,
         branch_specs=[],

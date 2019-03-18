@@ -12,6 +12,7 @@ import config_reader
 import datastore_client
 import mock
 import task
+import task_config_reader
 import time_converter
 
 from google.appengine.ext import ndb
@@ -40,6 +41,7 @@ class BaseEventTestCase(unittest.TestCase):
   _KLASS = base_event.BaseEvent
 
   def setUp(self):
+    super(BaseEventTestCase, self).setUp()
     mock_utc_now = mock.patch('time_converter.utc_now')
     self._mock_utc_now = mock_utc_now.start()
     self.addCleanup(mock_utc_now.stop)
@@ -57,7 +59,7 @@ class BaseEventTestCase(unittest.TestCase):
     """Create a base event with always_handle=True."""
     utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     event = self._KLASS(
-        config_reader.EventSettings(True, None), utc_now, utc_now)
+        task_config_reader.EventSettings(True, None), utc_now, utc_now)
 
     self.assertEqual(event.target_exec_utc, utc_now)
     self.assertEqual(event.last_exec_utc, utc_now)
@@ -68,7 +70,7 @@ class BaseEventTestCase(unittest.TestCase):
     """Create a base event with always_handle=False."""
     utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     event = self._KLASS(
-        config_reader.EventSettings(False, None), utc_now, utc_now)
+        task_config_reader.EventSettings(False, None), utc_now, utc_now)
 
     self.assertEqual(event.target_exec_utc, utc_now)
     self.assertEqual(event.last_exec_utc, utc_now)
@@ -79,7 +81,7 @@ class BaseEventTestCase(unittest.TestCase):
     """Test process_tasks() for event."""
     utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     event = self._KLASS(
-        config_reader.EventSettings(True, None), utc_now, utc_now)
+        task_config_reader.EventSettings(True, None), utc_now, utc_now)
     task_list = [FakeTask('test1', True), FakeTask('test2', False)]
     event.set_task_list(task_list)
     finished_tasks = event.process_tasks(None, None, None, None)
@@ -93,7 +95,7 @@ class BaseEventTestCase(unittest.TestCase):
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(self._KLASS.KEYWORD, last_exec_utc)
     event = self._KLASS(
-        config_reader.EventSettings(True, None), last_exec_utc, utc_now)
+        task_config_reader.EventSettings(True, None), last_exec_utc, utc_now)
 
     self.assertEqual(
         last_exec_client.get_last_execute_time(self._KLASS.KEYWORD),
@@ -108,7 +110,7 @@ class BaseEventTestCase(unittest.TestCase):
     """Test getter of property launch_control_branch_targets."""
     utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     event = self._KLASS(
-        config_reader.EventSettings(True, None), utc_now, utc_now)
+        task_config_reader.EventSettings(True, None), utc_now, utc_now)
     task_list = [FakeTask('test1', True, 'b1', 't1,t2'),
                  FakeTask('test2', True, 'b2', 't3,t4'),
                  FakeTask('test3', True, 'b1', 't5,t6')]
@@ -122,5 +124,5 @@ class BaseEventTestCase(unittest.TestCase):
     utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
     with mock.patch('global_config.GAE_TESTING', return_value=True):
       event = self._KLASS(
-          config_reader.EventSettings(True, None), utc_now, utc_now)
+          task_config_reader.EventSettings(True, None), utc_now, utc_now)
       self.assertTrue(event.should_handle)

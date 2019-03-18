@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 """Module for build_event unittests."""
+# pylint: disable=g-missing-super-call
 
 import datetime
 import unittest
@@ -11,6 +12,7 @@ import build_event
 import config_reader
 import datastore_client
 import mock
+import task_config_reader
 import time_converter
 
 from google.appengine.ext import ndb
@@ -40,7 +42,7 @@ class BuildEventTestCase(unittest.TestCase):
 
   def testInitBuildEventWithoutLastExec(self):
     """Test that init a Build Event without last_exec_utc in datastore."""
-    task_config = config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config)
     last_exec_client = datastore_client.LastExecutionRecordStore()
     event = self._KLASS(
         task_config.get_event_setting(self._KLASS.section_name()),
@@ -53,7 +55,7 @@ class BuildEventTestCase(unittest.TestCase):
 
   def testInitBuildEventWithoutLastExecWithGAETesting(self):
     """Test BuildEvent without last exec will be handled in testing on GAE."""
-    task_config = config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config)
     last_exec_client = datastore_client.LastExecutionRecordStore()
 
     with mock.patch('global_config.GAE_TESTING', return_value=True):
@@ -68,7 +70,7 @@ class BuildEventTestCase(unittest.TestCase):
 
   def testInitBuildEventWithValidLastExec(self):
     """Test that init a Build Event with a valid last_exec_utc in datastore."""
-    task_config = config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config)
     last_exec_utc = self.utc_now - datetime.timedelta(
         hours=self._KLASS.LAST_EXEC_INTERVAL-1)
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -84,7 +86,7 @@ class BuildEventTestCase(unittest.TestCase):
 
   def testInitBuildEventWithOutdatedLastExec(self):
     """Test that init a BuildEvent with a non-valid last_exec_utc."""
-    task_config = config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config)
     last_exec_utc = self.utc_now - datetime.timedelta(
         hours=self._KLASS.LAST_EXEC_INTERVAL+1)
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -100,7 +102,7 @@ class BuildEventTestCase(unittest.TestCase):
 
   def testInitBuildEventWithOutdatedLastExecWithGAETesting(self):
     """Test BuildEvent with old last exec will be handled in testing on GAE."""
-    task_config = config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config)
     last_exec_utc = self.utc_now - datetime.timedelta(
         hours=self._KLASS.LAST_EXEC_INTERVAL+1)
     last_exec_client = datastore_client.LastExecutionRecordStore()

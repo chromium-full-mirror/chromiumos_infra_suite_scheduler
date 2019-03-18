@@ -14,6 +14,7 @@ import config_reader
 import datastore_client
 import file_getter
 import mock
+import task_config_reader
 import task_executor
 import time_converter
 import trigger_receiver
@@ -243,7 +244,8 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
     fake_config.set(self._FAKE_WEEKLY_TASK_NAME, 'day', str(self._TEST_PST_DAY))
 
   def _add_weekly_params(self, fake_config):
-    weekly_section_name = config_reader.EVENT_CLASSES['weekly'].section_name()
+    weekly_section_name = task_config_reader.EVENT_CLASSES[
+        'weekly'].section_name()
     fake_config.add_section(weekly_section_name)
     fake_config.set(weekly_section_name, 'hour', str(self._TEST_EVENT_PST_HOUR))
 
@@ -276,7 +278,7 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
     given_utc_hour = time_converter.convert_time_info(
         time_converter.TimeInfo(
             self._TEST_PST_DAY,
-            config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR)).hour
+            task_config_reader.EVENT_CLASSES['weekly'].DEFAULT_PST_HOUR)).hour
     utc_now = datetime.datetime(2017, 10, 14, given_utc_hour,
                                 tzinfo=time_converter.UTC_TZ)
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -570,9 +572,9 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     """Get the ground truth of to-be-scheduled task list from config file."""
     self._mock_utc_now.return_value = datetime.datetime.now(
         time_converter.UTC_TZ)
-    task_config = config_reader.TaskConfig(_SUITE_CONFIG_READER)
+    task_config = task_config_reader.TaskConfig(_SUITE_CONFIG_READER)
     tasks = {}
-    for keyword, klass in config_reader.EVENT_CLASSES.iteritems():
+    for keyword, klass in task_config_reader.EVENT_CLASSES.iteritems():
       new_event = klass(
           task_config.get_event_setting(klass.section_name()), None)
       new_event.set_task_list(

@@ -12,6 +12,7 @@ import constants
 import datastore_client
 import file_getter
 import rest_client
+import task_config_reader
 
 
 class TriggerReceiver(object):
@@ -30,9 +31,9 @@ class TriggerReceiver(object):
             constants.RestClient.ANDROID_BUILD_CLIENT.service_name,
             constants.RestClient.ANDROID_BUILD_CLIENT.service_version))
 
-    task_config_reader = config_reader.ConfigReader(
-        file_getter.SUITE_SCHEDULER_CONFIG_FILE)
-    self._task_config = config_reader.TaskConfig(task_config_reader)
+    self._task_config = task_config_reader.TaskConfig(
+        config_reader.ConfigReader(file_getter.SUITE_SCHEDULER_CONFIG_FILE))
+
     lab_config_reader = config_reader.ConfigReader(
         file_getter.LAB_CONFIG_FILE)
     self._lab_config = config_reader.LabConfig(lab_config_reader)
@@ -43,7 +44,7 @@ class TriggerReceiver(object):
 
     # Initialize events
     self.events = {}
-    for keyword, klass in config_reader.EVENT_CLASSES.iteritems():
+    for keyword, klass in task_config_reader.EVENT_CLASSES.iteritems():
       logging.info('Initializing %s event', keyword)
       new_event = klass(
           self._task_config.get_event_setting(klass.section_name()),

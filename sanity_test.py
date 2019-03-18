@@ -8,17 +8,18 @@ import unittest
 
 import config_reader
 import file_getter
+import task_config_reader
 
 
 class ConfigSanityTest(unittest.TestCase):
 
   def testSuiteSchedulerINI(self):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
-    task_config = config_reader.TaskConfig(
+    task_config = task_config_reader.TaskConfig(
         config_reader.ConfigReader(suite_config_file))
 
     exceptions = []
-    for keyword in config_reader.EVENT_CLASSES.keys():
+    for keyword in task_config_reader.EVENT_CLASSES.keys():
       response = task_config.get_tasks_by_keyword(keyword)
       if response['exceptions']:
         exceptions.extend(response['exceptions'])
