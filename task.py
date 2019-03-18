@@ -465,17 +465,7 @@ class Task(object):
       db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
     """
     lab_config = configs.lab_config
-    migration_config = configs.migration_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
-    skylab_boards = (migration_config.get_skylab_board_list()
-                     if migration_config else [])
-    skylab_suites = (migration_config.get_skylab_suite_list()
-                     if migration_config else [])
-    skylab_models = (migration_config.get_skylab_model_map()
-                     if migration_config else {})
-    logging.info('Skylab_boards: %r', skylab_boards)
-    logging.info('Skylab suites: %r', skylab_suites)
-    logging.info('Skylab models: %r', skylab_models)
     for (board, passed_model, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -518,12 +508,10 @@ class Task(object):
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
-      is_skylab = skylab.should_run_in_skylab(board,
+      is_skylab = skylab.should_run_in_skylab(configs.migration_config,
+                                              board,
                                               passed_model,
-                                              self.suite,
-                                              skylab_boards,
-                                              skylab_models,
-                                              skylab_suites)
+                                              self.suite)
       models = models_by_board.get(board, [None])
 
       for model in models:

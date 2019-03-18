@@ -4,18 +4,38 @@
 
 """Module for skylab-related logic."""
 
+import logging
 
-def should_run_in_skylab(board, model, suite,
-                         skylab_boards, skylab_models, skylab_suites):
+
+def _read_migration_configs(migration_config):
+  """Read configs from migration config file.
+
+  Args:
+    migration_config: A config_reader.MigrationConfig object.
+
+  Returns:
+    A tuple of (boards, models, suites) allowed in skylab.
+  """
+  skylab_boards = (migration_config.get_skylab_board_list()
+                   if migration_config else [])
+  skylab_suites = (migration_config.get_skylab_suite_list()
+                   if migration_config else [])
+  skylab_models = (migration_config.get_skylab_model_map()
+                   if migration_config else {})
+  logging.info('Skylab_boards: %r', skylab_boards)
+  logging.info('Skylab suites: %r', skylab_suites)
+  logging.info('Skylab models: %r', skylab_models)
+  return skylab_boards, skylab_models, skylab_suites
+
+
+def should_run_in_skylab(migration_config, board, model, suite):
   """Check whether a suite task should be run in skylab.
 
   Args:
+    migration_config: A config_reader.MigrationConfig object.
     board: A string board name.
     model: A string model name.
     suite: A string suite name.
-    skylab_boards: A list of boards that should be run in skylab.
-    skylab_models: A map of models that should be run in skylab.
-    skylab_suites: A list of suites that should be run in skylab.
 
   Returns:
     A boolean variable to indicate whether a suite task should be run in skylab.
@@ -23,6 +43,9 @@ def should_run_in_skylab(board, model, suite,
   # We're using link to drive skylab suites green. See crbug/922350
   if board == 'link':
     return True
+
+  skylab_boards, skylab_models, skylab_suites = _read_migration_configs(
+      migration_config)
 
   if suite not in skylab_suites:
     return False
