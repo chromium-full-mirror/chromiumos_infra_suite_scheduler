@@ -6,6 +6,8 @@
 
 import logging
 
+import config_reader
+
 
 def _read_migration_configs(migration_config):
   """Read configs from migration config file.
@@ -14,18 +16,15 @@ def _read_migration_configs(migration_config):
     migration_config: A config_reader.MigrationConfig object.
 
   Returns:
-    A tuple of (models, suites) allowed in skylab.
+    A dict of skylab migration configs of suites.
   """
-  skylab_suites = (migration_config.get_skylab_suite_list()
+  skylab_suites = (migration_config.get_skylab_suites_dump()
                    if migration_config else [])
-  skylab_models = (migration_config.get_skylab_model_list()
-                   if migration_config else {})
-  logging.info('Skylab models: %r', skylab_models)
   logging.info('Skylab suites: %r', skylab_suites)
-  return skylab_models, skylab_suites
+  return skylab_suites
 
 
-def should_run_in_skylab(migration_config, board, model, suite):
+def should_run_in_skylab(migration_config, board, model, suite, pool):
   """Check whether a suite task should be run in skylab.
 
   Args:
@@ -33,6 +32,7 @@ def should_run_in_skylab(migration_config, board, model, suite):
     board: A string board name.
     model: A string model name.
     suite: A string suite name.
+    pool: A string pool name.
 
   Returns:
     A boolean variable to indicate whether a suite task should be run in skylab.
@@ -41,13 +41,17 @@ def should_run_in_skylab(migration_config, board, model, suite):
   if board == 'link':
     return True
 
-  skylab_models, skylab_suites = _read_migration_configs(
-      migration_config)
+  skylab_suites = _read_migration_configs(migration_config)
 
-  if suite not in skylab_suites:
+  sk = config_reader.suite_key(suite)
+  pk = config_reader.pool_key(pool)
+  if sk not in skylab_suites:
+    return False
+
+  if pk not in skylab_suites[sk]:
     return False
 
   if model is None:
-    return board in skylab_models
+    return config_reader.model_key(board) in skylab_suites[sk][pk]
   else:
-    return model in skylab_models
+    return config_reader.model_key(model) in skylab_suites[sk][pk]

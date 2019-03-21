@@ -7,6 +7,7 @@
 
 import collections
 import ConfigParser
+import json
 import re
 
 import build_utils
@@ -202,40 +203,66 @@ class MigrationConfig(object):
     """
     self._config_reader = config_reader
 
-  def get_skylab_model_list(self):
-    """Get the skylab model map from migration config file.
+  def get_skylab_pools(self):
+    if not self._config_reader:
+      return []
+
+    skylab_pools = self._config_reader.getstring(SKYLAB_SETTINGS, 'pools')
+    if skylab_pools is None:
+      return []
+
+    return [p.strip() for p in skylab_pools.split(',')]
+
+  def get_skylab_models_by_pool(self, pool):
+    """Get a model list in skylab from migration config file.
+
+    Args:
+      pool: A string pool name
 
     Returns:
-      A set of CrOS models which should be scheduled on skylab:
-        (nyan_blaze, reef, ...)
+      A list of CrOS models for the given pool which should be scheduled on
+      skylab:
+        e.g. ['astronaut', 'reef', ...]
     """
-    if not self._config_reader:
-      return set([])
+    models = self._config_reader.getstring(SKYLAB_SETTINGS, pool)
+    if models is None:
+      return []
 
-    skylab_model_list = self._config_reader.getstring(
-        SKYLAB_SETTINGS, 'model_list')
-    if skylab_model_list is None:
-      return set([])
+    return list(_parse_model_list(models))
 
-    return set([re.match(r'(.*?)(?:-\d+)?$', model.strip()).group(1)
-                for model in skylab_model_list.split(',')])
-
-  def get_skylab_suite_list(self):
-    """Get the skylab suite list from migration config file.
+  def get_skylab_suites_dump(self):
+    """Get a dict of configs for skylab suites.
 
     Returns:
-      A set of CrOS suites which should be scheduled on skylab:
-        (ent-nightly, ent-perbuild, ...)
+      A dict to contain skylab suite configs.
     """
-    if not self._config_reader:
-      return set([])
+    result = collections.defaultdict(dict)
 
-    skylab_suite_list = self._config_reader.getstring(
-        SKYLAB_SETTINGS, 'suite_list')
-    if skylab_suite_list is None:
-      return set([])
+    skylab_pools = self.get_skylab_pools()
+    skylab_models_by_pool = {}
+    for p in skylab_pools:
+      skylab_models_by_pool[p] = self.get_skylab_models_by_pool(p)
 
-    return set([suite.strip() for suite in skylab_suite_list.split(',')])
+    suites = self._config_reader.sections()
+    for s in suites:
+      if s in [SKYLAB_SETTINGS]:
+        continue
+
+      pools = self._config_reader.getstring(s, 'pools')
+      if not pools:
+        raise ValueError('Need to specify "pools" for suite %s' % s)
+
+      pools = list(set([p.strip() for p in pools.split(',')]))
+
+      whitelist = _parse_pool_list(
+          self._config_reader.getstring(s, 'whitelist'))
+      blacklist = _parse_pool_list(
+          self._config_reader.getstring(s, 'blacklist'))
+
+      result[suite_key(s)] = _get_configs_for_suite(
+          pools, whitelist, blacklist, skylab_models_by_pool)
+
+    return result
 
 
 class DBConfig(object):
@@ -263,3 +290,140 @@ class DBConfig(object):
             db_tag, 'connection_name'),
         user=self._config_reader.getstring(db_tag, 'user'),
         password=self._config_reader.getstring(db_tag, 'password'))
+
+
+def config_dump(res):
+  """Dump a config dict to a json string.
+
+  Args:
+    res: A dict object to dump.
+
+  Returns:
+    A json string.
+  """
+  return json.dumps(res,
+                    sort_keys=True,
+                    indent=4,
+                    separators=(',', ': ')) + '\n'
+
+
+def _parse_model_list(models):
+  r"""Parse models of list.
+
+  Args:
+    models: A string, read from lab or migration config file.
+        e.g. '\nreef,\nastronaut,\nrobo360'
+  Returns:
+    A set of string models, e.g. set(['reef', 'astronaut', 'robo360', ...])
+  """
+  return set([re.match(r'(.*?)(?:-\d+)?$', m.strip()).group(1)
+              for m in models.split(',')])
+
+
+def _parse_pool_list(l):
+  r"""Parse whitelist/blacklist for a suite in migration config file.
+
+  Args:
+    l: A string, read from migration config file entry
+       whitelist or blacklist. e.g. '\ncq:reef,\nbvt:peppy...'
+
+  Returns:
+    A list of whitelist/blacklist <pool:model> string.
+    e.g. ['cq:reef', 'bvt:peppy', ...]
+  """
+  if l is None or not l:
+    return []
+  else:
+    return list(set([w.strip() for w in l.split(',')]))
+
+
+def _get_models_by_pool(model_pool_list, pool):
+  """Get models from a model_pool_list by pool.
+
+  Args:
+    model_pool_list: A list of model_pool string. e.g.
+      ['cq:reef', 'bvt:peppy', 'bvt:link', ...]
+    pool: A string pool. e.g. 'bvt'
+
+  Returns:
+    A list of string models searched by pool. e.g.
+      ['peppy', 'link', ...]
+  """
+  return [mp.split(':')[1] for mp in model_pool_list
+          if mp.split(':')[0] == pool]
+
+
+def _get_configs_for_models(white_models):
+  """Get configs for a list of models.
+
+  Args:
+    white_models: A list of string models. e.g.
+      ['peppy', 'link', ...]
+
+  Returns:
+    A dict containing migration configs of models. e.g.
+      {
+          'peppy': True,
+          'link':  True,
+          ...
+      }
+  """
+  result = {}
+  for m in white_models:
+    result[model_key(m)] = True
+
+  return result
+
+
+def _get_configs_for_suite(pool_list, whitelist, blacklist,
+                           skylab_models_by_pool):
+  """Get migration configs for a suite.
+
+  Args:
+    pool_list: A list of string pool.
+      e.g. ('cq', 'bvt', ...)
+    whitelist: A list of whitelist pool/model combinations, in the form
+      'pool:model'. Suites for these will run in skylab.
+      e.g. ['cq:astronaut', 'bvt:peppy', ...]
+    blacklist: A set of blacklisted pool/model combinations,
+      in the same form as whitelist.
+    skylab_models_by_pool: A map mapping pools to a list of models.
+
+  Returns:
+    A dict containing migration configs for a given suite, e.g.
+    {
+        'cq': {
+            astronaut: True,
+        }
+        'bvt': {
+            'peppy': True,
+            'link': True,
+        }
+        ...
+    }
+  """
+  result = {}
+  for pool in pool_list:
+    skylab_models = skylab_models_by_pool.get(pool, [])
+    white_models = _get_models_by_pool(whitelist, pool)
+    if white_models:
+      result[pool_key(pool)] = _get_configs_for_models(white_models)
+      continue
+
+    black_models = _get_models_by_pool(blacklist, pool)
+    result[pool_key(pool)] = _get_configs_for_models(
+        list(set(skylab_models) - set(black_models)))
+
+  return result
+
+
+def suite_key(suite_name):
+  return 'suite:%s' % suite_name
+
+
+def model_key(model_name):
+  return 'model:%s' % model_name
+
+
+def pool_key(pool_name):
+  return 'pool:%s' % pool_name

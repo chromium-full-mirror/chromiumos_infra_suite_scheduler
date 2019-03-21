@@ -54,11 +54,8 @@ class FakeLabConfig(object):
 class FakeMigrationConfig(object):
   """Mock class for config_reader.MigrationConfig."""
 
-  def get_skylab_suite_list(self):
-    return set([])
-
-  def get_skylab_model_list(self):
-    return set([])
+  def get_skylab_suites_dump(self):
+    return {}
 
 
 class TaskBaseTestCase(unittest.TestCase):
@@ -197,7 +194,7 @@ class TaskTestCase(TaskBaseTestCase):
     """test schedule cros builds successfully."""
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
+                                    self._fake_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
@@ -245,7 +242,7 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
+                                    self._fake_configs,
                                     FakeCIDBClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
@@ -322,7 +319,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
-        [], (branch_builds, []), self._empty_configs,
+        [], (branch_builds, []), self._fake_configs,
         FakeCIDBClient()))
 
   def testScheduleLaunchControlIsPushSuccessfully(self):

@@ -43,8 +43,8 @@ class ConfigSanityTest(unittest.TestCase):
   def testMigrationConfigParse(self):
     reader = config_reader.MigrationConfig(
         config_reader.ConfigReader(file_getter.MIGRATION_CONFIG_FILE))
-    self.assertGreater(len(reader.get_skylab_suite_list()), 0)
-    self.assertGreater(len(reader.get_skylab_model_list()), 0)
+    self.assertGreater(len(reader.get_skylab_pools()), 0)
+    self.assertGreater(len(reader.get_skylab_suites_dump()), 0)
 
   def testMigrationConfigModels(self):
     migration_config = config_reader.MigrationConfig(
@@ -57,8 +57,15 @@ class ConfigSanityTest(unittest.TestCase):
     for _, v in model_map.iteritems():
       all_models |= set(v)
 
-    skylab_models = migration_config.get_skylab_model_list()
-    self.assertLessEqual(skylab_models, all_models)
+    skylab_pools = migration_config.get_skylab_pools()
+    skylab_model_keys = [config_reader.model_key(m) for m in list(all_models)]
+    skylab_pool_keys = [config_reader.pool_key(p) for p in skylab_pools]
+    skylab_suites = migration_config.get_skylab_suites_dump()
+    for _, sdict in skylab_suites.iteritems():
+      included_pools = sdict.keys()
+      self.assertLessEqual(set(included_pools), set(skylab_pool_keys))
+      for p in sdict.keys():
+        self.assertLessEqual(set(sdict[p].keys()), set(skylab_model_keys))
 
 
 if __name__ == '__main__':

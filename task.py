@@ -511,7 +511,8 @@ class Task(object):
       is_skylab = skylab.should_run_in_skylab(configs.migration_config,
                                               board,
                                               passed_model,
-                                              self.suite)
+                                              self.suite,
+                                              self.pool)
       models = models_by_board.get(board, [None])
 
       for model in models:

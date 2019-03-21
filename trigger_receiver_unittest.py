@@ -144,13 +144,11 @@ class FakeLabConfig(object):
 class FakeMigrationConfig(object):
   """Mock config_reader.MigrationConfig."""
 
-  def get_skylab_suite_list(self):
+  def get_skylab_suites_dump(self):
     """Mock config_reader.MigrationConfig.get_skylab_suite_list."""
-    return set(['ent-nightly'])
-
-  def get_skylab_model_list(self):
-    """Mock config_reader.MigrationConfig.get_skylab_model_list."""
-    return set(['santa', 'zako'])
+    return {'suite:ent-nightly':
+            {'pool:suites':
+             {'model:santa': True, 'model:zako': True}}}
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
@@ -540,6 +538,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.add_section(normal_suite)
     self.fake_config.set(normal_suite, 'run_on', 'new_build')
     self.fake_config.set(normal_suite, 'suite', 'ent-nightly')
+    self.fake_config.set(normal_suite, 'pool', 'suites')
     self.fake_config.set(normal_suite, 'boards', 'zako, asuka')
     self._mock_config_reader.return_value = self.fake_config
 

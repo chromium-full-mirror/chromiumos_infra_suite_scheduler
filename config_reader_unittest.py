@@ -82,26 +82,68 @@ class MigrationReaderTestCase(unittest.TestCase):
     self.config = config_reader.ConfigReader(None)
     self.config.add_section(config_reader.SKYLAB_SETTINGS)
 
-  def testGetSkylabModelList(self):
-    """Ensure skylab_model_list can be correctly fetched."""
-    self.config.set(config_reader.SKYLAB_SETTINGS, 'model_list',
-                    '\nnyan_blaze,\nreef,\nabc360')
+  def testGetSkylabSuites(self):
+    """Ensure suites in skylab can be correctly fetched."""
+    suite_name = 'fake_suite'
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'pools',
+                    '\ncq')
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'cq',
+                    '\nreef,\nrobo360')
+    self.config.add_section(suite_name)
+    self.config.set(suite_name, 'pools', '\ncq')
     config = config_reader.MigrationConfig(self.config)
-    result = config.get_skylab_model_list()
-    self.assertEqual(len(result), 3)
-    self.assertIn('nyan_blaze', result)
-    self.assertIn('reef', result)
-    self.assertIn('abc360', result)
+    result = config.get_skylab_suites_dump()
+    self.assertEqual(len(result), 1)
 
-  def testGetSkylabSuiteList(self):
-    """Ensure skylab_suite_list can be correctly fetched."""
-    self.config.set(config_reader.SKYLAB_SETTINGS, 'suite_list',
-                    '\nent-nightly,\nent-perbuild')
-    lab_config = config_reader.MigrationConfig(self.config)
-    result = lab_config.get_skylab_suite_list()
-    self.assertEqual(len(result), 2)
-    self.assertIn('ent-nightly', result)
-    self.assertIn('ent-perbuild', result)
+    sk = config_reader.suite_key(suite_name)
+    pk = config_reader.pool_key('cq')
+    self.assertIn(sk, result)
+    self.assertIn(config_reader.pool_key('cq'), result[sk])
+    self.assertIn(config_reader.model_key('reef'), result[sk][pk])
+    self.assertIn(config_reader.model_key('robo360'), result[sk][pk])
+
+  def testGetSkylabSuitesWhitelistFirst(self):
+    """Ensure whitelist goes first in migration config parsing."""
+    suite_name = 'fake_suite'
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'pools',
+                    '\ncq')
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'cq',
+                    '\nreef,\nrobo360')
+    self.config.add_section(suite_name)
+    self.config.set(suite_name, 'pools', '\ncq')
+    self.config.set(suite_name, 'whitelist', '\ncq:peppy,\ncq:reef')
+    config = config_reader.MigrationConfig(self.config)
+    result = config.get_skylab_suites_dump()
+
+    sk = config_reader.suite_key(suite_name)
+    pk = config_reader.pool_key('cq')
+    self.assertEqual(len(result), 1)
+    self.assertIn(sk, result)
+    self.assertIn(pk, result[sk])
+    self.assertIn(config_reader.model_key('reef'), result[sk][pk])
+    self.assertNotIn(config_reader.model_key('robo360'), result[sk][pk])
+    self.assertIn(config_reader.model_key('peppy'), result[sk][pk])
+
+  def testGetSkylabSuitesBlacklist(self):
+    """Ensure blacklist is blocked in migration config parsing."""
+    suite_name = 'fake_suite'
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'pools',
+                    '\ncq')
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'cq',
+                    '\nreef,\nrobo360')
+    self.config.add_section(suite_name)
+    self.config.set(suite_name, 'pools', '\ncq')
+    self.config.set(suite_name, 'blacklist', '\ncq:reef')
+    config = config_reader.MigrationConfig(self.config)
+    result = config.get_skylab_suites_dump()
+
+    sk = config_reader.suite_key(suite_name)
+    pk = config_reader.pool_key('cq')
+    self.assertEqual(len(result), 1)
+    self.assertIn(sk, result)
+    self.assertIn(pk, result[sk])
+    self.assertNotIn(config_reader.model_key('reef'), result[sk][pk])
+    self.assertIn(config_reader.model_key('robo360'), result[sk][pk])
 
 
 if __name__ == '__main__':
