@@ -202,26 +202,26 @@ class MigrationConfig(object):
     """
     self._config_reader = config_reader
 
-  def get_skylab_board_list(self):
-    """Get the skylab board list from lab config file.
+  def get_skylab_model_list(self):
+    """Get the skylab model map from migration config file.
 
     Returns:
-      A set of CrOS boards which should be scheduled on skylab:
+      A set of CrOS models which should be scheduled on skylab:
         (nyan_blaze, reef, ...)
     """
     if not self._config_reader:
       return set([])
 
-    skylab_board_list = self._config_reader.getstring(
-        SKYLAB_SETTINGS, 'board_list')
-    if skylab_board_list is None:
+    skylab_model_list = self._config_reader.getstring(
+        SKYLAB_SETTINGS, 'model_list')
+    if skylab_model_list is None:
       return set([])
 
-    return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
-                for board in skylab_board_list.split(',')])
+    return set([re.match(r'(.*?)(?:-\d+)?$', model.strip()).group(1)
+                for model in skylab_model_list.split(',')])
 
   def get_skylab_suite_list(self):
-    """Get the skylab suite list from lab config file.
+    """Get the skylab suite list from migration config file.
 
     Returns:
       A set of CrOS suites which should be scheduled on skylab:
@@ -236,27 +236,6 @@ class MigrationConfig(object):
       return set([])
 
     return set([suite.strip() for suite in skylab_suite_list.split(',')])
-
-  def get_skylab_model_map(self):
-    """Get the skylab model mapping from lab config file.
-
-    Returns:
-      A map of board names to a list of models, which should be run in skylab.
-    """
-    result = collections.defaultdict(list)
-    if not self._config_reader:
-      return result
-
-    skylab_model_list = self._config_reader.getstring(
-        SKYLAB_SETTINGS, 'model_list')
-    if skylab_model_list is None:
-      return result
-
-    for full_model in skylab_model_list.split(','):
-      board, model = build_utils.parse_full_model(full_model)
-      result[board].append(model)
-
-    return result
 
 
 class DBConfig(object):

@@ -54,17 +54,11 @@ class FakeLabConfig(object):
 class FakeMigrationConfig(object):
   """Mock class for config_reader.MigrationConfig."""
 
-  def get_skylab_board_list(self):
-    return []
-
   def get_skylab_suite_list(self):
-    return []
+    return set([])
 
-  def get_skylab_model_map(self):
-    return {}
-
-  def get_cros_model_map(self):
-    return {'coral': ['robo', 'nasher', 'lava']}
+  def get_skylab_model_list(self):
+    return set([])
 
 
 class TaskBaseTestCase(unittest.TestCase):

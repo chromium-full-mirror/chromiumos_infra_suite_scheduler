@@ -82,15 +82,16 @@ class MigrationReaderTestCase(unittest.TestCase):
     self.config = config_reader.ConfigReader(None)
     self.config.add_section(config_reader.SKYLAB_SETTINGS)
 
-  def testGetSkylabBoardList(self):
-    """Ensure skylab_board_list can be correctly fetched."""
-    self.config.set(config_reader.SKYLAB_SETTINGS, 'board_list',
-                    '\nnyan_blaze,\nreef')
-    lab_config = config_reader.MigrationConfig(self.config)
-    result = lab_config.get_skylab_board_list()
-    self.assertEqual(len(result), 2)
+  def testGetSkylabModelList(self):
+    """Ensure skylab_model_list can be correctly fetched."""
+    self.config.set(config_reader.SKYLAB_SETTINGS, 'model_list',
+                    '\nnyan_blaze,\nreef,\nabc360')
+    config = config_reader.MigrationConfig(self.config)
+    result = config.get_skylab_model_list()
+    self.assertEqual(len(result), 3)
     self.assertIn('nyan_blaze', result)
     self.assertIn('reef', result)
+    self.assertIn('abc360', result)
 
   def testGetSkylabSuiteList(self):
     """Ensure skylab_suite_list can be correctly fetched."""
@@ -101,15 +102,6 @@ class MigrationReaderTestCase(unittest.TestCase):
     self.assertEqual(len(result), 2)
     self.assertIn('ent-nightly', result)
     self.assertIn('ent-perbuild', result)
-
-  def testGetSkylabModelMap(self):
-    """Ensure skylab_board_list can be correctly fetched."""
-    self.config.set(config_reader.SKYLAB_SETTINGS, 'model_list',
-                    '\ncoral_lava,\ncoral_santa')
-    lab_config = config_reader.MigrationConfig(self.config)
-    result = lab_config.get_skylab_model_map()
-    self.assertEqual(len(result), 1)
-    self.assertEqual(result['coral'], ['lava', 'santa'])
 
 
 if __name__ == '__main__':

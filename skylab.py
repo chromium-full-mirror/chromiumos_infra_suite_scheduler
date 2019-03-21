@@ -14,18 +14,15 @@ def _read_migration_configs(migration_config):
     migration_config: A config_reader.MigrationConfig object.
 
   Returns:
-    A tuple of (boards, models, suites) allowed in skylab.
+    A tuple of (models, suites) allowed in skylab.
   """
-  skylab_boards = (migration_config.get_skylab_board_list()
-                   if migration_config else [])
   skylab_suites = (migration_config.get_skylab_suite_list()
                    if migration_config else [])
-  skylab_models = (migration_config.get_skylab_model_map()
+  skylab_models = (migration_config.get_skylab_model_list()
                    if migration_config else {})
-  logging.info('Skylab_boards: %r', skylab_boards)
-  logging.info('Skylab suites: %r', skylab_suites)
   logging.info('Skylab models: %r', skylab_models)
-  return skylab_boards, skylab_models, skylab_suites
+  logging.info('Skylab suites: %r', skylab_suites)
+  return skylab_models, skylab_suites
 
 
 def should_run_in_skylab(migration_config, board, model, suite):
@@ -44,13 +41,13 @@ def should_run_in_skylab(migration_config, board, model, suite):
   if board == 'link':
     return True
 
-  skylab_boards, skylab_models, skylab_suites = _read_migration_configs(
+  skylab_models, skylab_suites = _read_migration_configs(
       migration_config)
 
   if suite not in skylab_suites:
     return False
 
   if model is None:
-    return board in skylab_boards
+    return board in skylab_models
   else:
-    return model in skylab_models.get(board, [])
+    return model in skylab_models

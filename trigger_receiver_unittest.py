@@ -144,17 +144,13 @@ class FakeLabConfig(object):
 class FakeMigrationConfig(object):
   """Mock config_reader.MigrationConfig."""
 
-  def get_skylab_board_list(self):
-    """Mock config_reader.LabConfig.get_skylab_board_list."""
-    return set(['zako'])
-
   def get_skylab_suite_list(self):
-    """Mock config_reader.LabConfig.get_skylab_suite_list."""
+    """Mock config_reader.MigrationConfig.get_skylab_suite_list."""
     return set(['ent-nightly'])
 
-  def get_skylab_model_map(self):
-    """Mock config_reader.LabConfig.get_skylab_model_map."""
-    return {'coral': ['santa']}
+  def get_skylab_model_list(self):
+    """Mock config_reader.MigrationConfig.get_skylab_model_list."""
+    return set(['santa', 'zako'])
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
