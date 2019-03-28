@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import shutil
 import subprocess
 
 import file_getter
@@ -54,29 +55,31 @@ def _install_third_party_lib(input_args):
                              '-r', 'requirements.txt'])
 
 
-def _fetch_service_credentials(input_args):
+def fetch_service_credentials(force_update_cred):
   """Fetch service credentials from GS bucket.
 
   Args:
-    input_args: the arguments passed in by users.
+    force_update_cred: A boolean virable to indicate whether to force to
+      re-download the creds.
 
   Raises:
     ValueError: if credentials cannot be fetched due to no valid gs package.
   """
   credentials_path = file_getter.CREDENTIALS_PATH
-  if input_args.update_cred and os.path.exists(credentials_path):
-    os.rmdir(credentials_path)
+  if force_update_cred and os.path.exists(credentials_path):
+    shutil.rmtree(credentials_path)
 
   if not os.path.exists(credentials_path):
     if gs is None:
       raise ValueError(
-          'Chromite cannot be imported. Please run gsutil directly to fetch '
-          'credential files in %s' % input_args.creds_gs_path)
+          'Chromite cannot be imported.\nPlease download the credentials '
+          'manually:\n\tgsutil cp -r %s %s' % (
+              CREDS_GS_PATH, os.path.dirname(credentials_path)))
 
     os.mkdir(credentials_path)
     try:
       ctx = gs.GSContext(init_boto=True)
-      ctx.Copy(input_args.creds_gs_path + '*', credentials_path)
+      ctx.Copy(CREDS_GS_PATH + '*', credentials_path)
     except gs.GSCommandError as e:
       print('The GS credentials is not configured properly. '
             'Please contact ChromeOS Infrastructure'
@@ -97,10 +100,6 @@ def _make_parser():
       description=__doc__,
       formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument(
-      '--creds_gs_path',
-      help='The path to fetch the credentials for project suite-scheduler.',
-      default=CREDS_GS_PATH)
-  parser.add_argument(
       '--update_lib',
       action='store_true',
       help='Force to reinstall all required third-party libraries.')
@@ -115,5 +114,5 @@ if __name__ == '__main__':
   setup_parser = _make_parser()
   setup_args = setup_parser.parse_args()
   _install_third_party_lib(setup_args)
-  _fetch_service_credentials(setup_args)
+  fetch_service_credentials(setup_args.update_cred)
   _verify()
