@@ -1,4 +1,9 @@
 {
+    "suite:arc-cts": {
+        "pool:cts": {
+            "model:terra": true
+        }
+    },
     "suite:ent-perbuild": {
         "pool:suites": {
             "model:asuka": true,
