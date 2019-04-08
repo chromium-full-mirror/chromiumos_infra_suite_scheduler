@@ -8,6 +8,8 @@ import collections
 import logging
 import os
 
+import swarming_lib
+
 from google.appengine.api import app_identity
 
 # Namedtuple for storing rest client info.
@@ -18,6 +20,11 @@ RestClientInfo = collections.namedtuple(
 _RUNNING_ENV = 'SERVER_SOFTWARE'
 _ENV_DEVELOPMENT_STR = 'Development'
 _ENV_APP_ENGINE_STR = 'Google App Engine/'
+
+# Only special tasks can have a priority lower than 50.
+_SKYLAB_PRIORITY_MIN = 50
+# Mandated by Swarming.
+_SKYLAB_PRIORITY_MAX = 255
 
 
 class StorageBucket(object):
@@ -156,3 +163,26 @@ def server_name():
     '***.appspot.com'.
   """
   return app_identity.get_default_version_hostname()
+
+
+def skylab_priority_for(afe_priority):
+  """Convert AFE prioritiy to Skylab priority.
+
+  Args:
+    afe_priority: AFE priority number as a string.
+
+  Returns:
+    An integer representing the Skylab priority.
+
+  Raises:
+    SwarmingRunError: if afe_priority is not an integer.
+  """
+  try:
+    skylab_priority = 260 - 3 * int(afe_priority)
+  except ValueError:
+    raise swarming_lib.SwarmingRunError(
+        'The specified priority is not an integer: %s' % afe_priority)
+
+  skylab_priority = min(skylab_priority, _SKYLAB_PRIORITY_MAX)
+  skylab_priority = max(skylab_priority, _SKYLAB_PRIORITY_MIN)
+  return skylab_priority

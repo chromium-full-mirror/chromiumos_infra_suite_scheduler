@@ -103,17 +103,6 @@ CHROMEOS_SWARMING_PROXY = 'https://chromeos-proxy.appspot.com/_ah/api'
 SKYLAB_SWARMING_SERVER = 'https://chromeos-swarming.appspot.com/_ah/api'
 SKYLAB_STAGING_SWARMING_SERVER = 'https://chromium-swarm-dev.appspot.com/_ah/api'
 
-# A mapping of priorities for skylab hwtest tasks. In swarming,
-# lower number means high priorities. Priority lower than 48 will
-# be special tasks. The upper bound for priority is 255.
-# Use the same priorities mapping as chromite/lib/constants.py
-SKYLAB_HWTEST_PRIORITIES_MAP = {
-    str(constants.Priorities.WEEKLY): 230,
-    str(constants.Priorities.DAILY): 200,
-    str(constants.Priorities.POSTBUILD): 170,
-    str(constants.Priorities.DEFAULT): 140,
-}
-
 
 class SwarmingRunError(Exception):
   """Raised when interactions with swarming server fail."""
@@ -187,13 +176,8 @@ class SwarmingRunner(object):
 
   def _run_with_skylab(self, **task_params):
     """Kick off suite to skylab."""
-    # TODO(xixuan): deal with the random integer priority for cts suites.
-    priority = task_params['priority']
-    if priority not in SKYLAB_HWTEST_PRIORITIES_MAP:
-      raise SwarmingRunError('Priority %s is not accepted by run_suite_skylab.'
-                             % str(priority))
-
-    task_params['priority'] = str(SKYLAB_HWTEST_PRIORITIES_MAP[priority])
+    task_params['priority'] = constants.skylab_priority_for(
+        task_params['priority'])
 
     parsed_task_params = self._parse_task_params(**task_params)
     command = self._form_run_suite_skylab_command(

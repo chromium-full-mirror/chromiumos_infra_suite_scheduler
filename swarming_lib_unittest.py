@@ -13,6 +13,7 @@ import build_lib
 import config_reader
 import constants
 import file_getter
+import rest_client
 import swarming_lib
 import task_executor
 
@@ -48,6 +49,8 @@ def _get_suite_job_parameters():
 class SwarmingLibTestCase(unittest.TestCase):
 
   def setUp(self):
+    super(SwarmingLibTestCase, self).setUp()
+
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.addCleanup(self.testbed.deactivate)
@@ -188,6 +191,8 @@ class SwarmingLibTestCase(unittest.TestCase):
 class SkylabSwarmingLibTestCase(unittest.TestCase):
 
   def setUp(self):
+    super(SkylabSwarmingLibTestCase, self).setUp()
+
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.addCleanup(self.testbed.deactivate)
@@ -238,20 +243,38 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
           final_build, **params)
       self.assertNotIn('--pre_check', command)
 
-  def testRunWithSkylabInvalidPriority(self):
-    self.suite_job_parameters['priority'] = 25
+  def testPriorityConversion(self):
+    self._test_priority('25', 260 - 3 * 25)
+
+  def testMaxPriorityCapping(self):
+    # The allowed Skylab priority range is [50, 255].
+    self._test_priority('0', 255)
+
+  def testMinPriorityCapping(self):
+    self._test_priority('80', 50)
+
+  def testInvalidPriority(self):
+    with self.assertRaises(swarming_lib.SwarmingRunError):
+      self._test_priority('Not an integer')
+
+  def _test_priority(self, afe_priority, expected_skylab_priority=None):
+    self.suite_job_parameters['priority'] = afe_priority
     task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
     tasks = self.taskqueue_stub.get_filtered_tasks()
-    with mock.patch('rest_client.SwarmingRestClient',
-                    return_value=None):
+    with mock.patch.object(rest_client.SwarmingRestClient, 'create_task',
+                           return_value=None):
       lab_config = config_reader.LabConfig(config_reader.ConfigReader(
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
           afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
       params = tasks[0].extract_params()
-      self.assertRaises(swarming_lib.SwarmingRunError,
-                        swarming_runner.run, **params)
+      swarming_runner.run(**params)
+      call_list = rest_client.SwarmingRestClient.create_task.call_args_list
+      self.assertEqual(len(call_list), 1)
+      # kvargs is always the index 1 element of the call object
+      kvargs = call_list[0][1]
+      self.assertEqual(kvargs['request']['priority'], expected_skylab_priority)
 
 
 if __name__ == '__main__':
