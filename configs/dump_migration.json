@@ -4,6 +4,26 @@
             "model:terra": true
         }
     },
+    "suite:arc-cts-follower": {
+        "pool:cts": {
+            "model:terra": true
+        }
+    },
+    "suite:arc-cts-qual": {
+        "pool:cts": {
+            "model:terra": true
+        }
+    },
+    "suite:arc-gts": {
+        "pool:cts": {
+            "model:terra": true
+        }
+    },
+    "suite:arc-gts-qual": {
+        "pool:cts": {
+            "model:terra": true
+        }
+    },
     "suite:ent-perbuild": {
         "pool:suites": {
             "model:asuka": true,
