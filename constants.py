@@ -185,4 +185,4 @@ def skylab_priority_for(afe_priority):
 
   skylab_priority = min(skylab_priority, _SKYLAB_PRIORITY_MAX)
   skylab_priority = max(skylab_priority, _SKYLAB_PRIORITY_MIN)
-  return skylab_priority
+  return str(skylab_priority)
