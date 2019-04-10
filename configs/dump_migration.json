@@ -24,6 +24,62 @@
             "model:terra": true
         }
     },
+    "suite:bvt-arc": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-cq": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-inline": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-installer": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-perbuild": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-tast-cq": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
+    "suite:bvt-tast-informational": {
+        "pool:bvt": {
+            "model:asuka": true,
+            "model:coral": true,
+            "model:nyan_blaze": true,
+            "model:reef": true
+        }
+    },
     "suite:ent-perbuild": {
         "pool:suites": {
             "model:asuka": true,
