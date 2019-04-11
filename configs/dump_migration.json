@@ -1,26 +1,31 @@
 {
     "suite:arc-cts": {
         "pool:cts": {
+            "model:samus": true,
             "model:terra": true
         }
     },
     "suite:arc-cts-follower": {
         "pool:cts": {
+            "model:samus": true,
             "model:terra": true
         }
     },
     "suite:arc-cts-qual": {
         "pool:cts": {
+            "model:samus": true,
             "model:terra": true
         }
     },
     "suite:arc-gts": {
         "pool:cts": {
+            "model:samus": true,
             "model:terra": true
         }
     },
     "suite:arc-gts-qual": {
         "pool:cts": {
+            "model:samus": true,
             "model:terra": true
         }
     },
