@@ -63,7 +63,7 @@ class TestSkylabWithSanity(webapp2.RequestHandler):
     afe_server = lab_config.get_dedicated_afe()
     swarming_runner = swarming_lib.SwarmingRunner(
         afe_server,
-        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
+        swarming_lib.SKYLAB_SWARMING_SERVER)
     skylab_response = swarming_runner.dummy_run_sanity(is_skylab=True)
     skylab_swarming_task_info = swarming_runner.query_task(
         skylab_response['task_id'], is_skylab=True)

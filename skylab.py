@@ -55,3 +55,32 @@ def should_run_in_skylab(migration_config, board, model, suite, pool):
     return config_reader.model_key(board) in skylab_suites[sk][pk]
   else:
     return config_reader.model_key(model) in skylab_suites[sk][pk]
+
+
+def get_override_info(migration_config, board, model, suite, pool):
+  """Get override info for a suite task.
+
+  Args:
+    migration_config: A config_reader.MigrationConfig object.
+    board: A string board name.
+    model: A string model name.
+    suite: A string suite name.
+    pool: A string pool name.
+
+  Returns:
+    A tuple override info:
+      (a string override_pool, a string override_qs_account)
+  """
+  skylab_suites = _read_migration_configs(migration_config)
+  sk = config_reader.suite_key(suite)
+  pk = config_reader.pool_key(pool)
+  if model is None:
+    mk = config_reader.model_key(board)
+  else:
+    mk = config_reader.model_key(model)
+
+  try:
+    return (skylab_suites[sk][pk][mk][config_reader.OVERRIDE_POOL],
+            skylab_suites[sk][pk][mk][config_reader.OVERRIDE_QS_ACCOUNT])
+  except KeyError:
+    return '', ''

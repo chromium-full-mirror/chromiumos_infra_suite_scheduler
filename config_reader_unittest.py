@@ -111,7 +111,7 @@ class MigrationReaderTestCase(unittest.TestCase):
                     '\nreef,\nrobo360')
     self.config.add_section(suite_name)
     self.config.set(suite_name, 'pools', '\ncq')
-    self.config.set(suite_name, 'whitelist', '\ncq:peppy,\ncq:reef')
+    self.config.set(suite_name, 'whitelist', '\n(cq, peppy)\n(cq, reef)')
     config = config_reader.MigrationConfig(self.config)
     result = config.get_skylab_suites_dump()
 
@@ -133,7 +133,7 @@ class MigrationReaderTestCase(unittest.TestCase):
                     '\nreef,\nrobo360')
     self.config.add_section(suite_name)
     self.config.set(suite_name, 'pools', '\ncq')
-    self.config.set(suite_name, 'blacklist', '\ncq:reef')
+    self.config.set(suite_name, 'blacklist', '\n(cq, reef)')
     config = config_reader.MigrationConfig(self.config)
     result = config.get_skylab_suites_dump()
 
