@@ -393,7 +393,9 @@ class Task(object):
       test_source_build=None,
       launch_control_build=None,
       run_prod_code=False,
-      is_skylab=False):
+      is_skylab=False,
+      override_pool='',
+      override_qs_account=''):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
@@ -411,6 +413,8 @@ class Task(object):
         be retrieved from the build artifacts. Default is False.
       is_skylab: If True, schedule this suite to skylab, otherwise schedule
         it to AFE. Default is False.
+      override_pool: A string to indicate pool of quota scheduler.
+      override_qs_account: A string of quota scheduler account.
     """
     android_build = None
     testbed_build = None
@@ -449,6 +453,8 @@ class Task(object):
         'force': self.force,
         'run_prod_code': run_prod_code,
         'is_skylab': is_skylab,
+        'override_pool': override_pool,
+        'override_qs_account': override_qs_account,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE, **suite_job_parameters)
@@ -513,6 +519,12 @@ class Task(object):
                                               passed_model,
                                               self.suite,
                                               self.pool)
+      override_pool, override_qs_account = skylab.get_override_info(
+          configs.migration_config,
+          board,
+          passed_model,
+          self.suite,
+          self.pool)
       models = models_by_board.get(board, [None])
 
       for model in models:
@@ -525,7 +537,9 @@ class Task(object):
               firmware_rw_build=firmware_rw_build,
               firmware_ro_build=firmware_ro_build,
               test_source_build=test_source_build,
-              is_skylab=is_skylab)
+              is_skylab=is_skylab,
+              override_pool=override_pool,
+              override_qs_account=override_qs_account)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.

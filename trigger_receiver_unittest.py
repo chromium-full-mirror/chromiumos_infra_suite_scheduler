@@ -148,7 +148,16 @@ class FakeMigrationConfig(object):
     """Mock config_reader.MigrationConfig.get_skylab_suite_list."""
     return {'suite:ent-nightly':
             {'pool:suites':
-             {'model:santa': True, 'model:zako': True}}}
+             {'model:santa': {
+                 'skylab': True,
+                 'override_pool': '',
+                 'override_qs_account': '',
+             },
+              'model:zako': {
+                  'skylab': True,
+                  'override_pool': 'QUOTA_POOL',
+                  'override_qs_account': 'QUOTA_ACCOUNT',
+              }}}}
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
@@ -552,6 +561,8 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 1)
     self.assertIn('is_skylab=True', tasks[0].payload)
+    self.assertIn('override_pool=QUOTA_POOL', tasks[0].payload)
+    self.assertIn('override_qs_account=QUOTA_ACCOUNT', tasks[0].payload)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

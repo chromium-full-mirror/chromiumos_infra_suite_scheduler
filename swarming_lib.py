@@ -226,7 +226,7 @@ class SwarmingRunner(object):
         'board': 'nyan_blaze',
         'model': 'None',
         'suite': 'sanity',
-        'pool': 'suites',
+        'pool': 'bvt',
         'timeout_mins': '30',
         'max_runtime_mins': '30',
         'no_wait_for_results': 'True',
@@ -234,6 +234,8 @@ class SwarmingRunner(object):
         'job_retry': 'False',
         'priority': str(constants.Priorities.POSTBUILD),
         'force': 'True',
+        'override_pool': 'DUT_POOL_QUOTA',
+        'override_qs_account': '',
         'is_skylab': str(is_skylab),
         build_lib.BuildVersionKey.CROS_VERSION: (
             'nyan_blaze-release/R69-10895.33.0'),
@@ -306,15 +308,19 @@ class SwarmingRunner(object):
     fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
     timeout_mins = (task_params['timeout_mins'] or
                     task_params['timeout'] * 60)
+    pool = task_params['override_pool'] or task_params['pool']
 
     command = [self.RUN_SUITE_SKYLAB_PATH,
                '--build', final_build,
                '--board', task_params['board'],
                '--suite_name', task_params['suite'],
-               '--pool', task_params['pool'],
+               '--pool', pool,
                '--priority', task_params['priority'],
                '--timeout_mins', str(timeout_mins),
                '--test_source_build', task_params['test_source_build']]
+
+    if task_params['override_qs_account']:
+      command.extend(['--quota_account', task_params['override_qs_account']])
 
     if task_params['job_retry'] == 'True':
       command.extend(['--test_retry'])
