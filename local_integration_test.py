@@ -58,6 +58,7 @@ class IntegrationTest(unittest.TestCase):
     # In order to only start dev_appserver once for all tests, use setUpClass
     # here. However there's no corresponding addCleanUp() for this class
     # function, so use 'try except' to terminate the dev_appserver process.
+    super(IntegrationTest, cls).setUpClass()
     try:
       cls.dev_app_proc = _subprocess_wrapper(
           subprocess.Popen,
@@ -77,6 +78,7 @@ class IntegrationTest(unittest.TestCase):
 
   @classmethod
   def tearDownClass(cls):
+    super(IntegrationTest, cls).tearDownClass()
     cls.dev_app_proc.terminate()
 
   def testAFESwarmingDummyRun(self):
@@ -105,6 +107,13 @@ class IntegrationTest(unittest.TestCase):
     output = _subprocess_wrapper(
         subprocess.check_output,
         ['curl', '%s/test_push/skylab_sanity' % DEV_APPSERVER_URL])
+    self.assertIn('sanity', output)
+
+  def testSkylabBackwardCompatibilitySwarmingSanity(self):
+    """Swarming test with local configs and dev_appservers."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/skylab_sanity_bc_test' % DEV_APPSERVER_URL])
     self.assertIn('sanity', output)
 
 

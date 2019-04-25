@@ -221,7 +221,7 @@ class SwarmingRunner(object):
     return client.create_task(request=raw_request)
 
   def dummy_run_sanity(self, is_skylab=False):
-    """Perform a dummy run of sutie sanity to swarming proxy service."""
+    """Perform a dummy run of suite sanity to swarming proxy service."""
     task_params = {
         'board': 'nyan_blaze',
         'model': 'None',
@@ -236,6 +236,30 @@ class SwarmingRunner(object):
         'force': 'True',
         'override_pool': 'DUT_POOL_QUOTA',
         'override_qs_account': '',
+        'is_skylab': str(is_skylab),
+        build_lib.BuildVersionKey.CROS_VERSION: (
+            'nyan_blaze-release/R69-10895.33.0'),
+        build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: 'None',
+        build_lib.BuildVersionKey.TESTBED_BUILD_VERSION: 'None',
+        build_lib.BuildVersionKey.FW_RO_VERSION: 'None',
+        build_lib.BuildVersionKey.FW_RW_VERSION: 'None',
+    }
+    return self.run(**task_params)
+
+  def dummy_run_sanity_old(self, is_skylab=False):
+    """Perform a dummy run of suite sanity to test backward compatibility."""
+    task_params = {
+        'board': 'nyan_blaze',
+        'model': 'None',
+        'suite': 'sanity',
+        'pool': 'bvt',
+        'timeout_mins': '30',
+        'max_runtime_mins': '30',
+        'no_wait_for_results': 'True',
+        'test_source_build': '',
+        'job_retry': 'False',
+        'priority': str(constants.Priorities.POSTBUILD),
+        'force': 'True',
         'is_skylab': str(is_skylab),
         build_lib.BuildVersionKey.CROS_VERSION: (
             'nyan_blaze-release/R69-10895.33.0'),
@@ -308,7 +332,7 @@ class SwarmingRunner(object):
     fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
     timeout_mins = (task_params['timeout_mins'] or
                     task_params['timeout'] * 60)
-    pool = task_params['override_pool'] or task_params['pool']
+    pool = task_params.get('override_pool') or task_params['pool']
 
     command = [self.RUN_SUITE_SKYLAB_PATH,
                '--build', final_build,
@@ -319,7 +343,7 @@ class SwarmingRunner(object):
                '--timeout_mins', str(timeout_mins),
                '--test_source_build', task_params['test_source_build']]
 
-    if task_params['override_qs_account']:
+    if task_params.get('override_qs_account'):
       command.extend(['--quota_account', task_params['override_qs_account']])
 
     if task_params['job_retry'] == 'True':

@@ -70,9 +70,26 @@ class TestSkylabWithSanity(webapp2.RequestHandler):
     self.response.write(skylab_swarming_task_info.tags)
 
 
+class TestSkylabBackwardCompatibilityWithSanity(webapp2.RequestHandler):
+
+  def get(self):
+    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+        file_getter.LAB_CONFIG_FILE))
+    afe_server = lab_config.get_dedicated_afe()
+    swarming_runner = swarming_lib.SwarmingRunner(
+        afe_server,
+        swarming_lib.SKYLAB_SWARMING_SERVER)
+    skylab_response = swarming_runner.dummy_run_sanity_old(is_skylab=True)
+    skylab_swarming_task_info = swarming_runner.query_task(
+        skylab_response['task_id'], is_skylab=True)
+    self.response.write(skylab_swarming_task_info.tags)
+
+
 app = webapp2.WSGIApplication([
     ('/test_push/afe_dummy', TestAFESwarmingAPI),
     ('/test_push/skylab_dummy', TestSkylabSwarmingAPI),
     ('/test_push/afe_sanity', TestAFEWithSanity),
     ('/test_push/skylab_sanity', TestSkylabWithSanity),
+    ('/test_push/skylab_sanity_bc_test',
+     TestSkylabBackwardCompatibilityWithSanity),
     ], debug=True)
