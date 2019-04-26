@@ -242,3 +242,43 @@ class SwarmingRestClient(object):
     """
     return self._rest_client.service.task().result(
         task_id=task_id).execute()
+
+
+class BigqueryRestClient(object):
+  """Class of REST client for Bigquery API."""
+
+  def __init__(self, rest_client):
+    """Initialize a REST client for connecting to Bigquery API."""
+    self._rest_client = rest_client
+    self._rest_client.create_service()
+
+  def get_past_skylab_job_nums(self, hours):
+    """Query skylab job numbers scheduled in past hours.
+
+    Args:
+      hours: An integer.
+
+    Returns:
+      A json dict returned by API bigquery.jobs.query, e.g.
+      # {...,
+      #  "rows": [
+      #     {
+      #      "f": [ # field
+      #       {
+      #        "v": # value
+      #       }
+      #      ]
+      #     }
+      #   ]
+      # }
+    """
+    query_data = {
+        'query': ('SELECT COUNT(*) FROM swarming.task_requests AS r '
+                  'WHERE \'user:suite_scheduler\' in UNNEST(r.tags) and '
+                  'create_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), '
+                  'INTERVAL %d HOUR);') % hours,
+        'useLegacySql': False
+    }
+    return self._rest_client.service.jobs().query(
+        projectId='chromeos-swarming',
+        body=query_data).execute()

@@ -88,6 +88,11 @@ class RestClient(object):
        'logging',
        'v2'])
 
+  BIGQUERY_CLIENT = RestClientInfo._make(
+      ['https://www.googleapis.com/auth/bigquery',
+       'bigquery',
+       'v2'])
+
 
 class RunningEnv(object):
   """Constants related to app engine running environment."""
