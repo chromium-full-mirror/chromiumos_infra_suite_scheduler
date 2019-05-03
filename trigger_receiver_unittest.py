@@ -97,7 +97,9 @@ class FakeCIDBClient(object):
     return [cloud_sql_client.BuildInfo('link', None, '62', '9868.0.0',
                                        'link-release'),
             cloud_sql_client.BuildInfo('zako', None, '62', '9868.0.0',
-                                       'zako-release')]
+                                       'zako-release'),
+            cloud_sql_client.BuildInfo('samus-kernelnext', None, '62',
+                                       '9868.0.0', 'samus-kernelnext-release')]
 
   def get_latest_passed_builds(self, build_config):
     """Mock cloud_sql_client.CIDBClient.get_latest_passed_builds."""
@@ -129,7 +131,7 @@ class FakeLabConfig(object):
 
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_cros_board_list."""
-    return ('grunt', 'link', 'peppy', 'daisy', 'zako')
+    return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext')
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -349,11 +351,13 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.add_section(fsnbt_name)
     self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
     self.fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    self.fake_config.set(fsnbt_name, 'boards', 'link, zako, grunt')
     frnbt_name = 'FakeRelaxedNewBuildTask'
     self.fake_config.add_section(frnbt_name)
     self.fake_config.set(frnbt_name, 'run_on', 'new_build')
     self.fake_config.set(frnbt_name, 'suite', 'fake_suite_relaxed')
     self.fake_config.set(frnbt_name, 'only_hwtest_sanity_required', 'True')
+    self.fake_config.set(frnbt_name, 'boards', 'link, zako, grunt')
 
     self._mock_config_reader.return_value = self.fake_config
 
@@ -447,6 +451,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.add_section(normal_suite)
     self.fake_config.set(normal_suite, 'run_on', 'new_build')
     self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'boards', 'link, zako')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
@@ -466,6 +471,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(link_suite, 'run_on', 'new_build')
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
+    self.fake_config.set(link_suite, 'boards', 'link, zako')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
@@ -509,6 +515,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(nyan_suite, 'run_on', 'new_build')
     self.fake_config.set(nyan_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(nyan_suite, 'exclude_board_families', 'nyan')
+    self.fake_config.set(nyan_suite, 'boards', 'link, zako')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
@@ -563,6 +570,32 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertIn('is_skylab=True', tasks[0].payload)
     self.assertIn('override_pool=QUOTA_POOL', tasks[0].payload)
     self.assertIn('override_qs_account=QUOTA_ACCOUNT', tasks[0].payload)
+
+  def testNewBuildWithKernelnext(self):
+    """Test the case that suites run with board-kernelnext build."""
+    normal_suite = 'FakeKernelnextSuite'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake-suite')
+    self.fake_config.set(normal_suite, 'pool', 'suites')
+    self.fake_config.set(normal_suite, 'boards', 'samus-kernelnext')
+    self._mock_config_reader.return_value = self.fake_config
+
+    self._mock_cidb_client.return_value = FakeCIDBClient()
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    # Board should be 'samus'.
+    self.assertIn('&board=samus&', tasks[0].payload)
+    # Build should be 'samus-kernelnext-release***'.
+    self.assertIn('cros_version=samus-kernelnext-release', tasks[0].payload)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

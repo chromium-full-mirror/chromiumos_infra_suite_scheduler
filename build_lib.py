@@ -438,3 +438,19 @@ def to_full_model(board, model):
     A string full_model name.
   """
   return '%s_%s' % (board, model)
+
+
+def reshape_board(board):
+  """Reshape some variants of board names to original board.
+
+  Args:
+    board: A string board name.
+
+  Returns:
+    A string board name after reshaping.
+  """
+  # The hack derives from build info structure saved in CIDB/buildbucket:
+  # *-kernelnext/*-arcnext are saved as board name, but not the real board
+  # for DUT.
+  board = board.replace('-kernelnext', '')
+  return board

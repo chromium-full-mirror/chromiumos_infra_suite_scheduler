@@ -514,14 +514,15 @@ class Task(object):
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
 
+      hwtest_board = build_lib.reshape_board(board)
       is_skylab = skylab.should_run_in_skylab(configs.migration_config,
-                                              board,
+                                              hwtest_board,
                                               passed_model,
                                               self.suite,
                                               self.pool)
       override_pool, override_qs_account = skylab.get_override_info(
           configs.migration_config,
-          board,
+          hwtest_board,
           passed_model,
           self.suite,
           self.pool)
@@ -531,7 +532,7 @@ class Task(object):
         if ((passed_model is not None and model == passed_model) or
             passed_model is None):
           self._push_suite(
-              board=board,
+              board=hwtest_board,
               model=model,
               cros_build=cros_build,
               firmware_rw_build=firmware_rw_build,
