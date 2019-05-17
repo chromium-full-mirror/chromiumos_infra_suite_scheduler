@@ -94,12 +94,22 @@ class FakeCIDBClient(object):
   def get_passed_builds_since_date(self, since_date):
     """Mock cloud_sql_client.CIDBClient.get_passed_builds_since_date."""
     del since_date  # unused
-    return [cloud_sql_client.BuildInfo('link', None, '62', '9868.0.0',
-                                       'link-release'),
-            cloud_sql_client.BuildInfo('zako', None, '62', '9868.0.0',
-                                       'zako-release'),
-            cloud_sql_client.BuildInfo('samus-kernelnext', None, '62',
-                                       '9868.0.0', 'samus-kernelnext-release')]
+    return [
+        cloud_sql_client.BuildInfo('link', None, '62', '9868.0.0',
+                                   'link-release'),
+        cloud_sql_client.BuildInfo('zako', None, '62', '9868.0.0',
+                                   'zako-release'),
+        cloud_sql_client.BuildInfo('samus-kernelnext', None, '62',
+                                   '9868.0.0', 'samus-kernelnext-release'),
+        cloud_sql_client.BuildInfo('reef', None, '62', '1234.0.0',
+                                   'reef-release'),
+        cloud_sql_client.BuildInfo('coral', 'santa', '62', '9868.0.0',
+                                   'coral-release'),
+        cloud_sql_client.BuildInfo('coral', 'astronaut', '62', '9868.0.0',
+                                   'coral-release'),
+        cloud_sql_client.BuildInfo('coral', 'lava', '62', '9868.0.0',
+                                   'coral-release'),
+    ]
 
   def get_latest_passed_builds(self, build_config):
     """Mock cloud_sql_client.CIDBClient.get_latest_passed_builds."""
@@ -131,7 +141,8 @@ class FakeLabConfig(object):
 
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_cros_board_list."""
-    return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext')
+    return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext',
+            'coral', 'reef')
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -140,7 +151,10 @@ class FakeLabConfig(object):
 
   def get_cros_model_map(self):
     """Mock config_reader.LabConfig.get_cros_model_map."""
-    return {}
+    return {
+        'coral': ['santa', 'astronaut'],
+        'reef': ['electro'],
+    }
 
 
 class FakeMigrationConfig(object):
@@ -493,7 +507,8 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(link_suite, 'run_on', 'new_build')
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
-    self.fake_config.set(link_suite, 'exclude_boards', 'asuka, paine, banon')
+    self.fake_config.set(link_suite, 'exclude_boards',
+                         'asuka, paine, banon, coral, reef')
     self._mock_config_reader.return_value = self.fake_config
 
     suite_trigger = trigger_receiver.TriggerReceiver()
@@ -596,6 +611,118 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertIn('&board=samus&', tasks[0].payload)
     # Build should be 'samus-kernelnext-release***'.
     self.assertIn('cros_version=samus-kernelnext-release', tasks[0].payload)
+
+  def testNewBuildWithModels(self):
+    """Test the new_build suite with an existing models entry."""
+    normal_suite = 'FakeModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'models', 'coral_lava, coral_santa')
+    self.fake_config.set(normal_suite, 'boards', 'coral')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertNotIn('model=astronaut', tasks[0].payload)
+    self.assertIn('model=santa', tasks[0].payload)
+
+  def testNewBuildWithExcludeModels(self):
+    """Test the new_build suite with an existing exclude_models entry."""
+    normal_suite = 'FakeExludingModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'exclude_models',
+                         'coral_lava, coral_santa')
+    self.fake_config.set(normal_suite, 'boards', 'coral')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertNotIn('model=santa', tasks[0].payload)
+    self.assertIn('model=astronaut', tasks[0].payload)
+
+  def testNewBuildWithModelsExcludeModels(self):
+    """Test the new_build suite with models and exclude_models entry."""
+    normal_suite = 'FakeModelsExcludeModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'models', 'coral_santa, coral_astronaut')
+    self.fake_config.set(normal_suite, 'exclude_models',
+                         'coral_lava, coral_santa')
+    self.fake_config.set(normal_suite, 'boards', 'coral')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertNotIn('model=santa', tasks[0].payload)
+    self.assertIn('model=astronaut', tasks[0].payload)
+
+  def testNewBuildWithNoModelListAndModelBuild(self):
+    """Test the new_build suite with models and empty board_model mapping."""
+    normal_suite = 'FakeModelsExcludeModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'boards', 'coral')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    # Verify that coral-release is not kicked off on model lava as lava is not
+    # listed in cros_model_map.
+    self.assertEqual(len(tasks), 2)
+    self.assertNotIn('lava', tasks[0].payload)
+    self.assertNotIn('lava', tasks[1].payload)
+
+  def testNewBuildWithNoModelListAndNoModelBuild(self):
+    """Test the new_build suite with models and empty board_model mapping."""
+    normal_suite = 'FakeModelsExcludeModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'boards', 'reef')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    # Verify that reef-release is kicked off on reef models.
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('model=electro', tasks[0].payload)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):

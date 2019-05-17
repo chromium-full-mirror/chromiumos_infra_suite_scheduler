@@ -531,6 +531,18 @@ class Task(object):
       for model in models:
         if ((passed_model is not None and model == passed_model) or
             passed_model is None):
+          full_model_name = '%s_%s' % (board, model)
+          # Respect exclude first.
+          if self.exclude_models and full_model_name in self.exclude_models:
+            logging.debug("Skip model %s as it's in exclude model list %s",
+                          model, self.exclude_models)
+            continue
+
+          if self.models and full_model_name not in self.models:
+            logging.debug("Skip model %s as it's not in support model list %s",
+                          model, self.models)
+            continue
+
           self._push_suite(
               board=hwtest_board,
               model=model,
