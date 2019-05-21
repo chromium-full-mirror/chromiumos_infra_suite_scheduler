@@ -18,6 +18,11 @@ DUMMY_TASK_NAME = 'suite_scheduler_dummy_run'
 # The priority for dummy swarming task, make it highest.
 DUMMY_PRIORITY = 100
 
+# Only special tasks can have a priority lower than 50.
+_SKYLAB_PRIORITY_MIN = 50
+# Mandated by Swarming.
+_SKYLAB_PRIORITY_MAX = 255
+
 # Representing a swarming task params dict after parsing.
 SwarmingTaskParams = collections.namedtuple(
     'SwarmingTaskParams',
@@ -176,9 +181,7 @@ class SwarmingRunner(object):
 
   def _run_with_skylab(self, **task_params):
     """Kick off suite to skylab."""
-    task_params['priority'] = constants.skylab_priority_for(
-        task_params['priority'])
-
+    task_params['priority'] = _skylab_priority_for(task_params['priority'])
     parsed_task_params = self._parse_task_params(**task_params)
     command = self._form_run_suite_skylab_command(
         parsed_task_params.final_build, **task_params)
@@ -494,3 +497,26 @@ def _to_raw_request(request):
   ]
   out[PROPERTY][ENV].sort(key=lambda x: x[KEY])
   return out
+
+
+def _skylab_priority_for(afe_priority):
+  """Convert AFE prioritiy to Skylab priority.
+
+  Args:
+    afe_priority: AFE priority number as a string.
+
+  Returns:
+    An integer representing the Skylab priority.
+
+  Raises:
+    SwarmingRunError: if afe_priority is not an integer.
+  """
+  try:
+    skylab_priority = 260 - 3 * int(afe_priority)
+  except ValueError:
+    raise SwarmingRunError(
+        'The specified priority is not an integer: %s' % afe_priority)
+
+  skylab_priority = min(skylab_priority, _SKYLAB_PRIORITY_MAX)
+  skylab_priority = max(skylab_priority, _SKYLAB_PRIORITY_MIN)
+  return str(skylab_priority)
