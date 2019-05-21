@@ -7,6 +7,7 @@
 # pylint: disable=g-bad-exception-name
 
 import httplib2
+import logging
 
 import apiclient
 import constants
@@ -247,16 +248,18 @@ class SwarmingRestClient(object):
 class BigqueryRestClient(object):
   """Class of REST client for Bigquery API."""
 
+  PROJECT_TO_RUN_BIGQUERY_JOB = 'google.com:suite-scheduler'
+
   def __init__(self, rest_client):
     """Initialize a REST client for connecting to Bigquery API."""
     self._rest_client = rest_client
     self._rest_client.create_service()
 
-  def get_past_skylab_job_nums(self, hours):
-    """Query skylab job numbers scheduled in past hours.
+  def query(self, query_str):
+    """Query bigquery.
 
     Args:
-      hours: An integer.
+      query_str: A string used to query Bigquery.
 
     Returns:
       A json dict returned by API bigquery.jobs.query, e.g.
@@ -266,19 +269,99 @@ class BigqueryRestClient(object):
       #      "f": [ # field
       #       {
       #        "v": # value
-      #       }
+      #       },
+      #       {
+      #        "v": # value
+      #       },
+      #       ...
       #      ]
       #     }
       #   ]
       # }
     """
     query_data = {
-        'query': ('SELECT COUNT(*) FROM swarming.task_requests AS r '
-                  'WHERE \'user:suite_scheduler\' in UNNEST(r.tags) and '
-                  'create_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), '
-                  'INTERVAL %d HOUR);') % hours,
-        'useLegacySql': False
+        'query': query_str,
+        'useLegacySql': False,
     }
     return self._rest_client.service.jobs().query(
-        projectId='chromeos-swarming',
+        projectId=self.PROJECT_TO_RUN_BIGQUERY_JOB,
+        fields='rows',
         body=query_data).execute()
+
+
+class CrOSSwarmingBigqueryClient(BigqueryRestClient):
+  """REST client for chromeos-swarming Bigquery API."""
+
+  def get_past_skylab_job_nums(self, hours):
+    """Query the count of jobs kicked off to chromeos-swarming in past hours.
+
+    Args:
+      hours: An integer.
+
+    Returns:
+      An integer.
+    """
+    query_str = """
+        SELECT
+          COUNT(*)
+        FROM
+          `chromeos-swarming.swarming.task_requests` AS r
+        WHERE
+          'user:suite_scheduler' in UNNEST(r.tags) and
+          create_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(),
+          INTERVAL %d HOUR);
+    """
+    res = self.query(query_str % hours)
+    try:
+      return int(_parse_bq_job_query(res)[0][0])
+    except (ValueError, KeyError) as e:
+      logging.debug('The returned json: \n%r', res)
+      logging.exception(str(e))
+      raise
+
+
+def _parse_bq_job_query(json_input):
+  """Parse response from API bigquery.jobs.query.
+
+  Args:
+    json_input: a dict, representing jsons returned by query API.
+
+  Returns:
+    A 2D string matrix: [rows[columns]], or None if no result.
+    E.g. Input:
+    "rows": [
+         {
+          "f": [ # field
+           {
+            "v": 'foo1',
+           },
+           {
+            "v": 'foo2',
+           }
+          ]
+         }
+         {
+          "f": [ # field
+           {
+            "v": 'bar1',
+           },
+           {
+            "v": 'bar2',
+           }
+          ]
+         }
+        ]
+    => Output: [['foo1', 'foo2'], ['bar1', 'bar2']]
+  """
+  if 'rows' not in json_input:
+    return None
+
+  res = []
+  for r in json_input['rows']:
+    rc = []
+    for c in r['f']:
+      rc.append(c['v'])
+
+    res.append(rc)
+
+  return res

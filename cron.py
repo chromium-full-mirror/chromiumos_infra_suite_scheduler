@@ -225,21 +225,15 @@ class CheckSkylabJobs(webapp2.RequestHandler):
     if global_config.is_in_staging():
       return
 
-    bq_client = rest_client.BigqueryRestClient(
+    bq_client = rest_client.CrOSSwarmingBigqueryClient(
         rest_client.BaseRestClient(
             constants.RestClient.BIGQUERY_CLIENT.scopes,
             constants.RestClient.BIGQUERY_CLIENT.service_name,
             constants.RestClient.BIGQUERY_CLIENT.service_version))
     res = bq_client.get_past_skylab_job_nums(_PAST_HOURS)
-    try:
-      num = int(res['rows'][0]['f'][0]['v'])
-      if num <= _MIN_SCHEDULED_SKYLAB_JOB_NUMS:
-        raise ValueError('Too few (%d) Skylab jobs scheduled in the past '
-                         '%d hours.' % (num, _PAST_HOURS))
-    except (ValueError, KeyError) as e:
-      logging.debug('The returned json :\n%r', res)
-      logging.exception(str(e))
-      raise
+    if res <= _MIN_SCHEDULED_SKYLAB_JOB_NUMS:
+      raise ValueError('Too few (%d) Skylab jobs scheduled in the past '
+                       '%d hours.' % (res, _PAST_HOURS))
 
 
 app = webapp2.WSGIApplication([
