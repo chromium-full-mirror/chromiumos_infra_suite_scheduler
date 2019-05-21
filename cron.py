@@ -41,6 +41,12 @@ _LOG_TIME_ADDON_MIN = 1
 # The format of url of loggings.
 _LOGGING_URL_FORMAT = 'http://%s/logger?start_time=%s&end_time=%s&resource=%s'
 
+# The past number of hours to check if skylab jobs are well scheduled.
+_PAST_HOURS = 2
+
+# The minimum number of skylab jobs scheduled in past hours.
+_MIN_SCHEDULED_SKYLAB_JOB_NUMS = 5
+
 
 class TriggerEvent(webapp2.RequestHandler):
   """Trigger events regularly to schedule tasks for suite_scheduler."""
@@ -212,8 +218,33 @@ def _add_to_calendar(keyword, task_results, log_url, start_time, end_time,
     logging.info(event)
 
 
+class CheckSkylabJobs(webapp2.RequestHandler):
+  """Check if skylab jobs are well scheduled."""
+
+  def get(self):
+    if global_config.is_in_staging():
+      return
+
+    bq_client = rest_client.BigqueryRestClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.BIGQUERY_CLIENT.scopes,
+            constants.RestClient.BIGQUERY_CLIENT.service_name,
+            constants.RestClient.BIGQUERY_CLIENT.service_version))
+    res = bq_client.get_past_skylab_job_nums(_PAST_HOURS)
+    try:
+      num = int(res['rows'][0]['f'][0]['v'])
+      if num <= _MIN_SCHEDULED_SKYLAB_JOB_NUMS:
+        raise ValueError('Too few (%d) Skylab jobs scheduled in the past '
+                         '%d hours.' % (num, _PAST_HOURS))
+    except (ValueError, KeyError) as e:
+      logging.debug('The returned json :\n%r', res)
+      logging.exception(str(e))
+      raise
+
+
 app = webapp2.WSGIApplication([
     ('/cron/trigger_event', TriggerEvent),
     ('/cron/execute_task', ExecuteTask),
     ('/cron/test_push', TestPush),
+    ('/cron/check_skylab_jobs', CheckSkylabJobs),
 ], debug=True)
