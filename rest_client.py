@@ -6,12 +6,17 @@
 # pylint: disable=g-bad-import-order
 # pylint: disable=g-bad-exception-name
 
+import ast
 import httplib2
 import logging
+import re
 
 import apiclient
+import build_lib
 import constants
 import file_getter
+import global_config
+import time_converter
 
 from oauth2client import service_account
 from oauth2client.contrib import appengine
@@ -276,6 +281,7 @@ class BigqueryRestClient(object):
       #       ...
       #      ]
       #     }
+      #     ...
       #   ]
       # }
     """
@@ -318,6 +324,141 @@ class CrOSSwarmingBigqueryClient(BigqueryRestClient):
       logging.debug('The returned json: \n%r', res)
       logging.exception(str(e))
       raise
+
+
+class BuildBucketBigqueryClient(BigqueryRestClient):
+  """Rest client for buildbucket Bigquery API."""
+
+  def get_latest_passed_builds(self, build_config):
+    """Get latest passed builds by build_config.
+
+    Args:
+      build_config: a string like '{board}-{build_type}', eg. link-release
+
+    Returns:
+      A build_lib.BuildInfo object representing the latest passed build.
+    """
+    query_str = """
+        SELECT
+          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version')
+        FROM
+          `cr-buildbucket.chromeos.completed_builds_BETA`
+        WHERE
+          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') = '%s' and
+          status = 'SUCCESS' and
+          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+        ORDER BY
+          end_time desc
+        LIMIT 1
+    """
+    logging.info('Getting latest build for %s', build_config)
+    res = self.query(query_str % build_config)
+    res = _parse_bq_job_query(res)
+    if res is None:
+      return None
+
+    return build_lib.BuildInfo(
+        board=_parse_board(build_config, res[0][0]),
+        model=None,
+        milestone=res[0][1],
+        platform=res[0][2],
+        build_config=build_config)
+
+  def get_passed_builds_since_date(self, since_date):
+    """Get passed builds since a given date.
+
+    Args:
+      since_date: a datetime.datetime object in UTC.
+
+    Returns:
+      A list of build_lib.BuildInfo objects.
+    """
+    query_str = """
+        SELECT
+          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config')
+        FROM
+          `cr-buildbucket.chromeos.completed_builds_BETA`
+        WHERE
+          end_time > '%s' and
+          status = 'SUCCESS' and
+          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+    """
+    if global_config.GAE_TESTING:
+      since_date_str = '2019-05-19 20:00:00'
+      query_str += 'limit 10'
+    else:
+      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+
+    logging.info('Getting passed builds since %s', since_date_str)
+    res = self.query(query_str % since_date_str)
+    res = _parse_bq_job_query(res)
+    if res is None:
+      return []
+
+    build_infos = []
+    for board, milestone, platform, build_config in res:
+      board = _parse_board(build_config, board)
+      build_infos.append(
+          build_lib.BuildInfo(board, None, milestone, platform, build_config))
+
+    return build_infos
+
+  def get_relaxed_passed_builds_since_date(self, since_date):
+    """Get builds with successful "HWTest [sanity]" stages since a given date.
+
+    Args:
+      since_date: a datetime.datetime object in UTC.
+
+    Returns:
+      A list of build_lib.BuildInfo objects.
+    """
+    query_str = """
+        SELECT
+          JSON_EXTRACT_SCALAR(output.properties, '$.unibuild'),
+          s.name,
+          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config')
+        FROM
+          `cr-buildbucket.chromeos.completed_builds_BETA` as c,
+          UNNEST(c.steps) AS s
+        WHERE
+          c.end_time > '%s' and
+          c.status != 'SUCCESS' and
+          s.name like '%%HWTest [sanity]%%' and
+          s.status = 'SUCCESS' and
+          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+    """
+    if global_config.GAE_TESTING:
+      since_date_str = '2019-05-19 20:00:00'
+      query_str += 'limit 10'
+    else:
+      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+
+    logging.info('Getting passed builds since %s', since_date_str)
+    res = self.query(query_str % since_date_str)
+    res = _parse_bq_job_query(res)
+    if res is None:
+      return []
+
+    build_infos = []
+    for unibuild, stage_name, board, milestone, platform, build_config in res:
+      board = _parse_board(build_config, board)
+      if ast.literal_eval(unibuild):
+        model = _parse_model(stage_name)
+      else:
+        model = None
+
+      build_infos.append(
+          build_lib.BuildInfo(board, model, milestone, platform, build_config))
+
+    return build_infos
 
 
 def _parse_bq_job_query(json_input):
@@ -365,3 +506,54 @@ def _parse_bq_job_query(json_input):
     res.append(rc)
 
   return res
+
+
+def _parse_model(build_stage_name):
+  """Parse model name from the build stage name.
+
+  It's only used for HWTest Sanity stage. An example build_stage_name will
+  be 'HWTest [sanity] [whitetip]'.
+  Args:
+    build_stage_name: The stage name of a HWTest sanity stage, e.g.
+      "HWTest [sanity] [whitetip]".
+
+  Returns:
+    A model name, e.g. "whitetip" or None.
+  """
+  if 'HWTest [sanity]' not in build_stage_name:
+    return None
+
+  try:
+    model = build_stage_name.strip().split()[-1][1:-1]
+    if not model:
+      logging.warning('Cannot parse build stage name: %s', build_stage_name)
+      return None
+
+    return model
+  except IndexError:
+    logging.error('Cannot parse build stage name: %s', build_stage_name)
+    return None
+
+
+def _parse_board(build_config, board):
+  """Parse board from build_config if needed.
+
+  Board could be None for old release. See crbug.com/944981#c16.
+  This function can be removed once all release are newer than R74.
+
+  Args:
+    build_config: A string build config, e.g. reef-release.
+    board: A string board, e.g. reef.
+
+  Returns:
+    A string board if exist, or None.
+  """
+  if board is None:
+    match = re.match(r'(.+)-release', build_config)
+    if not match:
+      logging.debug('Cannot parse board from %s', build_config)
+      return None
+
+    return match.groups()[0]
+
+  return board

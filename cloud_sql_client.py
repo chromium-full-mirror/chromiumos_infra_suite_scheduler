@@ -16,6 +16,7 @@ import file_getter
 import global_config
 import time_converter
 
+# TODO(xixuan): To be deprecated. See crbug.com/944981 for details.
 BuildInfo = collections.namedtuple(
     'BuildInfo',
     [
@@ -27,6 +28,7 @@ BuildInfo = collections.namedtuple(
     ])
 
 
+# TODO(xixuan): To be deprecated. See crbug.com/944981 for details.
 def _parse_model(build_stage_name):
   """Parse model name from the build stage name.
 
@@ -123,6 +125,7 @@ class DBConnection(object):
     self._cursor.execute('USE %s' % db_name)
 
 
+# TODO(xixuan): To be deprecated. See crbug.com/944981 for details.
 class CIDBClient(object):
   """class for interacting with CIDB."""
 

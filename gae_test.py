@@ -4,9 +4,14 @@
 
 """Module for tests for handlers."""
 
+import datetime
+
 import config_reader
+import constants
 import file_getter
+import rest_client
 import swarming_lib
+import time_converter
 
 import webapp2
 
@@ -85,6 +90,42 @@ class TestSkylabBackwardCompatibilityWithSanity(webapp2.RequestHandler):
     self.response.write(skylab_swarming_task_info.tags)
 
 
+class _FakeBigqueryGetPassedHandler(webapp2.RequestHandler):
+
+  def get(self):
+    bq_client = rest_client.BuildBucketBigqueryClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.BIGQUERY_CLIENT.scopes,
+            constants.RestClient.BIGQUERY_CLIENT.service_name,
+            constants.RestClient.BIGQUERY_CLIENT.service_version))
+
+    # Get passed builds in 3 days.
+    utc_now = time_converter.utc_now()
+    since_date = utc_now - datetime.timedelta(days=3)
+    res = bq_client.get_passed_builds_since_date(since_date)
+    for r in res:
+      self.response.write(r)
+      self.response.write('\n')
+
+
+class _FakeBigqueryGetRelaxedPassedHandler(webapp2.RequestHandler):
+
+  def get(self):
+    bq_client = rest_client.BuildBucketBigqueryClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.BIGQUERY_CLIENT.scopes,
+            constants.RestClient.BIGQUERY_CLIENT.service_name,
+            constants.RestClient.BIGQUERY_CLIENT.service_version))
+
+    # Get passed builds in 3 days.
+    utc_now = time_converter.utc_now()
+    since_date = utc_now - datetime.timedelta(days=3)
+    res = bq_client.get_relaxed_passed_builds_since_date(since_date)
+    for r in res:
+      self.response.write(r)
+      self.response.write('\n')
+
+
 app = webapp2.WSGIApplication([
     ('/test_push/afe_dummy', TestAFESwarmingAPI),
     ('/test_push/skylab_dummy', TestSkylabSwarmingAPI),
@@ -92,4 +133,6 @@ app = webapp2.WSGIApplication([
     ('/test_push/skylab_sanity', TestSkylabWithSanity),
     ('/test_push/skylab_sanity_bc_test',
      TestSkylabBackwardCompatibilityWithSanity),
+    ('/test_push/bq_get_passed', _FakeBigqueryGetPassedHandler),
+    ('/test_push/bq_get_relaxed_passed', _FakeBigqueryGetRelaxedPassedHandler),
     ], debug=True)

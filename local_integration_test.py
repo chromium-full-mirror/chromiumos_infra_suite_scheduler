@@ -116,6 +116,20 @@ class IntegrationTest(unittest.TestCase):
         ['curl', '%s/test_push/skylab_sanity_bc_test' % DEV_APPSERVER_URL])
     self.assertIn('sanity', output)
 
+  def testBigqueryGetPassedFromBB(self):
+    """Test get_passed_builds from Buildbucket Bigquery database."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/bq_get_passed' % DEV_APPSERVER_URL])
+    self.assertIn('release', output)
+
+  def testBigqueryGetRelaxedPassedFromBB(self):
+    """Test get_relaxed_passed_builds from Buildbucket Bigquery database."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/bq_get_relaxed_passed' % DEV_APPSERVER_URL])
+    self.assertIn('release', output)
+
 
 if __name__ == '__main__':
   unittest.main()

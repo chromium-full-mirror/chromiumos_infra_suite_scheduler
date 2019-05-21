@@ -13,6 +13,16 @@ import re
 
 import apiclient
 
+BuildInfo = collections.namedtuple(
+    'BuildInfo',
+    [
+        'board',
+        'model',
+        'milestone',
+        'platform',
+        'build_config',
+    ])
+
 # Bare branches
 BARE_BRANCHES = ['factory', 'firmware']
 
