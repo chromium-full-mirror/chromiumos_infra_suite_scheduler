@@ -62,52 +62,14 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
    local development server
    (https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
 
-
-      Assuming you already got credentials/cloud_sql_credentials.txt by
-      running 'setup_environment.py', set up some variables based on the
-      database instance you want to connect to:
-
-          # Set up CONNECTION_NAME based on the cloudsql project/instance
-          # name.  For more details, see:
-          # https://docs.google.com/document/d/1e_3mcsxdRKECYuYaIfpHcqf_TjnxxfHDKtidn900dEg/edit
-          CONNECTION_NAME='cosmic-strategy-646:us-central1:cidb-gen2-replica2'
-
-          # Set up USER based on the user you want to log in.  If you use
-          # readonly_nopw, grab the password from (as of April, 2018):
-          # https://valentine.corp.google.com/#/show/1493156766394660?tab=metadata
-          USER='readonly_nopw' # [CIDB username]
-
-      a. Test locally on your workstation to make sure you're whitelisted:
-
-          /google/data/ro/projects/speckle/mysql \
-              -S /cloudsql/${CONNECTION_NAME} \
-              -u ${USER} \
-              || echo "You may need to run prodaccess"
-
-      b. Start the cloud_sql_proxy in a new window to let your service talk
-         to cloud sql.  Note that cloud_sql_proxy needs to be downloaded from
-         Google's public cloud website:
-         https://cloud.google.com/sql/docs/mysql/sql-proxy
-
-          # Create the /cloudsql directory, since the suite scheduler assumes
-          # that this is where to find it's socket.
-          sudo mkdir /cloudsql
-          sudo chmod 1777 /cloudsql
-
-          # Start the cloud sql proxy.
-          ./cloud_sql_proxy \
-              -dir=/cloudsql \
-              -instances=${CONNECTION_NAME} \
-              -credential_file=./credentials/suite-scheduler_client_secret_service_account.json &
-
-      c. Finally, start dev_appserver.py in a window:
+      a. Finally, start dev_appserver.py in a window:
 
           dev_appserver.py app.yaml \
               --port=8888 \
               --admin_port=8001 \
               --log_level=debug
 
-      d. Test it:
+      b. Test it:
 
           curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
 

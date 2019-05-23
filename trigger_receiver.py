@@ -6,7 +6,6 @@
 
 import logging
 
-import cloud_sql_client
 import config_reader
 import constants
 import datastore_client
@@ -23,8 +22,6 @@ class TriggerReceiver(object):
 
     Its job is to fetch triggers from config files and trigger them.
     """
-    # TODO(xixuan): to be deprecrated, replaced by Buildbucket client.
-    self._cidb_client = cloud_sql_client.CIDBClient('CIDB', 'cidb')
     self._build_client = rest_client.BuildBucketBigqueryClient(
         rest_client.BaseRestClient(
             constants.RestClient.BIGQUERY_CLIENT.scopes,
@@ -72,7 +69,7 @@ class TriggerReceiver(object):
     This cron job executes:
       1. Filter out the tasks that shoud be run at this round.
       2. Fetch launch_control_build for Android boards from API.
-      3. Fetch cros_builds for ChromeOS boards from CIDB.
+      3. Fetch cros_builds for ChromeOS boards from Buildbucket bigquery.
       4. Schedule corresponding jobs with fetched builds.
       5. Reset event when it's finished.
     """

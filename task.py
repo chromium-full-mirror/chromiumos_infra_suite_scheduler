@@ -7,7 +7,6 @@
 # pylint: disable=dangerous-default-value
 
 from distutils import version
-import MySQLdb
 import logging
 
 import build_lib
@@ -287,8 +286,8 @@ class Task(object):
     else:
       return False
 
-  def _get_latest_firmware_build_from_db(self, spec, board, build_client):
-    """Get the latest firmware build from CIDB database.
+  def _get_latest_firmware_build(self, spec, board, build_client):
+    """Get the latest firmware build.
 
     Args:
       spec: a string build spec for RO or RW firmware, eg. firmware,
@@ -299,12 +298,9 @@ class Task(object):
 
     Returns:
       the latest firmware build.
-
-    Raises:
-      MySQLdb.OperationalError: if connection operations are not valid.
     """
     build_type = 'release' if spec == 'cros' else spec
-    # TODO(xixuan): not all firmware are saved in cidb.
+    # TODO(xixuan): not all firmware can be fetched in build system.
     build = build_client.get_latest_passed_builds('%s-%s' % (board, build_type))
 
     if build is None:
@@ -358,7 +354,6 @@ class Task(object):
 
     Raises:
       ValueError: if failing to get firmware from lab config file;
-      MySQLdb.OperationalError: if DB connection is not available.
     """
     if not spec or spec == 'stable':
       # TODO(crbug.com/577316): Query stable RO firmware.
@@ -376,15 +371,10 @@ class Task(object):
         return self._get_latest_firmware_build_from_lab_config(
             spec, board, lab_config)
       else:
-        return self._get_latest_firmware_build_from_db(
-            spec, board, build_client)
+        return self._get_latest_firmware_build(spec, board, build_client)
     except ValueError as e:
       logging.warning('Failed to get firmware from lab config file'
                       'for spec %s, board %s: %s', spec, board, str(e))
-      return None
-    except MySQLdb.OperationalError as e:
-      logging.warning('Failed to get firmware from cidb for spec %s, '
-                      'board %s: %s', spec, board, str(e))
       return None
 
   def _push_suite(
@@ -470,7 +460,7 @@ class Task(object):
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
-        value of |build_lib.get_cros_builds_since_date_from_db|.
+        value of |build_lib.get_cros_builds_since_date|.
       configs: A config_reader.Configs object.
       build_client: a rest_client.BuildBucketBigqueryClient object, to
         connect Buildbucket Bigquery.

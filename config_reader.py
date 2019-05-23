@@ -13,15 +13,6 @@ import re
 import build_utils
 
 
-# Namedtuple for storing db info.
-DBInfo = collections.namedtuple(
-    'DBConfigs',
-    [
-        'connection_name',
-        'user',
-        'password',
-    ])
-
 # Config readers.
 Configs = collections.namedtuple(
     'Configs',
@@ -368,33 +359,6 @@ class MigrationConfig(object):
       result[model_key(m)].update(self.get_override_mappings(pool, m))
 
     return result
-
-
-class DBConfig(object):
-  """Class for reading db config file for suite scheduler."""
-
-  def __init__(self, config_reader):
-    """Initialize a DBConfig to read db info.
-
-    Args:
-      config_reader: a config reader to read task config.
-    """
-    self._config_reader = config_reader
-
-  def get_credentials(self, db_tag):
-    """Get cidb connection name/user/passwd.
-
-    Args:
-      db_tag: the section to read credentials.
-
-    Returns:
-      A DBInfo object.
-    """
-    return DBInfo(
-        connection_name=self._config_reader.getstring(
-            db_tag, 'connection_name'),
-        user=self._config_reader.getstring(db_tag, 'user'),
-        password=self._config_reader.getstring(db_tag, 'password'))
 
 
 def config_dump(res):

@@ -12,10 +12,6 @@ THIRD_PARTY_LIB_PATH = os.path.join(os.path.dirname(__file__), 'lib')
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 
-# Credentials for Cloud SQL connection
-SQL_CREDENTIAL_FILE = os.path.join(CREDENTIALS_PATH,
-                                   'cloud_sql_credentials.txt')
-
 # The path to save configs.
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'configs')
 

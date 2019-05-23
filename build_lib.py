@@ -246,8 +246,8 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
   return branch_build_dict
 
 
-def get_cros_builds_since_date_from_db(build_client, cros_board_list,
-                                       since_date):
+def get_cros_builds_since_date(build_client, cros_board_list,
+                               since_date):
   """Get branch builds for ChromeOS boards.
 
   Args:

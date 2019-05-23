@@ -9,10 +9,8 @@ import re
 import unittest
 
 import build_lib
-import cloud_sql_client
 import config_reader
 import mock
-import MySQLdb
 import task
 import task_config_reader
 import tot_manager
@@ -27,24 +25,6 @@ class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
     self.tot = self._tot_milestone()
 
 
-# TODO(xixuan): to be deprecated and deleted.
-class FakeCIDBClient(object):
-  """Mock class for cloud_sql_client.CIDBClient."""
-
-  def __init__(self, success=True):
-    self.success = success
-
-  def get_latest_passed_builds(self, build_config):
-    if not self.success:
-      raise MySQLdb.OperationalError('Failed to connect to db')
-
-    return cloud_sql_client.BuildInfo(board=build_config.split('-')[0],
-                                      model=None,
-                                      milestone=TaskTestCase.MILESTONE,
-                                      platform=TaskTestCase.PLATFORM,
-                                      build_config=build_config)
-
-
 class FakeBuildClient(object):
   """Mock rest_client.BuildBucketBigqueryClient."""
 
@@ -53,7 +33,7 @@ class FakeBuildClient(object):
 
   def get_latest_passed_builds(self, build_config):
     if not self.success:
-      raise MySQLdb.OperationalError('Failed to connect to db')
+      raise ValueError('No valid builds')
 
     return build_lib.BuildInfo(board=build_config.split('-')[0],
                                model=None,
@@ -202,11 +182,6 @@ class TaskTestCase(TaskBaseTestCase):
     self.assertEqual(
         firmware,
         '%s-firmware/R%s-%s' % (self.BOARD, self.MILESTONE, self.PLATFORM))
-
-  def testGetFirmwareFromDBConnectionError(self):
-    """Test get firmware from DB when DB connection is failed."""
-    self.assertIsNone(self.task._get_firmware_build(
-        'firmware', self.BOARD, None, FakeBuildClient(success=False)))
 
   def testScheduleCrosSuccessfully(self):
     """test schedule cros builds successfully."""

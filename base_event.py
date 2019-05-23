@@ -85,9 +85,9 @@ class BaseEvent(object):
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
-        |build_lib.get_cros_builds_since_date_from_db|.
+        |build_lib.get_cros_builds_since_date|.
     """
-    return build_lib.get_cros_builds_since_date_from_db(
+    return build_lib.get_cros_builds_since_date(
         build_client, lab_config.get_cros_board_list(), self.since_date)
 
   def get_launch_control_builds(self, lab_config, android_client):

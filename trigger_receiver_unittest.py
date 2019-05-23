@@ -10,7 +10,6 @@ import os
 import unittest
 
 import build_lib
-import cloud_sql_client
 import config_reader
 import datastore_client
 import file_getter
@@ -89,47 +88,11 @@ def _should_schedule_new_build_task(last_now, now):
   return False
 
 
-# TODO(xixuan): to be deprecated and deleted.
-class FakeCIDBClient(object):
-  """Mock cloud_sql_client.CIDBClient."""
-
-  def get_passed_builds_since_date(self, since_date):
-    """Mock cloud_sql_client.CIDBClient.get_passed_builds_since_date."""
-    del since_date  # unused
-    return [
-        cloud_sql_client.BuildInfo('link', None, '62', '9868.0.0',
-                                   'link-release'),
-        cloud_sql_client.BuildInfo('zako', None, '62', '9868.0.0',
-                                   'zako-release'),
-        cloud_sql_client.BuildInfo('samus-kernelnext', None, '62',
-                                   '9868.0.0', 'samus-kernelnext-release'),
-        cloud_sql_client.BuildInfo('reef', None, '62', '1234.0.0',
-                                   'reef-release'),
-        cloud_sql_client.BuildInfo('coral', 'santa', '62', '9868.0.0',
-                                   'coral-release'),
-        cloud_sql_client.BuildInfo('coral', 'astronaut', '62', '9868.0.0',
-                                   'coral-release'),
-        cloud_sql_client.BuildInfo('coral', 'lava', '62', '9868.0.0',
-                                   'coral-release'),
-    ]
-
-  def get_latest_passed_builds(self, build_config):
-    """Mock cloud_sql_client.CIDBClient.get_latest_passed_builds."""
-    del build_config  # unused
-    return cloud_sql_client.BuildInfo('link', '62', '9868.0.0', build_config)
-
-  def get_relaxed_pased_builds_since_date(self, since_date):
-    """Mock cloud_sql_client.CIDBClient.get_relaxed_pased_builds_since_date."""
-    del since_date  # unused
-    return [cloud_sql_client.BuildInfo('grunt', None, '63', '9968.0.0',
-                                       'grunt-release')]
-
-
 class FakeBuildClient(object):
   """Mock rest_client.BuildBucketBigqueryClient."""
 
   def get_passed_builds_since_date(self, since_date):
-    """Mock cloud_sql_client.CIDBClient.get_passed_builds_since_date."""
+    """Mock get_passed_builds_since_date."""
     del since_date  # unused
     return [
         build_lib.BuildInfo(
@@ -149,12 +112,12 @@ class FakeBuildClient(object):
     ]
 
   def get_latest_passed_builds(self, build_config):
-    """Mock cloud_sql_client.CIDBClient.get_latest_passed_builds."""
+    """Mock get_latest_passed_builds."""
     del build_config  # unused
     return build_lib.BuildInfo('link', '62', '9868.0.0', build_config)
 
   def get_relaxed_passed_builds_since_date(self, since_date):
-    """Mock cloud_sql_client.CIDBClient.get_relaxed_pased_builds_since_date."""
+    """Mock get_relaxed_pased_builds_since_date."""
     del since_date  # unused
     return [build_lib.BuildInfo(
         'grunt', None, '63', '9968.0.0', 'grunt-release')]
@@ -228,11 +191,6 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self.taskqueue_stub = self.testbed.get_stub(
         testbed.TASKQUEUE_SERVICE_NAME)
 
-    # TODO(xixuan): to be deprecated and deleted.
-    mock_cidb_client = mock.patch('cloud_sql_client.CIDBClient')
-    self._mock_cidb_client = mock_cidb_client.start()
-    self.addCleanup(mock_cidb_client.stop)
-
     mock_build_client = mock.patch('rest_client.BuildBucketBigqueryClient')
     self._mock_build_client = mock_build_client.start()
     self.addCleanup(mock_build_client.stop)
@@ -253,8 +211,6 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_utc_now = mock_utc_now.start()
     self.addCleanup(mock_utc_now.stop)
 
-    # TODO(xixuan): to be deprecated and deleted.
-    self._mock_cidb_client.return_value = FakeCIDBClient()
     self._mock_build_client.return_value = FakeBuildClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
     self._mock_lab_config.return_value = FakeLabConfig()
