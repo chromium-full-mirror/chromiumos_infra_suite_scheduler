@@ -206,7 +206,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
 
   Args:
     cros_board_list: The board list including all CrOS boards.
-    buildinfo_list: A list of BuildInfo objects obtained from CIDB.
+    buildinfo_list: A list of BuildInfo objects.
 
   Returns:
     A branch build dict:
@@ -246,12 +246,13 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
   return branch_build_dict
 
 
-def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
+def get_cros_builds_since_date_from_db(build_client, cros_board_list,
+                                       since_date):
   """Get branch builds for ChromeOS boards.
 
   Args:
-    db_client: a cloud_sql_client.CIDBClient object, to read cidb
-      build infos.
+    build_client: a rest_client.BuildBucketBigqueryClient object, to
+      connect Buildbucket Bigquery.
     cros_board_list: The board list including all CrOS boards.
     since_date: a datetime.datetime object in UTC to indicate since when CrOS
       builds will be fetched.
@@ -267,9 +268,9 @@ def get_cros_builds_since_date_from_db(db_client, cros_board_list, since_date):
         value: the latest manifest for the given tuple, like:
           '9242.0.0'.
   """
-  # CIDB use UTC timezone
-  all_branch_builds = db_client.get_passed_builds_since_date(since_date)
-  relaxed_builds = db_client.get_relaxed_pased_builds_since_date(since_date)
+  # Buildbucket Bigquery use UTC timezone
+  all_branch_builds = build_client.get_passed_builds_since_date(since_date)
+  relaxed_builds = build_client.get_relaxed_passed_builds_since_date(since_date)
 
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)

@@ -178,7 +178,7 @@ class Task(object):
     self._set_spec_compare_info()
 
   def schedule(self, launch_control_builds, cros_builds_tuple, configs,
-               db_client):
+               build_client):
     """Schedule the task by its settings.
 
     Args:
@@ -187,7 +187,8 @@ class Task(object):
       cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
       configs: a config_reader.Configs object.
-      db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
 
     Raises:
       SchedulingError: if tasks that should be scheduled fail to schedule.
@@ -209,7 +210,7 @@ class Task(object):
       if not builds_dict:
         logging.info('No CrOS build to run, skip running.')
       else:
-        self._schedule_cros_builds(builds_dict, configs, db_client)
+        self._schedule_cros_builds(builds_dict, configs, build_client)
     else:
       if not launch_control_builds:
         logging.info('No Android build to run, skip running.')
@@ -286,14 +287,15 @@ class Task(object):
     else:
       return False
 
-  def _get_latest_firmware_build_from_db(self, spec, board, db_client):
+  def _get_latest_firmware_build_from_db(self, spec, board, build_client):
     """Get the latest firmware build from CIDB database.
 
     Args:
       spec: a string build spec for RO or RW firmware, eg. firmware,
         cros. For RO firmware, the value can also be released_ro_X.
       board: the board against which this task will run suite job.
-      db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
 
     Returns:
       the latest firmware build.
@@ -303,7 +305,7 @@ class Task(object):
     """
     build_type = 'release' if spec == 'cros' else spec
     # TODO(xixuan): not all firmware are saved in cidb.
-    build = db_client.get_latest_passed_builds('%s-%s' % (board, build_type))
+    build = build_client.get_latest_passed_builds('%s-%s' % (board, build_type))
 
     if build is None:
       return None
@@ -340,7 +342,7 @@ class Task(object):
     logging.debug('Get ro_build: %s', released_ro_builds[index - 1])
     return released_ro_builds[index - 1]
 
-  def _get_firmware_build(self, spec, board, lab_config, db_client):
+  def _get_firmware_build(self, spec, board, lab_config, build_client):
     """Get the firmware build name to test with ChromeOS build.
 
     Args:
@@ -348,7 +350,8 @@ class Task(object):
         cros. For RO firmware, the value can also be released_ro_X.
       board: a string board against which this task will run suite job.
       lab_config: a config.LabConfig object, to read lab config file.
-      db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
 
     Returns:
       A string firmware build name.
@@ -373,7 +376,8 @@ class Task(object):
         return self._get_latest_firmware_build_from_lab_config(
             spec, board, lab_config)
       else:
-        return self._get_latest_firmware_build_from_db(spec, board, db_client)
+        return self._get_latest_firmware_build_from_db(
+            spec, board, build_client)
     except ValueError as e:
       logging.warning('Failed to get firmware from lab config file'
                       'for spec %s, board %s: %s', spec, board, str(e))
@@ -461,14 +465,15 @@ class Task(object):
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
-  def _schedule_cros_builds(self, build_dict, configs, db_client):
+  def _schedule_cros_builds(self, build_dict, configs, build_client):
     """Schedule tasks with branch builds.
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
         value of |build_lib.get_cros_builds_since_date_from_db|.
       configs: A config_reader.Configs object.
-      db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
     """
     lab_config = configs.lab_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
@@ -498,9 +503,9 @@ class Task(object):
       firmware_ro_build = None
       if self.firmware_rw_build_spec or self.firmware_ro_build_spec:
         firmware_rw_build = self._get_firmware_build(
-            self.firmware_rw_build_spec, board, lab_config, db_client)
+            self.firmware_rw_build_spec, board, lab_config, build_client)
         firmware_ro_build = self._get_firmware_build(
-            self.firmware_ro_build_spec, board, lab_config, db_client)
+            self.firmware_ro_build_spec, board, lab_config, build_client)
 
       if not firmware_ro_build and self.firmware_ro_build_spec:
         logging.debug('No firmware ro build to run, skip running')

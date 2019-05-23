@@ -23,7 +23,13 @@ class TriggerReceiver(object):
 
     Its job is to fetch triggers from config files and trigger them.
     """
+    # TODO(xixuan): to be deprecrated, replaced by Buildbucket client.
     self._cidb_client = cloud_sql_client.CIDBClient('CIDB', 'cidb')
+    self._build_client = rest_client.BuildBucketBigqueryClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.BIGQUERY_CLIENT.scopes,
+            constants.RestClient.BIGQUERY_CLIENT.service_name,
+            constants.RestClient.BIGQUERY_CLIENT.service_version))
     self._last_exec_client = datastore_client.LastExecutionRecordStore()
     self._android_client = rest_client.AndroidBuildRestClient(
         rest_client.BaseRestClient(
@@ -89,7 +95,7 @@ class TriggerReceiver(object):
         scheduled.
     """
     cros_builds_tuple = event.get_cros_builds(
-        self._lab_config, self._cidb_client)
+        self._lab_config, self._build_client)
     logging.debug('Found CrOS builds: %r', cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)
@@ -101,5 +107,5 @@ class TriggerReceiver(object):
         configs=config_reader.Configs(
             lab_config=self._lab_config,
             migration_config=self._migration_config),
-        db_client=self._cidb_client)
+        build_client=self._build_client)
     logging.info('Finished processing all tasks')

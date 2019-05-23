@@ -27,6 +27,7 @@ class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
     self.tot = self._tot_milestone()
 
 
+# TODO(xixuan): to be deprecated and deleted.
 class FakeCIDBClient(object):
   """Mock class for cloud_sql_client.CIDBClient."""
 
@@ -42,6 +43,23 @@ class FakeCIDBClient(object):
                                       milestone=TaskTestCase.MILESTONE,
                                       platform=TaskTestCase.PLATFORM,
                                       build_config=build_config)
+
+
+class FakeBuildClient(object):
+  """Mock rest_client.BuildBucketBigqueryClient."""
+
+  def __init__(self, success=True):
+    self.success = success
+
+  def get_latest_passed_builds(self, build_config):
+    if not self.success:
+      raise MySQLdb.OperationalError('Failed to connect to db')
+
+    return build_lib.BuildInfo(board=build_config.split('-')[0],
+                               model=None,
+                               milestone=TaskTestCase.MILESTONE,
+                               platform=TaskTestCase.PLATFORM,
+                               build_config=build_config)
 
 
 class FakeLabConfig(object):
@@ -180,7 +198,7 @@ class TaskTestCase(TaskBaseTestCase):
   def testGetFirmwareFromDB(self):
     """Test get firmware from DB successfully."""
     firmware = self.task._get_firmware_build(
-        'firmware', self.BOARD, None, FakeCIDBClient())
+        'firmware', self.BOARD, None, FakeBuildClient())
     self.assertEqual(
         firmware,
         '%s-firmware/R%s-%s' % (self.BOARD, self.MILESTONE, self.PLATFORM))
@@ -188,14 +206,14 @@ class TaskTestCase(TaskBaseTestCase):
   def testGetFirmwareFromDBConnectionError(self):
     """Test get firmware from DB when DB connection is failed."""
     self.assertIsNone(self.task._get_firmware_build(
-        'firmware', self.BOARD, None, FakeCIDBClient(success=False)))
+        'firmware', self.BOARD, None, FakeBuildClient(success=False)))
 
   def testScheduleCrosSuccessfully(self):
     """test schedule cros builds successfully."""
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     self._fake_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
   def testScheduleCrosNonvalidBoard(self):
@@ -203,7 +221,7 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {('%s_2' % self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     self._empty_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosExcludeBoard(self):
@@ -211,7 +229,7 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {(self.EXCLUDE_BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     self._empty_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosSuccessfullyWithSpecifiedModel(self):
@@ -223,7 +241,7 @@ class TaskTestCase(TaskBaseTestCase):
                      '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
                                     self._fake_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 2)
 
   def testScheduleCrosNonValidSpec(self):
@@ -234,7 +252,7 @@ class TaskTestCase(TaskBaseTestCase):
     self.task._set_spec_compare_info()
     self.task._schedule_cros_builds(branch_builds,
                                     self._empty_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosSuccessfullyWithValidFirmware(self):
@@ -243,7 +261,7 @@ class TaskTestCase(TaskBaseTestCase):
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
                                     self._fake_configs,
-                                    FakeCIDBClient())
+                                    FakeBuildClient())
     self.assertEqual(self._mock_push.call_count, 1)
 
   def testScheduleCrosWithNonValidFirmware(self):
@@ -252,7 +270,7 @@ class TaskTestCase(TaskBaseTestCase):
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
                                     self._empty_configs,
-                                    FakeCIDBClient(success=False))
+                                    FakeBuildClient(success=False))
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleLaunchControlWithFullBranches(self):
@@ -320,7 +338,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
         [], (branch_builds, []), self._fake_configs,
-        FakeCIDBClient()))
+        FakeBuildClient()))
 
   def testScheduleLaunchControlIsPushSuccessfully(self):
     """Test IS_PUSHED is changed if some launch control suites are scheduled."""
@@ -331,7 +349,7 @@ class TaskPushTestCase(TaskBaseTestCase):
         t.lstrip() for t in lc_branches.split(',')]
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.assertTrue(self.task.schedule(
-        lc_builds, ([], []), self._empty_configs, FakeCIDBClient()))
+        lc_builds, ([], []), self._empty_configs, FakeBuildClient()))
 
   def testScheduleCrosIsPushInvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
@@ -340,7 +358,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     )
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertFalse(self.task.schedule(
-        [], branch_builds, self._empty_configs, FakeCIDBClient()))
+        [], branch_builds, self._empty_configs, FakeBuildClient()))
 
   def testScheduleLaunchControlIsPushInvalidBoard(self):
     """Test schedule none of launch control builds due to board check."""
@@ -353,4 +371,4 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.task._schedule_launch_control_builds(lc_builds)
     self.assertFalse(self.task.schedule(
-        lc_builds, ([], []), self._empty_configs, FakeCIDBClient()))
+        lc_builds, ([], []), self._empty_configs, FakeBuildClient()))

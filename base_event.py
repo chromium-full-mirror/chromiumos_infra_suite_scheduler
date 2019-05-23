@@ -75,19 +75,20 @@ class BaseEvent(object):
     """
     self.task_list = list(self.task_list)
 
-  def get_cros_builds(self, lab_config, db_client):
+  def get_cros_builds(self, lab_config, build_client):
     """Get CrOS builds to run on for this event.
 
     Args:
       lab_config: a config_reader.LabConfig object, to read lab configs.
-      db_client: a cloud_sql_client.CIDBClient object, to call CIDB.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
         |build_lib.get_cros_builds_since_date_from_db|.
     """
     return build_lib.get_cros_builds_since_date_from_db(
-        db_client, lab_config.get_cros_board_list(), self.since_date)
+        build_client, lab_config.get_cros_board_list(), self.since_date)
 
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.
@@ -106,7 +107,7 @@ class BaseEvent(object):
         self.launch_control_branch_targets)
 
   def process_tasks(self, launch_control_builds, cros_builds_tuple,
-                    configs, db_client):
+                    configs, build_client):
     """Schedule tasks in task_list.
 
     Args:
@@ -116,7 +117,8 @@ class BaseEvent(object):
         see return value of |get_cros_builds|.
       configs: a config_reader.Configs object, to contain several config
         readers.
-      db_client: a cloud_sql_client.CIDBClient object to connect to cidb.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
 
     Returns:
       A list of finished tasks' names.
@@ -125,7 +127,7 @@ class BaseEvent(object):
     for per_task in self.task_list:
       try:
         if per_task.schedule(launch_control_builds, cros_builds_tuple,
-                             configs, db_client):
+                             configs, build_client):
           scheduled_tasks.append(per_task.name)
         else:
           logging.debug('No suites are scheduled in suites queue for '
