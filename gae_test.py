@@ -16,7 +16,7 @@ import time_converter
 import webapp2
 
 
-class TestAFESwarmingAPI(webapp2.RequestHandler):
+class _FakeAFESwarmingAPIHandler(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -30,7 +30,7 @@ class TestAFESwarmingAPI(webapp2.RequestHandler):
     self.response.write(afe_swarming_task_info.name)
 
 
-class TestSkylabSwarmingAPI(webapp2.RequestHandler):
+class _FakeSkylabSwarmingAPIHandler(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -45,7 +45,7 @@ class TestSkylabSwarmingAPI(webapp2.RequestHandler):
     self.response.write(skylab_swarming_task_info.name)
 
 
-class TestAFEWithSanity(webapp2.RequestHandler):
+class _FakeAFEWithSanityHandler(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -60,7 +60,7 @@ class TestAFEWithSanity(webapp2.RequestHandler):
     self.response.write(skylab_swarming_task_info.tags)
 
 
-class TestSkylabWithSanity(webapp2.RequestHandler):
+class _FakeSkylabWithSanityHandler(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -75,7 +75,7 @@ class TestSkylabWithSanity(webapp2.RequestHandler):
     self.response.write(skylab_swarming_task_info.tags)
 
 
-class TestSkylabBackwardCompatibilityWithSanity(webapp2.RequestHandler):
+class _FakeSkylabBackwardCompatibilityWithSanityHandler(webapp2.RequestHandler):
 
   def get(self):
     lab_config = config_reader.LabConfig(config_reader.ConfigReader(
@@ -127,12 +127,12 @@ class _FakeBigqueryGetRelaxedPassedHandler(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([
-    ('/test_push/afe_dummy', TestAFESwarmingAPI),
-    ('/test_push/skylab_dummy', TestSkylabSwarmingAPI),
-    ('/test_push/afe_sanity', TestAFEWithSanity),
-    ('/test_push/skylab_sanity', TestSkylabWithSanity),
+    ('/test_push/afe_dummy', _FakeAFESwarmingAPIHandler),
+    ('/test_push/skylab_dummy', _FakeSkylabSwarmingAPIHandler),
+    ('/test_push/afe_sanity', _FakeAFEWithSanityHandler),
+    ('/test_push/skylab_sanity', _FakeSkylabWithSanityHandler),
     ('/test_push/skylab_sanity_bc_test',
-     TestSkylabBackwardCompatibilityWithSanity),
+     _FakeSkylabBackwardCompatibilityWithSanityHandler),
     ('/test_push/bq_get_passed', _FakeBigqueryGetPassedHandler),
     ('/test_push/bq_get_relaxed_passed', _FakeBigqueryGetRelaxedPassedHandler),
     ], debug=True)
