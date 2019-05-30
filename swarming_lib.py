@@ -355,13 +355,6 @@ class SwarmingRunner(object):
     # Swarming calls from suite_scheduler should creat and return immediately.
     command.extend(['--create_and_return'])
 
-    # Swarming calls from suite_scheduler should use fallback request to force
-    # a provision on DUT before the tests are run.
-    command.extend(['--use_fallback'])
-
-    if task_params['force'] != 'True':
-      command.extend(['--pre_check'])
-
     if task_params['model'] != 'None':
       command.extend(['--model', task_params['model']])
 
