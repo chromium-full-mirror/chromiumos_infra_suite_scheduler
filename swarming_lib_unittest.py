@@ -223,27 +223,9 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
       command = swarming_runner._form_run_suite_skylab_command(
           final_build, **params)
       self.assertIn('--create_and_return', command)
-      self.assertIn('--pre_check', command)
       self.assertIn('--firmware_ro_build', command)
       self.assertNotIn('--test_retry', command)
       self.assertNotIn('-c', command)
-
-  def testFormSkylabCommandWithForce(self):
-    self.suite_job_parameters['force'] = True
-    task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    with mock.patch('rest_client.SwarmingRestClient',
-                    return_value=None):
-      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
-          file_getter.LAB_CONFIG_FILE))
-      afe_server = lab_config.get_dedicated_afe()
-      swarming_runner = swarming_lib.SwarmingRunner(
-          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
-      params = tasks[0].extract_params()
-      final_build = swarming_runner._get_final_build(**params)
-      command = swarming_runner._form_run_suite_skylab_command(
-          final_build, **params)
-      self.assertNotIn('--pre_check', command)
 
   def testFormSkylabCommandWithQS(self):
     self.suite_job_parameters['override_pool'] = 'OVERRIDE_POOL'
