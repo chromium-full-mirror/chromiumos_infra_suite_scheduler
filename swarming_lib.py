@@ -74,11 +74,7 @@ SwarmingTaskInfo = collections.namedtuple(
     ])
 
 # The theoretical maximum time for executing a swarming task.
-# In builder, the timeout for swarming execution is often 1 hour longer than
-# the timeout of suite. However, we pass in create_and_return for every
-# run_suite.py call for suite-scheduler, which means it doesn't need to be
-# consistent with the suite timeout. So here let's just follow the parameters
-# used by builder in chromite to make sure
+# We follow the parameters used by builder in chromite to make sure
 # 1) it's enough to call run_suite.py then return.
 # 2) it's not too long even if some suites' timeout in suite_scheduler.ini
 # is 1 week.
@@ -351,9 +347,6 @@ class SwarmingRunner(object):
 
     if task_params['job_retry'] == 'True':
       command.extend(['--test_retry'])
-
-    # Swarming calls from suite_scheduler should creat and return immediately.
-    command.extend(['--create_and_return'])
 
     if task_params['model'] != 'None':
       command.extend(['--model', task_params['model']])

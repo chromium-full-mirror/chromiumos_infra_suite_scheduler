@@ -222,7 +222,7 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
       final_build = swarming_runner._get_final_build(**params)
       command = swarming_runner._form_run_suite_skylab_command(
           final_build, **params)
-      self.assertIn('--create_and_return', command)
+      self.assertNotIn('--create_and_return', command)
       self.assertIn('--firmware_ro_build', command)
       self.assertNotIn('--test_retry', command)
       self.assertNotIn('-c', command)
