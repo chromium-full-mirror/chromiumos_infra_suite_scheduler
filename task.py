@@ -300,8 +300,15 @@ class Task(object):
       the latest firmware build.
     """
     build_type = 'release' if spec == 'cros' else spec
-    # TODO(xixuan): not all firmware can be fetched in build system.
-    build = build_client.get_latest_passed_builds('%s-%s' % (board, build_type))
+    # TODO(linxinan): Firmware has changed its build config from <board>-firmware
+    # to <branch>-firmwarebranch. Create a new query for firmware to re-enable
+    # its suite tests. Revisit this, if we decide to (or not) replace build
+    # config for all build types.
+    if build_type == 'firmware':
+      build = build_client.get_latest_passed_builds_firmware(board)
+    else:
+      build = build_client.get_latest_passed_builds('%s-%s' %
+                                                    (board, build_type))
 
     if build is None:
       return None

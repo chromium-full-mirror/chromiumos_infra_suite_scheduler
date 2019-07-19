@@ -194,7 +194,7 @@ class StackdriverRestClient(object):
     self._rest_client.create_service()
 
   def read_logs(self, request):
-   # project_id, page_size, order_by, query_filter=''):
+    # project_id, page_size, order_by, query_filter=''):
     """Read the logs of the project_id based on all filters.
 
     Args:
@@ -365,6 +365,43 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         milestone=res[0][1],
         platform=res[0][2],
         build_config=build_config)
+
+  def get_latest_passed_builds_firmware(self, board):
+    """Get latest passed firmware builds by board.
+
+    Args:
+      board: the board against which this task will run suite job.
+
+    Returns:
+      A build_lib.BuildInfo object representing the latest passed build.
+    """
+    query_str = """
+        SELECT
+          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version')
+        FROM
+          `cr-buildbucket.chromeos.completed_builds_BETA`
+        WHERE
+          SPLIT(JSON_EXTRACT_SCALAR(output.properties,  '$.cbb_config'), '-')[OFFSET(0)] = 'firmware' and
+          SPLIT(JSON_EXTRACT_SCALAR(output.properties,  '$.cbb_config'), '-')[OFFSET(1)] = '%s' and
+          status = 'SUCCESS' and
+          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+        ORDER BY
+          end_time desc
+        LIMIT 1
+    """
+    logging.info('Getting latest build for %s-firmware', board)
+    res = self.query(query_str % board)
+    res = _parse_bq_job_query(res)
+    if res is None:
+      return None
+    return build_lib.BuildInfo(
+        board=board,
+        model=None,
+        milestone=res[0][1],
+        platform=res[0][2],
+        build_config='%s-firmware' % board)
 
   def get_passed_builds_since_date(self, since_date):
     """Get passed builds since a given date.

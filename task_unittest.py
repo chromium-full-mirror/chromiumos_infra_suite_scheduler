@@ -41,6 +41,17 @@ class FakeBuildClient(object):
                                platform=TaskTestCase.PLATFORM,
                                build_config=build_config)
 
+  def get_latest_passed_builds_firmware(self, board):
+    if not self.success:
+      raise ValueError('No valid builds')
+
+    return build_lib.BuildInfo(
+        board=board,
+        model=None,
+        milestone=TaskTestCase.MILESTONE,
+        platform=TaskTestCase.PLATFORM,
+        build_config='%s-firmware' % board)
+
 
 class FakeLabConfig(object):
   """Mock class for config_reader.LabConfig."""
