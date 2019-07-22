@@ -168,9 +168,18 @@ class SwarmingRunner(object):
     tags.append('task_name:%s' % task_name)
     tags.append('luci_project:chromeos')
 
+    execution_timeout_secs = self._get_execution_timeout(suite_name)
+
+    if task_params.get('is_skylab') == 'True':
+      # Skylab suite tasks wait for child tasks to complete.
+      if task_params.get('timeout'):
+        execution_timeout_secs += int(task_params['timeout']) * 60 * 60
+      else:
+        execution_timeout_secs += int(task_params['timeout_mins']) * 60
+
     return SwarmingTaskParams(
         final_build=final_build,
-        execution_timeout_secs=self._get_execution_timeout(suite_name),
+        execution_timeout_secs=execution_timeout_secs,
         task_name=task_name,
         tags=tags,
         priority=int(task_params['priority']))
@@ -329,8 +338,11 @@ class SwarmingRunner(object):
 
     fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
     fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
-    timeout_mins = (task_params['timeout_mins'] or
-                    task_params['timeout'] * 60)
+
+    timeout_mins = int(task_params['timeout_mins'])
+    if task_params.get('timeout'):
+      timeout_mins = int(task_params['timeout']) * 60
+
     pool = task_params.get('override_pool') or task_params['pool']
 
     command = [self.RUN_SUITE_SKYLAB_PATH,
@@ -372,10 +384,11 @@ class SwarmingRunner(object):
     fw_rw_build = task_params[build_lib.BuildVersionKey.FW_RW_VERSION]
     fw_ro_build = task_params[build_lib.BuildVersionKey.FW_RO_VERSION]
 
-    timeout_mins = (task_params['timeout_mins'] or
-                    task_params['timeout'] * 60)
-    max_runtime_mins = (task_params['max_runtime_mins'] or
-                        task_params['timeout'] * 60)
+    timeout_mins = int(task_params['timeout_mins'])
+    max_runtime_mins = int(task_params['max_runtime_mins'])
+    if task_params.get('timeout'):
+      timeout_mins = int(task_params['timeout']) * 60
+      max_runtime_mins = int(task_params['timeout']) * 60
 
     command = [self.RUN_SUITE_PATH,
                '--build', final_build,

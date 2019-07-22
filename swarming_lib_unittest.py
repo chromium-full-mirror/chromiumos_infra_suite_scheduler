@@ -175,17 +175,36 @@ class SwarmingLibTestCase(unittest.TestCase):
       self.assertEqual(raw_request['properties']['execution_timeout_secs'], 100)
       self.assertEqual(raw_request['properties']['io_timeout_secs'], 100)
 
-  def testGetExecutionTimeoutForCTS(self):
-    with mock.patch('rest_client.SwarmingRestClient',
-                    return_value=None):
-      suite = 'arc-cts-qual'
+  def testTimeout(self):
+    self.suite_job_parameters['timeout'] = 96
+    self.suite_job_parameters['timeout_mins'] = 20
+    # arc-cts-qual has an overhead timeout of 49h.
+    self.suite_job_parameters['suite'] = 'arc-cts-qual'
+    task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    with mock.patch.object(rest_client.SwarmingRestClient, 'create_task',
+                           return_value=None):
       lab_config = config_reader.LabConfig(config_reader.ConfigReader(
           file_getter.LAB_CONFIG_FILE))
       afe_server = lab_config.get_dedicated_afe()
       swarming_runner = swarming_lib.SwarmingRunner(
           afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
-      self.assertEqual(swarming_runner._get_execution_timeout(suite),
-                       60 * 60 * swarming_lib._EXECUTION_TIMEOUT_HOURS[suite])
+      params = tasks[0].extract_params()
+      swarming_runner.run(**params)
+      call_list = rest_client.SwarmingRestClient.create_task.call_args_list
+      self.assertEqual(len(call_list), 1)
+      # kvargs is always the index 1 element of the call object
+      kvargs = call_list[0][1]
+      self.assertEqual(
+          kvargs['request']['properties']['execution_timeout_secs'],
+          49 * 60 * 60)
+      command = kvargs['request']['properties']['command']
+      self.assertIn('--timeout_mins', command)
+      timeout_index = command.index('--timeout_mins') + 1
+      self.assertEqual(command[timeout_index], str(96 * 60))
+      self.assertIn('--max_runtime_mins', command)
+      timeout_index = command.index('--max_runtime_mins') + 1
+      self.assertEqual(command[timeout_index], str(96 * 60))
 
 
 class SkylabSwarmingLibTestCase(unittest.TestCase):
@@ -298,6 +317,63 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
       # kvargs is always the index 1 element of the call object
       kvargs = call_list[0][1]
       self.assertEqual(kvargs['request']['priority'], expected_skylab_priority)
+
+  def testSkylabTimeout(self):
+    self.suite_job_parameters['timeout'] = 96
+    self.suite_job_parameters['timeout_mins'] = 20
+    # arc-cts-qual has an overhead timeout of 49h.
+    self.suite_job_parameters['suite'] = 'arc-cts-qual'
+    task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    with mock.patch.object(rest_client.SwarmingRestClient, 'create_task',
+                           return_value=None):
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
+      params = tasks[0].extract_params()
+      swarming_runner.run(**params)
+      call_list = rest_client.SwarmingRestClient.create_task.call_args_list
+      self.assertEqual(len(call_list), 1)
+      # kvargs is always the index 1 element of the call object
+      kvargs = call_list[0][1]
+      # 49h of suite overhead + 72h of task execution.
+      self.assertEqual(
+          kvargs['request']['properties']['execution_timeout_secs'],
+          (49 + 96) * 60 * 60)
+      command = kvargs['request']['properties']['command']
+      self.assertIn('--timeout_mins', command)
+      timeout_index = command.index('--timeout_mins') + 1
+      self.assertEqual(command[timeout_index], str(96 * 60))
+
+  def testDefaultSkylabTimeout(self):
+    del self.suite_job_parameters['timeout']
+    self.suite_job_parameters['timeout_mins'] = 20
+    self.suite_job_parameters['suite'] = 'fake-suite'
+    task_executor.push(task_executor.SUITES_QUEUE, **self.suite_job_parameters)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    with mock.patch.object(rest_client.SwarmingRestClient, 'create_task',
+                           return_value=None):
+      lab_config = config_reader.LabConfig(config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE))
+      afe_server = lab_config.get_dedicated_afe()
+      swarming_runner = swarming_lib.SwarmingRunner(
+          afe_server, swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
+      params = tasks[0].extract_params()
+      swarming_runner.run(**params)
+      call_list = rest_client.SwarmingRestClient.create_task.call_args_list
+      self.assertEqual(len(call_list), 1)
+      # kvargs is always the index 1 element of the call object
+      kvargs = call_list[0][1]
+      # 2h of suite overhead (default) + 20m of task execution.
+      self.assertEqual(
+          kvargs['request']['properties']['execution_timeout_secs'],
+          (2 * 60 + 20) * 60)
+      command = kvargs['request']['properties']['command']
+      self.assertIn('--timeout_mins', command)
+      timeout_index = command.index('--timeout_mins') + 1
+      self.assertEqual(command[timeout_index], str(20))
 
 
 if __name__ == '__main__':
