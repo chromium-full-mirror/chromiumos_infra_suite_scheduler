@@ -10,6 +10,7 @@ from distutils import version
 import logging
 
 import build_lib
+import re
 import skylab
 import task_executor
 import tot_manager
@@ -297,27 +298,33 @@ class Task(object):
         connect Buildbucket Bigquery.
 
     Returns:
-      the latest firmware build.
+      A string the latest firmware build. This is the path for the
+      downstream systems to download the built firmware. For "cros"
+      build_type, it is "<board>-release/R<milestone>-<platform>".
+      For "firmware" type, it has the form of
+      "firmware-<board>-1234.56.A-firmwarebranch/RFoo-1.0.0-b123456/<board>".
+
     """
     build_type = 'release' if spec == 'cros' else spec
-    # TODO(linxinan): Firmware has changed its build config from <board>-firmware
-    # to <branch>-firmwarebranch. Create a new query for firmware to re-enable
-    # its suite tests. Revisit this, if we decide to (or not) replace build
-    # config for all build types.
+    suffix = ''
     if build_type == 'firmware':
-      build = build_client.get_latest_passed_builds_firmware(board)
+      artifact = build_client.get_latest_passed_builds_artifact_link_firmware(
+          board)
+      suffix = '/' + board
     else:
-      build = build_client.get_latest_passed_builds('%s-%s' %
-                                                    (board, build_type))
-
-    if build is None:
+      artifact = build_client.get_latest_passed_builds_artifact_link('%s-%s' %
+          (board, build_type))
+    if artifact is None:
       return None
-    else:
-      latest_build = str(build_lib.CrOSBuild(
-          board, build_type, build.milestone, build.platform))
-      logging.debug('latest firmware build for %s-%s: %s', board,
-                    build_type, latest_build)
-      return latest_build
+
+    ARTIFACT_PATTERN = r'gs://chromeos-image-archive/(?P<firmware_build>.+)'
+    match = re.match(ARTIFACT_PATTERN, artifact)
+    if not match:
+      raise ValueError('Artifact path of firmware is not valid: %s', artifact)
+
+    firmware_build = match.group('firmware_build') + suffix
+    logging.debug('latest firmware build for %s', firmware_build)
+    return firmware_build
 
   def _get_latest_firmware_build_from_lab_config(self, spec, board,
                                                  lab_config):

@@ -329,20 +329,18 @@ class CrOSSwarmingBigqueryClient(BigqueryRestClient):
 class BuildBucketBigqueryClient(BigqueryRestClient):
   """Rest client for buildbucket Bigquery API."""
 
-  def get_latest_passed_builds(self, build_config):
-    """Get latest passed builds by build_config.
+  def get_latest_passed_builds_artifact_link(self, build_config):
+    """Get artifact link of the latest passed builds by build_config.
 
     Args:
       build_config: a string like '{board}-{build_type}', eg. link-release
 
     Returns:
-      A build_lib.BuildInfo object representing the latest passed build.
+      A string: artifact_link of this firmware build.
     """
     query_str = """
         SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version')
+          JSON_EXTRACT_SCALAR(output.properties, '$.artifact_link')
         FROM
           `cr-buildbucket.chromeos.completed_builds_BETA`
         WHERE
@@ -353,33 +351,26 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           end_time desc
         LIMIT 1
     """
-    logging.info('Getting latest build for %s', build_config)
+    logging.info('Getting artifact link of the latest build for %s', build_config)
     res = self.query(query_str % build_config)
     res = _parse_bq_job_query(res)
     if res is None:
       return None
 
-    return build_lib.BuildInfo(
-        board=_parse_board(build_config, res[0][0]),
-        model=None,
-        milestone=res[0][1],
-        platform=res[0][2],
-        build_config=build_config)
+    return res[0][0]
 
-  def get_latest_passed_builds_firmware(self, board):
-    """Get latest passed firmware builds by board.
+  def get_latest_passed_builds_artifact_link_firmware(self, board):
+    """Get artifact link of the latest passed firmware builds by board.
 
     Args:
       board: the board against which this task will run suite job.
 
     Returns:
-      A build_lib.BuildInfo object representing the latest passed build.
+      A string: artifact_link of this firmware build.
     """
     query_str = """
         SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version')
+          JSON_EXTRACT_SCALAR(output.properties, '$.artifact_link')
         FROM
           `cr-buildbucket.chromeos.completed_builds_BETA`
         WHERE
@@ -391,17 +382,14 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           end_time desc
         LIMIT 1
     """
-    logging.info('Getting latest build for %s-firmware', board)
+    logging.info('Getting artifact link of the latest build for %s-firmware',
+                 board)
     res = self.query(query_str % board)
     res = _parse_bq_job_query(res)
     if res is None:
       return None
-    return build_lib.BuildInfo(
-        board=board,
-        model=None,
-        milestone=res[0][1],
-        platform=res[0][2],
-        build_config='%s-firmware' % board)
+
+    return res[0][0]
 
   def get_passed_builds_since_date(self, since_date):
     """Get passed builds since a given date.

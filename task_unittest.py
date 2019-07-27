@@ -28,29 +28,29 @@ class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
 class FakeBuildClient(object):
   """Mock rest_client.BuildBucketBigqueryClient."""
 
-  def __init__(self, success=True):
+  def __init__(self, success=True, failed_result=None):
     self.success = success
+    self.failed_result = failed_result
+    self.firmware_artifact_cros = ('gs://chromeos-image-archive/'
+                                   'fake_board-release/'
+                                   'R30-6182.0.0-rc2')
+    self.firmware_artifact = ('gs://chromeos-image-archive/'
+                              'firmware-fake_board-12345.67.A-firmwarebranch/'
+                              'RFoo-1.0.0-b1234567')
 
-  def get_latest_passed_builds(self, build_config):
+  def get_latest_passed_builds_artifact_link(self, build_config):
     if not self.success:
       raise ValueError('No valid builds')
+    if self.failed_result:
+      return self.failed_result
+    return self.firmware_artifact_cros
 
-    return build_lib.BuildInfo(board=build_config.split('-')[0],
-                               model=None,
-                               milestone=TaskTestCase.MILESTONE,
-                               platform=TaskTestCase.PLATFORM,
-                               build_config=build_config)
-
-  def get_latest_passed_builds_firmware(self, board):
+  def get_latest_passed_builds_artifact_link_firmware(self, board):
     if not self.success:
       raise ValueError('No valid builds')
-
-    return build_lib.BuildInfo(
-        board=board,
-        model=None,
-        milestone=TaskTestCase.MILESTONE,
-        platform=TaskTestCase.PLATFORM,
-        build_config='%s-firmware' % board)
+    if self.failed_result:
+      return self.failed_result
+    return self.firmware_artifact
 
 
 class FakeLabConfig(object):
@@ -186,13 +186,35 @@ class TaskTestCase(TaskBaseTestCase):
       self.assertIsNone(self.task._get_firmware_build(
           'released_ro_3', self.BOARD, config_reader.LabConfig(None), None))
 
-  def testGetFirmwareFromDB(self):
-    """Test get firmware from DB successfully."""
+  def testGetFirmwareFromDBSuccessfully(self):
+    """Test get firmware from BuildBucket successfully."""
+
+    firmware = self.task._get_firmware_build(
+        'cros', self.BOARD, None, FakeBuildClient())
+    self.assertEqual(
+        firmware,
+        '{0}-release/R{1}-{2}'.format(self.BOARD,
+                                      self.MILESTONE,
+                                      self.PLATFORM))
     firmware = self.task._get_firmware_build(
         'firmware', self.BOARD, None, FakeBuildClient())
     self.assertEqual(
         firmware,
-        '%s-firmware/R%s-%s' % (self.BOARD, self.MILESTONE, self.PLATFORM))
+        'firmware-{0}-12345.67.A-firmwarebranch/'
+        'RFoo-1.0.0-b1234567/{0}'.format(self.BOARD))
+
+  def testGetFirmwareFromDBFailure(self):
+    """Test get invalid firmware build from BuildBucket."""
+
+    # This should raise a ValueError due to the unexpected prefix.
+    foo_artifact_link = ('gs://chromeos-image-foo/'
+                         'firmware-fake_board-12345.67.A-firmwarebranch/'
+                         'RFoo-1.0.0-b1234567')
+    self.assertRaises(ValueError, self.task._get_firmware_build(
+        'firmware',
+        self.BOARD,
+        None,
+        FakeBuildClient(failed_result=foo_artifact_link)))
 
   def testScheduleCrosSuccessfully(self):
     """test schedule cros builds successfully."""
