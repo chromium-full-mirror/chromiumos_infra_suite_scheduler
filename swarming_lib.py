@@ -23,6 +23,10 @@ _SKYLAB_PRIORITY_MIN = 50
 # Mandated by Swarming.
 _SKYLAB_PRIORITY_MAX = 255
 
+# Swarming requests fail if io_timeout_secs or execution_timeout_secs
+# is larger than 3 days.
+MAX_SWARMING_TIMEOUT_MINS = 3 * 24 * 60
+
 # Representing a swarming task params dict after parsing.
 SwarmingTaskParams = collections.namedtuple(
     'SwarmingTaskParams',
@@ -342,6 +346,9 @@ class SwarmingRunner(object):
     timeout_mins = int(task_params['timeout_mins'])
     if task_params.get('timeout'):
       timeout_mins = int(task_params['timeout']) * 60
+    # Swarming will deny requests with timeout values it deems too large.
+    if timeout_mins > MAX_SWARMING_TIMEOUT_MINS:
+      timeout_mins = MAX_SWARMING_TIMEOUT_MINS
 
     pool = task_params.get('override_pool') or task_params['pool']
 
@@ -431,14 +438,16 @@ class SwarmingRunner(object):
     Returns:
       A json-compatible dict that can be parsed by swarming API.
     """
+    timeout_secs = min(parsed_task_params.execution_timeout_secs,
+                       MAX_SWARMING_TIMEOUT_MINS * 60)
     properties = TaskProperties(
         command=command,
         dimensions=dimensions,
         env={},
-        execution_timeout_secs=parsed_task_params.execution_timeout_secs,
+        execution_timeout_secs=timeout_secs,
         grace_period_secs=_GRACE_PERIOD_SECONDS,
         idempotent=False,
-        io_timeout_secs=parsed_task_params.execution_timeout_secs)
+        io_timeout_secs=timeout_secs)
     task_request = NewTaskRequest(
         expiration_secs=_TASK_EXPIRATION_SECONDS,
         name=parsed_task_params.task_name,

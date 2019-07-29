@@ -338,14 +338,17 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
       self.assertEqual(len(call_list), 1)
       # kvargs is always the index 1 element of the call object
       kvargs = call_list[0][1]
-      # 49h of suite overhead + 72h of task execution.
+      # 3d is the max allowed.
       self.assertEqual(
           kvargs['request']['properties']['execution_timeout_secs'],
-          (49 + 96) * 60 * 60)
+          3 * 24 * 60 * 60)
+      self.assertEqual(
+          kvargs['request']['properties']['io_timeout_secs'],
+          3 * 24 * 60 * 60)
       command = kvargs['request']['properties']['command']
       self.assertIn('--timeout_mins', command)
       timeout_index = command.index('--timeout_mins') + 1
-      self.assertEqual(command[timeout_index], str(96 * 60))
+      self.assertEqual(command[timeout_index], str(3 * 24 * 60))
 
   def testDefaultSkylabTimeout(self):
     del self.suite_job_parameters['timeout']
@@ -369,6 +372,9 @@ class SkylabSwarmingLibTestCase(unittest.TestCase):
       # 2h of suite overhead (default) + 20m of task execution.
       self.assertEqual(
           kvargs['request']['properties']['execution_timeout_secs'],
+          (2 * 60 + 20) * 60)
+      self.assertEqual(
+          kvargs['request']['properties']['io_timeout_secs'],
           (2 * 60 + 20) * 60)
       command = kvargs['request']['properties']['command']
       self.assertIn('--timeout_mins', command)
