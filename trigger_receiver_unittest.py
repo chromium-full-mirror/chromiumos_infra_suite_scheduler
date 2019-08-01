@@ -722,6 +722,24 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(tasks), 1)
     self.assertIn('model=electro', tasks[0].payload)
 
+  def testNewBuildWithAnyModel(self):
+    """Test the new_build suite with any_model option set."""
+    normal_suite = 'FakeAnyModelNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'any_model', 'True')
+    self.fake_config.set(normal_suite, 'boards', 'coral')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('model=None', tasks[0].payload)
+
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
 

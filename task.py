@@ -65,6 +65,8 @@ class Task(object):
             model.
           exclude_models, a comma separated list of models not to run this task
             on. Default is None, which allows this task to run on all models.
+          any_model, set to True to not pass the model parameter and allow
+            a test suite to run any/all models available for testing.
           priority, the string name of a priority from constants.Priorities.
           timeout, the max lifetime of the suite in hours.
           cros_build_spec, spec used to determine the ChromeOS build to test
@@ -154,6 +156,8 @@ class Task(object):
           t.strip() for t in task_info.exclude_models.split(',')]
     else:
       self.exclude_models = []
+
+    self.any_model = task_info.any_model
 
     if task_info.board_families:
       # Finetune the allowed boards list with board_families & boards.
@@ -481,6 +485,7 @@ class Task(object):
     """
     lab_config = configs.lab_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
+    model_agnostic_cros_builds = set()
     for (board, passed_model, build_type,
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
@@ -552,9 +557,19 @@ class Task(object):
                           model, self.models)
             continue
 
+          explicit_model = model
+
+          if self.any_model:
+            explicit_model=None
+            unique_build = str(cros_build)
+            if unique_build in model_agnostic_cros_builds:
+              # Skip since we've already run with no explicit model set.
+              continue
+            model_agnostic_cros_builds.add(unique_build)
+
           self._push_suite(
               board=hwtest_board,
-              model=model,
+              model=explicit_model,
               cros_build=cros_build,
               firmware_rw_build=firmware_rw_build,
               firmware_ro_build=firmware_ro_build,

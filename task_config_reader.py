@@ -33,7 +33,8 @@ EventSettings = collections.namedtuple(
     ])
 
 # Common task entries
-COMMON_TASK_ENTRIES = ['boards',
+COMMON_TASK_ENTRIES = ['any_model',
+                       'boards',
                        'board_families',
                        'models',
                        'branch_specs',
@@ -215,6 +216,7 @@ class TaskConfig(object):
         section, 'exclude_board_families')
     models = self._config_reader.getstring(section, 'models')
     exclude_models = self._config_reader.getstring(section, 'exclude_models')
+    any_model = self._config_reader.getboolean(section, 'any_model')
     cros_build_spec = self._config_reader.getstring(
         section, 'cros_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
@@ -297,6 +299,7 @@ class TaskConfig(object):
                     exclude_board_families=exclude_board_families,
                     models=models,
                     exclude_models=exclude_models,
+                    any_model=any_model,
                     priority=priority,
                     timeout=timeout,
                     job_retry=job_retry,
