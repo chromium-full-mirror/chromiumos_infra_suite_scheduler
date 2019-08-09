@@ -33,6 +33,16 @@ class AppID(object):
   STAGING_APP = 'suite-scheduler-staging'
 
 
+class Buildbucket(object):
+  """Constants used when making buildbucket calls."""
+
+  HOST = 'cr-buildbucket.appspot.com'
+  PROJECT = 'chromeos'
+  BUCKET = 'testplatform'
+  PROD_BUILDER = 'cros_test_platform'
+  STAGING_BUILDER = 'cros_test_platform-dev'
+
+
 class CalendarID(object):
   """Constants refer to calendar id."""
 
