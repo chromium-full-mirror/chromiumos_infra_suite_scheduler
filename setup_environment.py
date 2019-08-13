@@ -31,6 +31,7 @@ CREDS_GS_PATH = 'gs://suite-scheduler.google.com.a.appspot.com/credentials/'
 LUCI_REPO = 'https://chromium.googlesource.com/infra/luci/luci-py'
 CHROMITE_REPO = 'https://chromium.googlesource.com/chromiumos/chromite'
 
+
 def _install_third_party_lib(input_args):
   """Install useful third-party lib.
 
@@ -58,6 +59,7 @@ def _install_third_party_lib(input_args):
       print("Failed to run '%s'; trying a different command." % ' '.join(cmd))
       subprocess.check_call(['pip', 'install', '-t', 'lib', '--system',
                              '-r', 'requirements.txt'])
+
 
 def _install_infra_libs(skip_install_infra_libs):
   """Install useful libs from Chromium infra and Chromite.
@@ -102,6 +104,7 @@ def _install_infra_libs(skip_install_infra_libs):
       '!*test.py']
   git.ShallowFetch(file_getter.CHROMITE_PATH, CHROMITE_REPO,
                    sparse_checkout=chromite_checkout)
+
 
 def fetch_service_credentials(force_update_cred):
   """Fetch service credentials from GS bucket.

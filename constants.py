@@ -42,6 +42,9 @@ class Buildbucket(object):
   PROD_BUILDER = 'cros_test_platform'
   STAGING_BUILDER = 'cros_test_platform-dev'
 
+  MAX_SWARMING_TIMEOUT_MINS = 60
+  MAX_RETRY = 3
+
 
 class CalendarID(object):
   """Constants refer to calendar id."""
