@@ -8,7 +8,11 @@ import os
 from google.appengine.ext import vendor
 
 # Add any third-party libraries install in the "lib" folder.
-third_party_lib_path = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'lib')
-if os.path.exists(third_party_lib_path):
-  vendor.add(third_party_lib_path)
+third_party_libs =['lib',
+                   'infra_libs',
+                   'infra_libs/luci/appengine/components']
+for third_party_lib in third_party_libs:
+  third_party_lib_path = os.path.join(
+      os.path.dirname(os.path.realpath(__file__)), third_party_lib)
+  if os.path.exists(third_party_lib_path):
+    vendor.add(third_party_lib_path)

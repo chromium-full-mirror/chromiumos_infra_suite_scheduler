@@ -20,6 +20,8 @@ libraries:
   version: latest
 - name: MySQLdb
   version: latest
+- name: pycrypto
+  version: "latest"
 # [END libraries]
 
 builtins:

@@ -16,15 +16,20 @@ import file_getter
 
 import local_import  # pylint: disable=unused-import
 try:
-  from chromite.lib import gs  # pylint: disable=g-import-not-at-top
+  from chromite.lib import gs, git, osutils  # pylint: disable=g-import-not-at-top
 except ImportError:
   print('Cannot import chromite')
   gs = None
+  git = None
+  osutils = None
 
 
 # The credentials folder for suite-scheduler service.
 CREDS_GS_PATH = 'gs://suite-scheduler.google.com.a.appspot.com/credentials/'
 
+# Remote repositories of luci-py and Chromite.
+LUCI_REPO = 'https://chromium.googlesource.com/infra/luci/luci-py'
+CHROMITE_REPO = 'https://chromium.googlesource.com/chromiumos/chromite'
 
 def _install_third_party_lib(input_args):
   """Install useful third-party lib.
@@ -54,12 +59,55 @@ def _install_third_party_lib(input_args):
       subprocess.check_call(['pip', 'install', '-t', 'lib', '--system',
                              '-r', 'requirements.txt'])
 
+def _install_infra_libs(skip_install_infra_libs):
+  """Install useful libs from Chromium infra and Chromite.
+
+  infra_libs consists of prpc client from luci and necessary proto files from
+  Chromite. Suite scheduler relies on those libs to conduct prpc call to
+  Buildbucket.
+
+  Args:
+    skip_install_infra_libs: A boolean variable to indicate whether to skip
+      downloading the infra libs.
+  """
+
+  if skip_install_infra_libs:
+    return
+
+  print('Recreate infra_libs directory if already exists...')
+  if os.path.exists(file_getter.INFRA_LIBS_PATH):
+    osutils.RmDir(file_getter.INFRA_LIBS_PATH)
+  os.mkdir(file_getter.INFRA_LIBS_PATH)
+  os.mkdir(file_getter.LUCI_PATH)
+  os.mkdir(file_getter.CHROMITE_PATH)
+
+  print('Fetching prpc client from luci-py lib...')
+  luci_checkout = [
+      '/appengine/components/components/auth/**/*.py',
+      '/appengine/components/components/datastore_utils/**/*.py',
+      '/appengine/components/components/prpc/**/*.py',
+      '/appengine/components/components/*.py',
+      '!*test.py']
+  git.ShallowFetch(file_getter.LUCI_PATH, LUCI_REPO,
+                   sparse_checkout=luci_checkout)
+
+  print('Fetching proto files from Chromite...')
+  chromite_checkout = [
+      '/api/gen/**/*.py',
+      '/api/__init__.py',
+      '/third_party/infra_libs/*',
+      '/third_party/google/*',
+      '/third_party/__init__.py',
+      '/__init__.py',
+      '!*test.py']
+  git.ShallowFetch(file_getter.CHROMITE_PATH, CHROMITE_REPO,
+                   sparse_checkout=chromite_checkout)
 
 def fetch_service_credentials(force_update_cred):
   """Fetch service credentials from GS bucket.
 
   Args:
-    force_update_cred: A boolean virable to indicate whether to force to
+    force_update_cred: A boolean variable to indicate whether to force to
       re-download the creds.
 
   Raises:
@@ -107,6 +155,10 @@ def _make_parser():
       '--update_cred',
       action='store_true',
       help='Force to re-copy the credentials from Google Storage.')
+  parser.add_argument(
+      '--skip_infra_libs',
+      action='store_true',
+      help='Skip to install infra libs.')
   return parser
 
 
@@ -115,4 +167,5 @@ if __name__ == '__main__':
   setup_args = setup_parser.parse_args()
   _install_third_party_lib(setup_args)
   fetch_service_credentials(setup_args.update_cred)
+  _install_infra_libs(setup_args.skip_infra_libs)
   _verify()

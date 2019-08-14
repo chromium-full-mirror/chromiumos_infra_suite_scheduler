@@ -9,6 +9,15 @@ import os
 # The path for third-party libraries.
 THIRD_PARTY_LIB_PATH = os.path.join(os.path.dirname(__file__), 'lib')
 
+# The path for infra libraries, containing luci and Chromite.
+INFRA_LIBS_PATH = os.path.join(os.path.dirname(__file__), 'infra_libs')
+
+# The path for luci libraries.
+LUCI_PATH = os.path.join(INFRA_LIBS_PATH, 'luci')
+
+# The path for Chromite libraries.
+CHROMITE_PATH = os.path.join(INFRA_LIBS_PATH, 'chromite')
+
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 
