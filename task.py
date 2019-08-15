@@ -118,6 +118,7 @@ class Task(object):
     self.no_delay = task_info.no_delay
     self.force = task_info.force
     self.os_type = task_info.os_type
+    self.frontdoor = task_info.frontdoor
     self.testbed_dut_count = task_info.testbed_dut_count
     self.hour = task_info.hour
     self.day = task_info.day
@@ -406,6 +407,7 @@ class Task(object):
       launch_control_build=None,
       run_prod_code=False,
       is_skylab=False,
+      is_frontdoor=False,
       override_pool='',
       override_qs_account=''):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
@@ -425,6 +427,8 @@ class Task(object):
         be retrieved from the build artifacts. Default is False.
       is_skylab: If True, schedule this suite to skylab, otherwise schedule
         it to AFE. Default is False.
+      is_frontdoor: If True, ignore is_skylab and schedule the test to
+        frontdoor.
       override_pool: A string to indicate pool of quota scheduler.
       override_qs_account: A string of quota scheduler account.
     """
@@ -465,6 +469,7 @@ class Task(object):
         'force': self.force,
         'run_prod_code': run_prod_code,
         'is_skylab': is_skylab,
+        'is_frontdoor': is_frontdoor,
         'override_pool': override_pool,
         'override_qs_account': override_qs_account,
     }
@@ -560,7 +565,7 @@ class Task(object):
           explicit_model = model
 
           if self.any_model:
-            explicit_model=None
+            explicit_model = None
             unique_build = str(cros_build)
             if unique_build in model_agnostic_cros_builds:
               # Skip since we've already run with no explicit model set.

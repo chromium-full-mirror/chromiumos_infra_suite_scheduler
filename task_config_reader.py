@@ -46,6 +46,7 @@ COMMON_TASK_ENTRIES = ['any_model',
                        'firmware_ro_build_spec',
                        'firmware_rw_build_spec',
                        'force',
+                       'frontdoor',
                        'hour',
                        'job_retry',
                        'lc_branches',
@@ -241,6 +242,8 @@ class TaskConfig(object):
 
     force = bool(self._config_reader.getboolean(section, 'force'))
 
+    frontdoor = bool(self._config_reader.getboolean(section, 'frontdoor'))
+
     priority = self._config_reader.getint(section, 'priority')
     if priority is None:
       priority = EVENT_CLASSES[keyword].PRIORITY
@@ -305,6 +308,7 @@ class TaskConfig(object):
                     job_retry=job_retry,
                     no_delay=no_delay,
                     force=force,
+                    frontdoor=frontdoor,
                     num=num,
                     hour=hour,
                     day=day,
@@ -434,6 +438,7 @@ class TaskConfig(object):
     pool: pool_of_devices  # Optional
     num: sharding_factor  # int, Optional
     boards: board1, board2  # comma separated string, Optional
+    frontdoor: is_frontdoor # bool, Optional
     # Settings for Launch Control builds only:
     os_type: brillo # Type of OS, e.g., cros, brillo, android. Default is
              cros. Required for android/brillo builds.

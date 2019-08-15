@@ -5,8 +5,11 @@
 """Module for executing tasks queued by suite scheduler."""
 # pylint: disable=g-bad-import-order
 
+import ast
 import logging
 
+import buildbucket
+import constants
 import global_config
 import swarming_lib
 
@@ -30,13 +33,18 @@ class TaskProcessor(object):
     """Initialize a task executor for further pulling & execution.
 
     Args:
-      queue_name: the name of a pull queue.
-      afe_server: A str- the address of the afe_server.
+      queue_name: The name of a pull queue.
+      afe_server: A string of the address for the afe_server.
       skylab_swarming_server: A string of swarming server url for skylab.
     """
     self.queue = taskqueue.Queue(queue_name)
     self.swarming = swarming_lib.SwarmingRunner(
         afe_server, skylab_swarming_server)
+    self.test_platform_client = buildbucket.TestPlatformClient(
+        constants.Buildbucket.HOST,
+        constants.Buildbucket.PROJECT,
+        constants.Buildbucket.BUCKET,
+        constants.Buildbucket.PROD_BUILDER)
 
   def batch_execute(self):
     """Execute tasks."""
@@ -54,11 +62,7 @@ class TaskProcessor(object):
         for task in tasks:
           try:
             params = task.extract_params()
-            if global_config.GAE_TESTING:
-              self.swarming.dummy_run()
-              self.swarming.dummy_run(is_skylab=True)
-            else:
-              self.swarming.run(**params)
+            self._execute(**params)
 
             executed_tasks.append(task)
           except (ValueError, swarming_lib.SwarmingRunError,
@@ -68,6 +72,21 @@ class TaskProcessor(object):
         if executed_tasks:
           logging.info('Successfully kicking %d tasks', len(executed_tasks))
           self.queue.delete_tasks(executed_tasks)
+
+  def _execute(self, **params):
+    """A wrapper to execute each single task."""
+    is_frontdoor = ast.literal_eval(params.get('is_frontdoor', 'False'))
+    # Test environment.
+    if global_config.GAE_TESTING:
+      if is_frontdoor:
+        self.test_platform_client.dummy_run()
+        return
+      self.swarming.dummy_run(**params)
+      return
+    # Production environment.
+    if is_frontdoor:
+      return self.test_platform_client.run(**params)
+    return self.swarming.run(**params)
 
   def purge(self):
     """Purge the entire tasks in the task queue."""
