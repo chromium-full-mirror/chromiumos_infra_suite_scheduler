@@ -130,6 +130,14 @@ class IntegrationTest(unittest.TestCase):
         ['curl', '%s/test_push/bq_get_relaxed_passed' % DEV_APPSERVER_URL])
     self.assertIn('release', output)
 
+  def testBuildbucketClient(self):
+    """Test buildbucket client by calling test-platform's dev builder."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/buildbucket_lib_compatibility'
+         % DEV_APPSERVER_URL])
+    self.assertIn('status: SCHEDULED', output)
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -6,6 +6,7 @@
 
 import datetime
 
+import buildbucket
 import config_reader
 import constants
 import file_getter
@@ -126,6 +127,18 @@ class _FakeBigqueryGetRelaxedPassedHandler(webapp2.RequestHandler):
       self.response.write('\n')
 
 
+class _FakeBuildbucketLibCompatibilityHandler(webapp2.RequestHandler):
+
+  def get(self):
+    test_platform_client = buildbucket.TestPlatformClient(
+        constants.Buildbucket.HOST,
+        constants.Buildbucket.PROJECT,
+        constants.Buildbucket.BUCKET,
+        constants.Buildbucket.STAGING_BUILDER)
+    res = test_platform_client.dummy_run()
+    self.response.write(res)
+
+
 app = webapp2.WSGIApplication([
     ('/test_push/afe_dummy', _FakeAFESwarmingAPIHandler),
     ('/test_push/skylab_dummy', _FakeSkylabSwarmingAPIHandler),
@@ -135,4 +148,6 @@ app = webapp2.WSGIApplication([
      _FakeSkylabBackwardCompatibilityWithSanityHandler),
     ('/test_push/bq_get_passed', _FakeBigqueryGetPassedHandler),
     ('/test_push/bq_get_relaxed_passed', _FakeBigqueryGetRelaxedPassedHandler),
+    ('/test_push/buildbucket_lib_compatibility',
+     _FakeBuildbucketLibCompatibilityHandler)
     ], debug=True)
