@@ -4,6 +4,7 @@
 
 """Module for kicking off tests via swarming service."""
 
+import ast
 import collections
 import logging
 
@@ -209,8 +210,9 @@ class SwarmingRunner(object):
     logging.debug(raw_request)
     return self._client.create_task(request=raw_request)
 
-  def dummy_run(self, is_skylab=False):
+  def dummy_run(self, **kwargs):
     """Perform a dummy run to swarming proxy service."""
+    is_skylab = ast.literal_eval(kwargs.get('is_skylab', 'False'))
     if is_skylab:
       command = [self.RUN_SUITE_SKYLAB_PATH, '--board', 'fake_board', '--build',
                  'fake_build', '--suite_name', 'fake_suite', '--do_nothing']
