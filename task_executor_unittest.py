@@ -50,8 +50,6 @@ class FakeFrontdoorClient(object):
     num = int(suite_kwargs.get('num', 0))
     if num > self.success_num and num <= self.success_num + self.error_num:
       raise ValueError('test')
-
-  def dummy_run(self):
     self.frontdoor_dummy_run_count += 1
 
 
