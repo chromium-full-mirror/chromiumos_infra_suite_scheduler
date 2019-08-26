@@ -40,11 +40,17 @@ class TaskProcessor(object):
     self.queue = taskqueue.Queue(queue_name)
     self.swarming = swarming_lib.SwarmingRunner(
         afe_server, skylab_swarming_server)
+    # Schedule tests to PROD_BUILDER if in production project, otherwise use
+    # STAGING_BUILDER.
+    builder = constants.Buildbucket.STAGING_BUILDER
+    if (constants.environment() == constants.RunningEnv.ENV_PROD and
+        constants.application_id() == constants.AppID.PROD_APP):
+      builder = constants.Buildbucket.PROD_BUILDER
     self.test_platform_client = buildbucket.TestPlatformClient(
         constants.Buildbucket.HOST,
         constants.Buildbucket.PROJECT,
         constants.Buildbucket.BUCKET,
-        constants.Buildbucket.PROD_BUILDER)
+        builder)
 
   def batch_execute(self):
     """Execute tasks."""
@@ -75,17 +81,16 @@ class TaskProcessor(object):
 
   def _execute(self, **params):
     """A wrapper to execute each single task."""
+    # No dummy run for frontdoor enabled test.
     is_frontdoor = ast.literal_eval(params.get('is_frontdoor', 'False'))
+    if is_frontdoor:
+      return self.test_platform_client.run(**params)
+
     # Test environment.
     if global_config.GAE_TESTING:
-      if is_frontdoor:
-        self.test_platform_client.dummy_run()
-        return
       self.swarming.dummy_run(**params)
       return
     # Production environment.
-    if is_frontdoor:
-      return self.test_platform_client.run(**params)
     return self.swarming.run(**params)
 
   def purge(self):

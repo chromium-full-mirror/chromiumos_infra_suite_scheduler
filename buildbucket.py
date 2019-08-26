@@ -5,6 +5,7 @@
 """Module for interacting with Buildbucket."""
 
 import datetime
+import logging
 import re
 import string
 
@@ -177,8 +178,12 @@ class TestPlatformClient(object):
     if final_build == 'None':
       raise BuildbucketRunError('No proper build in task params: %r' %
                                 task_params)
+
     req = self._form_test_platform_request(final_build, **task_params)
     req_struct = self._request_pb2_to_struct_pb2(req)
+    req_build = self._build_request(req_struct)
+    logging.debug('Raw request to buildbucket: %s' % req_build)
+
     cred = None
     if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
         self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
@@ -186,7 +191,9 @@ class TestPlatformClient(object):
       sa_key = self._gen_service_account_key(
           file_getter.STAGING_CLIENT_SECRETS_FILE)
       cred = prpc_client.service_account_credentials(service_account_key=sa_key)
-    self.client.ScheduleBuild(self._build_request(req_struct), credentials=cred)
+
+    resp = self.client.ScheduleBuild(req_build, credentials=cred)
+    logging.debug('Response from buildbucket: %s' % resp)
 
   def dummy_run(self):
     """Perform a dummy run of prpc call to cros_test_platform-dev."""
