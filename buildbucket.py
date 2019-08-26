@@ -184,13 +184,14 @@ class TestPlatformClient(object):
     req_build = self._build_request(req_struct)
     logging.debug('Raw request to buildbucket: %s' % req_build)
 
-    cred = None
     if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
         self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
       # If running locally, use the staging service account.
       sa_key = self._gen_service_account_key(
           file_getter.STAGING_CLIENT_SECRETS_FILE)
       cred = prpc_client.service_account_credentials(service_account_key=sa_key)
+    else:
+      cred = prpc_client.service_account_credentials()
 
     resp = self.client.ScheduleBuild(req_build, credentials=cred)
     logging.debug('Response from buildbucket: %s' % resp)
