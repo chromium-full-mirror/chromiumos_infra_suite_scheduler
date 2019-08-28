@@ -242,7 +242,7 @@ class TaskConfig(object):
 
     force = bool(self._config_reader.getboolean(section, 'force'))
 
-    frontdoor = bool(self._config_reader.getboolean(section, 'frontdoor'))
+    frontdoor = not bool(self._config_reader.getboolean(section, 'not_frontdoor'))
 
     priority = self._config_reader.getint(section, 'priority')
     if priority is None:
