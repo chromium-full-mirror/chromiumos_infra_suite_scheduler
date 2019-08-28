@@ -407,7 +407,6 @@ class Task(object):
       launch_control_build=None,
       run_prod_code=False,
       is_skylab=False,
-      is_frontdoor=False,
       override_pool='',
       override_qs_account=''):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
@@ -427,8 +426,6 @@ class Task(object):
         be retrieved from the build artifacts. Default is False.
       is_skylab: If True, schedule this suite to skylab, otherwise schedule
         it to AFE. Default is False.
-      is_frontdoor: If True, ignore is_skylab and schedule the test to
-        frontdoor.
       override_pool: A string to indicate pool of quota scheduler.
       override_qs_account: A string of quota scheduler account.
     """
@@ -469,7 +466,7 @@ class Task(object):
         'force': self.force,
         'run_prod_code': run_prod_code,
         'is_skylab': is_skylab,
-        'is_frontdoor': is_frontdoor,
+        'is_frontdoor': self.frontdoor,
         'override_pool': override_pool,
         'override_qs_account': override_qs_account,
     }
