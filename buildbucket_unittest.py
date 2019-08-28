@@ -101,6 +101,20 @@ class TestPlatformClientTestCase(unittest.TestCase):
                      'gs://chromeos-image-archive/' + tp['test_source_build'])
     self.assertEqual(req.test_plan.suite[0].name, tp['suite'])
 
+  def testNonStandardPoolName(self):
+    tp = _get_suite_job_parameters()
+    self.assertEqual(len(self.fake_client.called_with_requests), 0)
+    tp['pool'] = 'cts'
+    task_executor.push(task_executor.SUITES_QUEUE, **tp)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    params = tasks[0].extract_params()
+    self.client.run(**params)
+    req = _struct_pb2_to_request_pb2(
+        self.fake_client.called_with_requests[0].properties['request'])
+
+    self.assertEqual(req.params.scheduling.managed_pool,
+                     request_pb2.Request.Params.Scheduling.MANAGED_POOL_CTS)
+
   def testShouldGoUnmanagedPool(self):
     tp = _get_suite_job_parameters()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
