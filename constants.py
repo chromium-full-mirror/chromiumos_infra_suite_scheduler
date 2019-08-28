@@ -42,7 +42,7 @@ class Buildbucket(object):
   PROD_BUILDER = 'cros_test_platform'
   STAGING_BUILDER = 'cros_test_platform-dev'
 
-  MAX_SWARMING_TIMEOUT_MINS = 60
+  MAX_BUILDBUCKET_TIMEOUT_MINS = 46*60
   MAX_RETRY = 3
 
 

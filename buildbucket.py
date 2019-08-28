@@ -37,6 +37,9 @@ NONSTANDARD_POOL_NAMES = {
 }
 
 
+GS_PREFIX = 'gs://chromeos-image-archive/'
+
+
 def _get_client(address):
   """Create a prpc client instance for given address."""
 
@@ -124,13 +127,14 @@ class TestPlatformClient(object):
     software_attributes.build_target.name = task_params['board']
 
     metadata = request_pb2.Request.Params.Metadata()
-    metadata.test_metadata_url = task_params['test_source_build']
+    metadata.test_metadata_url = GS_PREFIX + task_params['test_source_build']
 
     timeout_mins = int(task_params['timeout_mins'])
+    # timeout's unit is hour.
     if task_params.get('timeout'):
-      timeout_mins = int(task_params['timeout'])
-    if timeout_mins > constants.Buildbucket.MAX_SWARMING_TIMEOUT_MINS:
-      timeout_mins = constants.Buildbucket.MAX_SWARMING_TIMEOUT_MINS
+      timeout_mins = max(int(task_params['timeout'])*60, timeout_mins)
+    if timeout_mins > constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS:
+      timeout_mins = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
     td = datetime.timedelta(minutes=timeout_mins)
     params_time = request_pb2.Request.Params.Time()
     params_time.maximum_duration.FromTimedelta(td)
@@ -150,10 +154,11 @@ class TestPlatformClient(object):
 
     fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
     fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
-    if fw_ro_build:
+    # Skip firmware field if None(unspecified) or 'None'(no such build).
+    if fw_ro_build not in (None, 'None'):
       build = params.software_dependencies.add()
       build.ro_firmware_build = fw_ro_build
-    if fw_rw_build:
+    if fw_rw_build not in (None, 'None'):
       build = params.software_dependencies.add()
       build.rw_firmware_build = fw_rw_build
 

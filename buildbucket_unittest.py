@@ -33,9 +33,9 @@ def _get_suite_job_parameters():
       'num': 1,
       'pool': 'DUT_POOL_SUITES',
       'priority': 10,
-      'timeout': 10,
-      'timeout_mins': 10,
-      'max_runtime_mins': 10,
+      'timeout': 12,
+      'timeout_mins': 4320,
+      'max_runtime_mins': 4320,
       'no_wait_for_results': True,
       'test_source_build': 'fake_test_source_build',
       'job_retry': False,
@@ -96,9 +96,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
     self.assertEqual(req.params.scheduling.managed_pool,
                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
-    self.assertEqual(req.params.time.maximum_duration.seconds, 600)
+    self.assertEqual(req.params.time.maximum_duration.seconds, 165600)
     self.assertEqual(req.params.metadata.test_metadata_url,
-                     tp['test_source_build'])
+                     'gs://chromeos-image-archive/' + tp['test_source_build'])
     self.assertEqual(req.test_plan.suite[0].name, tp['suite'])
 
   def testShouldGoUnmanagedPool(self):
