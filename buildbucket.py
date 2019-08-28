@@ -93,10 +93,11 @@ class TestPlatformClient(object):
     DUT_POOL_PREFIX = r'DUT_POOL_(?P<munged_pool>.+)'
     match = re.match(DUT_POOL_PREFIX, pool)
     if match:
-      munged_pool = string.lower(match.group('munged_pool'))
-      if NONSTANDARD_POOL_NAMES.get(munged_pool):
+      pool = string.lower(match.group('munged_pool'))
+
+    if NONSTANDARD_POOL_NAMES.get(pool):
         return request_pb2.Request.Params.Scheduling(
-            managed_pool=NONSTANDARD_POOL_NAMES.get(munged_pool))
+            managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
 
     return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
 
