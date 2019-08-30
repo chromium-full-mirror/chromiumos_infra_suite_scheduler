@@ -79,10 +79,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.taskqueue_stub = self.testbed.get_stub(
         testbed.TASKQUEUE_SERVICE_NAME)
 
-  def _get_client(self, addr):
-    self.assertEqual(ADDR, addr)
-    return self.fake_client
-
   def testFormTestPlatformRequestSuccessfully(self):
     tp = _get_default_suite_params()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
@@ -149,6 +145,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
     task_executor.push(task_executor.SUITES_QUEUE, **suite_params)
     tasks = self.taskqueue_stub.get_filtered_tasks()
     return tasks[0].extract_params()
+
+  def _get_client(self, addr):
+    self.assertEqual(ADDR, addr)
+    return self.fake_client
 
 def _struct_pb2_to_request_pb2(struct_pb2):
   """Transform google struct proto to test_platform_request.
