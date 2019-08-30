@@ -83,9 +83,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp = _get_default_suite_params()
     self.client.run(**self._marshal_to_tq_params(tp))
     self._assert_bb_client_called()
-    req = _struct_pb2_to_request_pb2(
-        self.fake_client.called_with_requests[0].properties['request'])
-
+    req = self._extract_request_from_bb_client()
     self.assertEqual(req.params.scheduling.managed_pool,
                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
     self.assertEqual(req.params.time.maximum_duration.seconds, 165600)
@@ -98,9 +96,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp['pool'] = 'cts'
     self.client.run(**self._marshal_to_tq_params(tp))
     self._assert_bb_client_called()
-    req = _struct_pb2_to_request_pb2(
-        self.fake_client.called_with_requests[0].properties['request'])
-
+    req = self._extract_request_from_bb_client()
     self.assertEqual(req.params.scheduling.managed_pool,
                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_CTS)
 
@@ -109,9 +105,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp['pool'] = 'wifi'
     self.client.run(**self._marshal_to_tq_params(tp))
     self._assert_bb_client_called()
-    req = _struct_pb2_to_request_pb2(
-        self.fake_client.called_with_requests[0].properties['request'])
-
+    req = self._extract_request_from_bb_client()
     self.assertEqual(req.params.scheduling.unmanaged_pool, tp['pool'])
 
   def testShouldSchedulewithQuotaAccount(self):
@@ -119,9 +113,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp['override_qs_account'] = 'dummy@foo.com'
     self.client.run(**self._marshal_to_tq_params(tp))
     self._assert_bb_client_called()
-    req = _struct_pb2_to_request_pb2(
-        self.fake_client.called_with_requests[0].properties['request'])
-
+    req = self._extract_request_from_bb_client()
     self.assertEqual(req.params.scheduling.quota_account,
                      tp['override_qs_account'])
 
@@ -155,6 +147,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def _assert_bb_client_not_called(self):
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
+
+  def _extract_request_from_bb_client(self):
+    return _struct_pb2_to_request_pb2(
+        self.fake_client.called_with_requests[0].properties['request'])
 
 
 def _struct_pb2_to_request_pb2(struct_pb2):
