@@ -86,10 +86,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
   def testFormTestPlatformRequestSuccessfully(self):
     tp = _get_suite_job_parameters()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
-    task_executor.push(task_executor.SUITES_QUEUE, **tp)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    params = tasks[0].extract_params()
-    self.client.run(**params)
+    self.client.run(**self._marshal_to_tq_params(tp))
     self.assertEqual(len(self.fake_client.called_with_requests), 1)
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
@@ -105,10 +102,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp = _get_suite_job_parameters()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'cts'
-    task_executor.push(task_executor.SUITES_QUEUE, **tp)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    params = tasks[0].extract_params()
-    self.client.run(**params)
+    self.client.run(**self._marshal_to_tq_params(tp))
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -119,10 +113,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp = _get_suite_job_parameters()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'wifi'
-    task_executor.push(task_executor.SUITES_QUEUE, **tp)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    params = tasks[0].extract_params()
-    self.client.run(**params)
+    self.client.run(**self._marshal_to_tq_params(tp))
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -132,10 +123,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp = _get_suite_job_parameters()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['override_qs_account'] = 'dummy@foo.com'
-    task_executor.push(task_executor.SUITES_QUEUE, **tp)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    params = tasks[0].extract_params()
-    self.client.run(**params)
+    self.client.run(**self._marshal_to_tq_params(tp))
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -147,12 +135,20 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tp[build_lib.BuildVersionKey.CROS_VERSION] = None
     tp[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION] = None
     tp[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION] = None
-    task_executor.push(task_executor.SUITES_QUEUE, **tp)
-    tasks = self.taskqueue_stub.get_filtered_tasks()
-    params = tasks[0].extract_params()
+    params = self._marshal_to_tq_params(tp)
     self.assertRaises(buildbucket.BuildbucketRunError,
                       self.client.run, **params)
 
+  def _marshal_to_tq_params(self, suite_params):
+    """Marshal given suite parameters to a format returned from taskqueue.
+
+    buildbucket.TestPlatformClient.run() expects arguments pulled from a
+    taskqueue. This helper function marshals suite parameters into the format
+    they would be in when pulled from a taskqueue.
+    """
+    task_executor.push(task_executor.SUITES_QUEUE, **suite_params)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    return tasks[0].extract_params()
 
 def _struct_pb2_to_request_pb2(struct_pb2):
   """Transform google struct proto to test_platform_request.
