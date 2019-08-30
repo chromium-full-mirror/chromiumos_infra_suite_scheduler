@@ -81,9 +81,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def testFormTestPlatformRequestSuccessfully(self):
     tp = _get_default_suite_params()
-    self.assertEqual(len(self.fake_client.called_with_requests), 0)
     self.client.run(**self._marshal_to_tq_params(tp))
-    self.assertEqual(len(self.fake_client.called_with_requests), 1)
+    self._assert_bb_client_called()
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -96,9 +95,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def testNonStandardPoolName(self):
     tp = _get_default_suite_params()
-    self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'cts'
     self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -107,9 +106,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def testShouldGoUnmanagedPool(self):
     tp = _get_default_suite_params()
-    self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'wifi'
     self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -117,9 +116,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def testShouldSchedulewithQuotaAccount(self):
     tp = _get_default_suite_params()
-    self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['override_qs_account'] = 'dummy@foo.com'
     self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
     req = _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
 
@@ -134,6 +133,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     params = self._marshal_to_tq_params(tp)
     self.assertRaises(buildbucket.BuildbucketRunError,
                       self.client.run, **params)
+    self._assert_bb_client_not_called()
 
   def _marshal_to_tq_params(self, suite_params):
     """Marshal given suite parameters to a format returned from taskqueue.
@@ -149,6 +149,13 @@ class TestPlatformClientTestCase(unittest.TestCase):
   def _get_client(self, addr):
     self.assertEqual(ADDR, addr)
     return self.fake_client
+
+  def _assert_bb_client_called(self):
+    self.assertEqual(len(self.fake_client.called_with_requests), 1)
+
+  def _assert_bb_client_not_called(self):
+    self.assertEqual(len(self.fake_client.called_with_requests), 0)
+
 
 def _struct_pb2_to_request_pb2(struct_pb2):
   """Transform google struct proto to test_platform_request.
