@@ -76,19 +76,15 @@ class TestPlatformClient(object):
     testbed_build = kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
     return cros_build or android_build or testbed_build
 
-  def _get_scheduling(self, pool, quota):
-    """Assign appropriate quota or pool name to scheduling instance.
+  def _scheduling_for_pool(self, pool):
+    """Assign appropriate pool name to scheduling instance.
 
     Args:
       pool: string pool name (e.g. 'bvt', 'quota').
-      quota: string quota account, or None.
 
     Returns:
       scheduling: A request_pb2.Request.Params.Scheduling instance.
     """
-    if quota:
-      return request_pb2.Request.Params.Scheduling(quota_account=quota)
-
     mp = request_pb2.Request.Params.Scheduling.ManagedPool
     if mp.DESCRIPTOR.values_by_name.get(pool) is not None:
       return request_pb2.Request.Params.Scheduling(managed_pool=mp.Value(pool))
@@ -119,7 +115,10 @@ class TestPlatformClient(object):
 
     pool = task_params.get('override_pool') or task_params['pool']
     quota = task_params.get('override_qs_account')
-    scheduling = self._get_scheduling(pool, quota)
+    if quota:
+      scheduling = request_pb2.Request.Params.Scheduling(quota_account=quota)
+    else:
+      scheduling = self._scheduling_for_pool(pool)
 
     software_dep = request_pb2.Request.Params.SoftwareDependency()
     software_dep.chromeos_build = final_build
