@@ -119,6 +119,8 @@ class TestPlatformClient(object):
       scheduling = request_pb2.Request.Params.Scheduling(quota_account=quota)
     else:
       scheduling = self._scheduling_for_pool(pool)
+    if 'priority' in task_params:
+      scheduling.priority = int(task_params['priority'])
 
     software_dep = request_pb2.Request.Params.SoftwareDependency()
     software_dep.chromeos_build = final_build

@@ -117,6 +117,14 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(req.params.scheduling.quota_account,
                      tp['override_qs_account'])
 
+  def testShouldSetPriority(self):
+    tp = _get_default_suite_params()
+    tp['priority'] = '30'
+    self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
+    req = self._extract_request_from_bb_client()
+    self.assertEqual(req.params.scheduling.priority, 30)
+
   def testNoFinalBuild(self):
     tp = _get_default_suite_params()
     tp[build_lib.BuildVersionKey.CROS_VERSION] = None
