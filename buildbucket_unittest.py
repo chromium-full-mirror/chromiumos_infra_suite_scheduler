@@ -20,7 +20,7 @@ from google.protobuf import json_format
 ADDR = u'http://localhost:1'
 
 
-def _get_suite_job_parameters():
+def _get_default_suite_params():
   return {
       'suite': 'fake_suite',
       'board': 'fake_board',
@@ -84,7 +84,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     return self.fake_client
 
   def testFormTestPlatformRequestSuccessfully(self):
-    tp = _get_suite_job_parameters()
+    tp = _get_default_suite_params()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     self.client.run(**self._marshal_to_tq_params(tp))
     self.assertEqual(len(self.fake_client.called_with_requests), 1)
@@ -99,7 +99,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(req.test_plan.suite[0].name, tp['suite'])
 
   def testNonStandardPoolName(self):
-    tp = _get_suite_job_parameters()
+    tp = _get_default_suite_params()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'cts'
     self.client.run(**self._marshal_to_tq_params(tp))
@@ -110,7 +110,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_CTS)
 
   def testShouldGoUnmanagedPool(self):
-    tp = _get_suite_job_parameters()
+    tp = _get_default_suite_params()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['pool'] = 'wifi'
     self.client.run(**self._marshal_to_tq_params(tp))
@@ -120,7 +120,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(req.params.scheduling.unmanaged_pool, tp['pool'])
 
   def testShouldSchedulewithQuotaAccount(self):
-    tp = _get_suite_job_parameters()
+    tp = _get_default_suite_params()
     self.assertEqual(len(self.fake_client.called_with_requests), 0)
     tp['override_qs_account'] = 'dummy@foo.com'
     self.client.run(**self._marshal_to_tq_params(tp))
@@ -131,7 +131,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
                      tp['override_qs_account'])
 
   def testNoFinalBuild(self):
-    tp = _get_suite_job_parameters()
+    tp = _get_default_suite_params()
     tp[build_lib.BuildVersionKey.CROS_VERSION] = None
     tp[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION] = None
     tp[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION] = None
