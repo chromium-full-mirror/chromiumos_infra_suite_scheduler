@@ -42,7 +42,6 @@ GS_PREFIX = 'gs://chromeos-image-archive/'
 
 def _get_client(address):
   """Create a prpc client instance for given address."""
-
   return prpc_client.Client(address, BuildsServiceDescription)
 
 
@@ -60,45 +59,6 @@ class TestPlatformClient(object):
                                        builder=builder)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
-
-  # This is cloned from swarming_lib.py.
-  def _get_final_build(self, **kwargs):
-    """Get the final build to kick off on a lab DUT.
-
-    Args:
-      **kwargs: The parameters of a task loaded from suite queue.
-
-    Returns:
-      A string representing the build to run.
-    """
-    cros_build = kwargs[build_lib.BuildVersionKey.CROS_VERSION]
-    android_build = kwargs[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
-    testbed_build = kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
-    return cros_build or android_build or testbed_build
-
-  def _scheduling_for_pool(self, pool):
-    """Assign appropriate pool name to scheduling instance.
-
-    Args:
-      pool: string pool name (e.g. 'bvt', 'quota').
-
-    Returns:
-      scheduling: A request_pb2.Request.Params.Scheduling instance.
-    """
-    mp = request_pb2.Request.Params.Scheduling.ManagedPool
-    if mp.DESCRIPTOR.values_by_name.get(pool) is not None:
-      return request_pb2.Request.Params.Scheduling(managed_pool=mp.Value(pool))
-
-    DUT_POOL_PREFIX = r'DUT_POOL_(?P<munged_pool>.+)'
-    match = re.match(DUT_POOL_PREFIX, pool)
-    if match:
-      pool = string.lower(match.group('munged_pool'))
-
-    if NONSTANDARD_POOL_NAMES.get(pool):
-        return request_pb2.Request.Params.Scheduling(
-            managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
-
-    return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
 
   def _form_test_platform_request(self, final_build, **task_params):
     """Generate ScheduleBuildRequest for calling buildbucket.
@@ -118,7 +78,7 @@ class TestPlatformClient(object):
     if quota:
       scheduling = request_pb2.Request.Params.Scheduling(quota_account=quota)
     else:
-      scheduling = self._scheduling_for_pool(pool)
+      scheduling = _scheduling_for_pool(pool)
     if 'priority' in task_params:
       scheduling.priority = int(task_params['priority'])
 
@@ -181,13 +141,13 @@ class TestPlatformClient(object):
       BuildbucketRunError: if failed to get build info from task parameters.
     """
 
-    final_build = self._get_final_build(**task_params)
+    final_build = _get_final_build(**task_params)
     if final_build == 'None':
       raise BuildbucketRunError('No proper build in task params: %r' %
                                 task_params)
 
     req = self._form_test_platform_request(final_build, **task_params)
-    req_struct = self._request_pb2_to_struct_pb2(req)
+    req_struct = _request_pb2_to_struct_pb2(req)
     req_build = self._build_request(req_struct)
     logging.debug('Raw request to buildbucket: %s' % req_build)
 
@@ -207,7 +167,7 @@ class TestPlatformClient(object):
     """Perform a dummy run of prpc call to cros_test_platform-dev."""
 
     req = request_pb2.Request()
-    req_struct = self._request_pb2_to_struct_pb2(req)
+    req_struct = _request_pb2_to_struct_pb2(req)
 
     # Use the staging service account to authorize the request.
     sa_key = self._gen_service_account_key(
@@ -215,20 +175,6 @@ class TestPlatformClient(object):
     cred = prpc_client.service_account_credentials(service_account_key=sa_key)
     return self.client.ScheduleBuild(
         self._build_request(req_struct), credentials=cred)
-
-  # TODO(linxinan): Handle exceptions when fail to transform proto.
-  def _request_pb2_to_struct_pb2(self, req):
-    """Transform test_platform_request to google struct proto.
-
-    Args:
-      req: A request_pb2 instance.
-
-    Returns:
-      A struct_pb2 instance.
-    """
-    json = json_format.MessageToJson(req)
-    structpb = struct_pb2.Struct()
-    return json_format.Parse(json, structpb, ignore_unknown_fields=True)
 
   def _build_request(self, req_struct):
     """Generate ScheduleBuildRequest for calling buildbucket.
@@ -259,3 +205,57 @@ class TestPlatformClient(object):
         client_email=key.service_account_email,
         private_key=key._private_key_pkcs8_pem,
         private_key_id=key._private_key_id)
+
+
+def _scheduling_for_pool(pool):
+  """Assign appropriate pool name to scheduling instance.
+
+  Args:
+    pool: string pool name (e.g. 'bvt', 'quota').
+
+  Returns:
+    scheduling: A request_pb2.Request.Params.Scheduling instance.
+  """
+  mp = request_pb2.Request.Params.Scheduling.ManagedPool
+  if mp.DESCRIPTOR.values_by_name.get(pool) is not None:
+    return request_pb2.Request.Params.Scheduling(managed_pool=mp.Value(pool))
+
+  DUT_POOL_PREFIX = r'DUT_POOL_(?P<munged_pool>.+)'
+  match = re.match(DUT_POOL_PREFIX, pool)
+  if match:
+    pool = string.lower(match.group('munged_pool'))
+  if NONSTANDARD_POOL_NAMES.get(pool):
+      return request_pb2.Request.Params.Scheduling(
+          managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
+  return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
+
+
+# This is cloned from swarming_lib.py.
+def _get_final_build(**kwargs):
+    """Get the final build to kick off on a lab DUT.
+
+    Args:
+      **kwargs: The parameters of a task loaded from suite queue.
+
+    Returns:
+      A string representing the build to run.
+    """
+    cros_build = kwargs[build_lib.BuildVersionKey.CROS_VERSION]
+    android_build = kwargs[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
+    testbed_build = kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
+    return cros_build or android_build or testbed_build
+
+
+# TODO(linxinan): Handle exceptions when fail to transform proto.
+def _request_pb2_to_struct_pb2(req):
+  """Transform test_platform_request to google struct proto.
+
+  Args:
+    req: A request_pb2 instance.
+
+  Returns:
+    A struct_pb2 instance.
+  """
+  json = json_format.MessageToJson(req)
+  structpb = struct_pb2.Struct()
+  return json_format.Parse(json, structpb, ignore_unknown_fields=True)
