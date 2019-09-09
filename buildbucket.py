@@ -61,82 +61,6 @@ class TestPlatformClient(object):
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
 
-  def _form_test_platform_request(self, final_build, **task_params):
-    """Generate ScheduleBuildRequest for calling buildbucket.
-
-    Args:
-      final_build: string, the build to run with the suite (e.g.
-        'nyan_blaze-release/R69-10895.33.0').
-      **task_params: dict, containing the parameters of a task got from suite
-        queue.
-
-    Returns:
-      A request_pb2 instance.
-    """
-    pool = task_params.get('override_pool') or task_params['pool']
-    quota = task_params.get('override_qs_account')
-    if quota:
-      scheduling = request_pb2.Request.Params.Scheduling(quota_account=quota)
-    else:
-      scheduling = _scheduling_for_pool(pool)
-    if 'priority' in task_params:
-      scheduling.priority = int(task_params['priority'])
-
-    software_dep = request_pb2.Request.Params.SoftwareDependency()
-    software_dep.chromeos_build = final_build
-
-    software_attributes = request_pb2.Request.Params.SoftwareAttributes()
-    software_attributes.build_target.name = task_params['board']
-
-    metadata = request_pb2.Request.Params.Metadata()
-    metadata.test_metadata_url = GS_PREFIX + task_params['test_source_build']
-
-    timeout_mins = int(task_params['timeout_mins'])
-    # timeout's unit is hour.
-    if task_params.get('timeout'):
-      timeout_mins = max(int(task_params['timeout'])*60, timeout_mins)
-    if timeout_mins > constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS:
-      timeout_mins = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
-    td = datetime.timedelta(minutes=timeout_mins)
-    params_time = request_pb2.Request.Params.Time()
-    params_time.maximum_duration.FromTimedelta(td)
-
-    tags = _request_tags(task_params, final_build, pool)
-    decorations = request_pb2.Request.Params.Decorations()
-    for key, value in tags.iteritems():
-      decorations.tags.append('%s:%s' % (key, value))
-
-    params = request_pb2.Request.Params(decorations=decorations,
-                                        scheduling=scheduling,
-                                        software_dependencies=[software_dep],
-                                        software_attributes=software_attributes,
-                                        metadata=metadata,
-                                        time=params_time)
-
-    if task_params['model'] != 'None':
-      params.hardware_attributes.model = task_params['model']
-
-    if task_params['job_retry'] == 'True':
-      params.retry.allow = True
-      params.retry.max = constants.Buildbucket.MAX_RETRY
-
-    fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
-    fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
-    # Skip firmware field if None(unspecified) or 'None'(no such build).
-    if fw_ro_build not in (None, 'None'):
-      build = params.software_dependencies.add()
-      build.ro_firmware_build = fw_ro_build
-    if fw_rw_build not in (None, 'None'):
-      build = params.software_dependencies.add()
-      build.rw_firmware_build = fw_rw_build
-
-    test_plan = request_pb2.Request.TestPlan()
-    suite = test_plan.suite.add()
-    suite.name = task_params['suite']
-
-    return request_pb2.Request(params=params,
-                               test_plan=test_plan)
-
   def run(self, **task_params):
     """Call TestPlatform Builder to schedule a test.
 
@@ -146,13 +70,7 @@ class TestPlatformClient(object):
     Raises:
       BuildbucketRunError: if failed to get build info from task parameters.
     """
-
-    final_build = _get_final_build(**task_params)
-    if final_build == 'None':
-      raise BuildbucketRunError('No proper build in task params: %r' %
-                                task_params)
-
-    req = self._form_test_platform_request(final_build, **task_params)
+    req = _form_test_platform_request(task_params)
     req_struct = _request_pb2_to_struct_pb2(req)
     req_build = self._build_request(req_struct, _request_tags_to_bb_tags(req))
     logging.debug('Raw request to buildbucket: %s' % req_build)
@@ -215,6 +133,65 @@ class TestPlatformClient(object):
         private_key_id=key._private_key_id)
 
 
+def _form_test_platform_request(task_params):
+  """Generate ScheduleBuildRequest for calling buildbucket.
+
+  Args:
+    task_params: dict containing the parameters of a task got from suite
+        queue.
+
+  Returns:
+    A request_pb2 instance.
+  """
+  build = _infer_build_from_task_params(task_params)
+  if build == 'None':
+    raise BuildbucketRunError('No proper build in task params: %r' %
+                              task_params)
+  pool = _infer_pool_from_task_params(task_params)
+  timeout = _infer_timeout_from_task_params(task_params)
+
+  request = request_pb2.Request()
+  params = request.params
+
+  quota = task_params.get('override_qs_account')
+  if quota:
+    params.scheduling.quota_account = quota
+  else:
+    params.scheduling.CopyFrom(_scheduling_for_pool(pool))
+  if 'priority' in task_params:
+    params.scheduling.priority = int(task_params['priority'])
+
+  params.software_dependencies.add().chromeos_build = build
+  params.software_attributes.build_target.name = task_params['board']
+  params.metadata.test_metadata_url = (
+      GS_PREFIX + task_params['test_source_build']
+  )
+  params.time.maximum_duration.FromTimedelta(timeout)
+
+  for key, value in _request_tags(task_params, build, pool).iteritems():
+    params.decorations.tags.append('%s:%s' % (key, value))
+
+  if task_params['model'] != 'None':
+    params.hardware_attributes.model = task_params['model']
+
+  if task_params['job_retry'] == 'True':
+    params.retry.allow = True
+    params.retry.max = constants.Buildbucket.MAX_RETRY
+
+  fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
+  fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
+  # Skip firmware field if None(unspecified) or 'None'(no such build).
+  if fw_ro_build not in (None, 'None'):
+    build = params.software_dependencies.add()
+    build.ro_firmware_build = fw_ro_build
+  if fw_rw_build not in (None, 'None'):
+    build = params.software_dependencies.add()
+    build.rw_firmware_build = fw_rw_build
+
+  request.test_plan.suite.add().name = task_params['suite']
+  return request
+
+
 def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
 
@@ -238,20 +215,53 @@ def _scheduling_for_pool(pool):
   return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
 
 
-# This is cloned from swarming_lib.py.
-def _get_final_build(**kwargs):
-    """Get the final build to kick off on a lab DUT.
+# Also see: A copy of this function in swarming_lib.py.
+def _infer_build_from_task_params(task_params):
+  """Infer the build to install on the DUT for the scheduled task.
 
-    Args:
-      **kwargs: The parameters of a task loaded from suite queue.
+  Args:
+    task_params: The parameters of a task loaded from suite queue.
 
-    Returns:
-      A string representing the build to run.
-    """
-    cros_build = kwargs[build_lib.BuildVersionKey.CROS_VERSION]
-    android_build = kwargs[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
-    testbed_build = kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
-    return cros_build or android_build or testbed_build
+  Returns:
+    A string representing the build to run.
+  """
+  cros_build = task_params[build_lib.BuildVersionKey.CROS_VERSION]
+  android_build = task_params[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
+  testbed_build = task_params[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
+  return cros_build or android_build or testbed_build
+
+
+def _infer_pool_from_task_params(task_params):
+  """Infer the pool to use for the scheduled task.
+
+  Args:
+    task_params: The parameters of a task loaded from suite queue.
+
+  Returns:
+    A string pool to schedule task in.
+  """
+  if task_params.get('override_qs_account'):
+    return 'DUT_POOL_QUOTA'
+  return task_params.get('override_pool') or task_params['pool']
+
+
+def _infer_timeout_from_task_params(task_params):
+  """Infer the timeout for the scheduled task.
+
+  Args:
+    task_params: The parameters of a task loaded from suite queue.
+
+  Returns:
+    A datetime.timedelta instance for the timeout.
+  """
+  timeout_mins = int(task_params['timeout_mins'])
+  # timeout's unit is hour.
+  if task_params.get('timeout'):
+    timeout_mins = max(int(task_params['timeout'])*60, timeout_mins)
+  if timeout_mins > constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS:
+    timeout_mins = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
+  return datetime.timedelta(minutes=timeout_mins)
+
 
 def _request_tags(task_params, build, pool):
   """Infer tags to include in cros_test_platform request.
