@@ -21,17 +21,26 @@ ADDR = u'http://localhost:1'
 
 
 def _get_default_suite_params():
+  return _get_suite_params(
+    board='fake_board',
+    model='fake_model',
+    suite='fake_suite',
+    pool='DUT_POOL_SUITES',
+    cros_build='fake_cros_build',
+  )
+
+def _get_suite_params(board, model, suite, pool, cros_build):
   return {
-      'suite': 'fake_suite',
-      'board': 'fake_board',
-      'model': 'fake_model',
-      build_lib.BuildVersionKey.CROS_VERSION: 'fake_cros_build',
+      'suite': suite,
+      'board': board,
+      'model': model,
+      build_lib.BuildVersionKey.CROS_VERSION: cros_build,
       build_lib.BuildVersionKey.FW_RW_VERSION: 'fake_firmware_rw_build',
       build_lib.BuildVersionKey.FW_RO_VERSION: 'fake_firmware_ro_build',
       build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: 'fake_android_build',
       build_lib.BuildVersionKey.TESTBED_BUILD_VERSION: 'fake_testbed_build',
       'num': 1,
-      'pool': 'DUT_POOL_SUITES',
+      'pool': pool,
       'priority': 10,
       'timeout': 12,
       'timeout_mins': 4320,
@@ -135,6 +144,29 @@ class TestPlatformClientTestCase(unittest.TestCase):
                       self.client.run, **params)
     self._assert_bb_client_not_called()
 
+  def testRequestTags(self):
+    tp = _get_suite_params(
+      board='some_board',
+      model='some_model',
+      pool='DUT_POOL_SUITES',
+      suite='some_suite',
+      cros_build='some_build',
+    )
+    self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
+    want = {
+      'label-board:some_board',
+      'label-model:some_model',
+      'label-pool:DUT_POOL_SUITES',
+      'suite:some_suite',
+      'build:some_build',
+    }
+    req = self._extract_request_from_bb_client()
+    req_tags = set([t for t in req.params.decorations.tags])
+    self.assertEqual(want, req_tags)
+    bb_tags = set([t for t in self._extract_tags_from_bb_client()])
+    self.assertEqual(want, bb_tags)
+
   def _marshal_to_tq_params(self, suite_params):
     """Marshal given suite parameters to a format returned from taskqueue.
 
@@ -159,6 +191,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
   def _extract_request_from_bb_client(self):
     return _struct_pb2_to_request_pb2(
         self.fake_client.called_with_requests[0].properties['request'])
+
+  def _extract_tags_from_bb_client(self):
+    return ['%s:%s' % (t.key, t.value)
+            for t  in self.fake_client.called_with_requests[0].tags]
 
 
 def _struct_pb2_to_request_pb2(struct_pb2):

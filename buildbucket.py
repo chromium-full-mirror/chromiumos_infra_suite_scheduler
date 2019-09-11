@@ -16,6 +16,7 @@ import file_getter
 from chromite.api.gen.test_platform import request_pb2
 from components import auth
 from components.prpc import client as prpc_client
+from infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
 from infra_libs.buildbucket.proto import rpc_pb2, build_pb2
 from infra_libs.buildbucket.proto.rpc_prpc_pb2 import BuildsServiceDescription
 
@@ -72,7 +73,6 @@ class TestPlatformClient(object):
     Returns:
       A request_pb2 instance.
     """
-
     pool = task_params.get('override_pool') or task_params['pool']
     quota = task_params.get('override_qs_account')
     if quota:
@@ -101,7 +101,13 @@ class TestPlatformClient(object):
     params_time = request_pb2.Request.Params.Time()
     params_time.maximum_duration.FromTimedelta(td)
 
-    params = request_pb2.Request.Params(scheduling=scheduling,
+    tags = _request_tags(task_params, final_build, pool)
+    decorations = request_pb2.Request.Params.Decorations()
+    for key, value in tags.iteritems():
+      decorations.tags.append('%s:%s' % (key, value))
+
+    params = request_pb2.Request.Params(decorations=decorations,
+                                        scheduling=scheduling,
                                         software_dependencies=[software_dep],
                                         software_attributes=software_attributes,
                                         metadata=metadata,
@@ -148,7 +154,7 @@ class TestPlatformClient(object):
 
     req = self._form_test_platform_request(final_build, **task_params)
     req_struct = _request_pb2_to_struct_pb2(req)
-    req_build = self._build_request(req_struct)
+    req_build = self._build_request(req_struct, _request_tags_to_bb_tags(req))
     logging.debug('Raw request to buildbucket: %s' % req_build)
 
     if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
@@ -174,13 +180,14 @@ class TestPlatformClient(object):
         file_getter.STAGING_CLIENT_SECRETS_FILE)
     cred = prpc_client.service_account_credentials(service_account_key=sa_key)
     return self.client.ScheduleBuild(
-        self._build_request(req_struct), credentials=cred)
+        self._build_request(req_struct, tags=[]), credentials=cred)
 
-  def _build_request(self, req_struct):
+  def _build_request(self, req_struct, tags):
     """Generate ScheduleBuildRequest for calling buildbucket.
 
     Args:
       req_struct: A struct_pb2 instance.
+      tags: A list of tags for the buildbucket build.
 
     Returns:
       A ScheduleBuildRequest instance.
@@ -188,7 +195,8 @@ class TestPlatformClient(object):
     recipe_struct = struct_pb2.Struct(fields={
         'request': struct_pb2.Value(struct_value=req_struct)})
     return rpc_pb2.ScheduleBuildRequest(builder=self.builder,
-                                        properties=recipe_struct)
+                                        properties=recipe_struct,
+                                        tags=tags)
 
   def _gen_service_account_key(self, sa):
     """Generate credentials to authorize the call.
@@ -244,6 +252,48 @@ def _get_final_build(**kwargs):
     android_build = kwargs[build_lib.BuildVersionKey.ANDROID_BUILD_VERSION]
     testbed_build = kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION]
     return cros_build or android_build or testbed_build
+
+def _request_tags(task_params, build, pool):
+  """Infer tags to include in cros_test_platform request.
+
+  Args:
+    task_params: suite task parameters.
+    build: The build included in the request. Must not be None.
+    pool: The DUT pool used for the request. Must not be None.
+
+  Returns:
+    A dict of tags.
+  """
+  tags = {
+    'build': build,
+    'label-pool': pool,
+  }
+  if 'board' in task_params:
+    tags['label-board'] = task_params['board']
+  if 'model' in task_params:
+    tags['label-model'] = task_params['model']
+  if 'suite' in task_params:
+    tags['suite'] = task_params['suite']
+  return tags
+
+
+def _request_tags_to_bb_tags(request):
+  """Convert given request_pb.Request tags to buildbucket tags.
+
+  Args:
+    request: A request_pb2.Request.
+
+  Returns:
+    [bb_common_pb2.StringPair] tags to include the buildbucket request.
+  """
+  bb_tags = []
+  for t in request.params.decorations.tags:
+    k, v = t.split(':')
+    bb_tag = bb_common_pb2.StringPair()
+    bb_tag.key = k
+    bb_tag.value = v
+    bb_tags.append(bb_tag)
+  return bb_tags
 
 
 # TODO(linxinan): Handle exceptions when fail to transform proto.
