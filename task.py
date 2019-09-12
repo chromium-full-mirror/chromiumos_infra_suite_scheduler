@@ -208,7 +208,7 @@ class Task(object):
     branch_builds, relaxed_builds = cros_builds_tuple
     builds_dict = branch_builds
     if self.only_hwtest_sanity_required:
-      builds_dict = relaxed_builds
+      builds_dict = _split_unibuilds(relaxed_builds, configs)
 
     logging.info('######## Scheduling task %s ########', self.name)
     if self.os_type == build_lib.OS_TYPE_CROS:
@@ -625,3 +625,41 @@ def _pick_branch(build_type, milestone):
     return build_type.
   """
   return build_type if build_type in build_lib.BARE_BRANCHES else milestone
+
+
+def _split_unibuilds(build_dict, configs):
+  """Split the uni-builds to all models under a board.
+
+  Args:
+    build_dict: the build dict for ChromeOS boards, see return
+      value of |build_lib.get_cros_builds_since_date|.
+    configs: a config_reader.Configs object.
+
+  Returns:
+    A build dict.
+  """
+  models_by_board = configs.lab_config.get_cros_model_map()
+  if not models_by_board:
+    return build_dict
+  all_branch_build_dict = {}
+  for (board, model, config, milestone), platform in build_dict.iteritems():
+    uni_build_models = models_by_board.get(board)
+    if uni_build_models is not None and model is None:
+      for uni_build_model in uni_build_models:
+        model_key = (board, uni_build_model, config, milestone)
+        _add_build_dict(all_branch_build_dict, model_key, platform)
+      continue
+    build_key = (board, model, config, milestone)
+    _add_build_dict(all_branch_build_dict, build_key, platform)
+
+  return all_branch_build_dict
+
+
+def _add_build_dict(build_dict, key, value):
+  """A wrapper to add or update an item in build_dict."""
+  cur_manifest = build_dict.get(key)
+  if cur_manifest is None:
+    build_dict[key] = value
+    return
+  build_dict[key] = max(
+      [cur_manifest, value], key=version.LooseVersion)

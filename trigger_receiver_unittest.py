@@ -119,8 +119,12 @@ class FakeBuildClient(object):
   def get_relaxed_passed_builds_since_date(self, since_date):
     """Mock get_relaxed_pased_builds_since_date."""
     del since_date  # unused
-    return [build_lib.BuildInfo(
-        'grunt', None, '63', '9968.0.0', 'grunt-release')]
+    return [
+        build_lib.BuildInfo('grunt', None, '63', '9968.0.0', 'grunt-release'),
+        build_lib.BuildInfo('nami', None, '62', '9867.0.0', 'nami-release'),
+        build_lib.BuildInfo('nami', 'akali', '62', '9868.0.0', 'nami-release'),
+        build_lib.BuildInfo('nami', 'bard', '62', '9866.0.0', 'nami-release'),
+    ]
 
 
 class FakeAndroidBuildRestClient(object):
@@ -142,7 +146,7 @@ class FakeLabConfig(object):
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_cros_board_list."""
     return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext',
-            'coral', 'reef')
+            'coral', 'reef', 'nami')
 
   def get_firmware_ro_build_list(self, release_board):
     """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
@@ -154,6 +158,7 @@ class FakeLabConfig(object):
     return {
         'coral': ['santa', 'astronaut'],
         'reef': ['electro'],
+        'nami': ['akali', 'bard'],
     }
 
 
@@ -508,7 +513,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
     self.fake_config.set(link_suite, 'exclude_boards',
-                         'asuka, paine, banon, coral, reef')
+                         'asuka, paine, banon, coral, reef, nami')
     self._mock_config_reader.return_value = self.fake_config
 
     suite_trigger = trigger_receiver.TriggerReceiver()
@@ -632,6 +637,32 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(tasks), 1)
     self.assertNotIn('model=astronaut', tasks[0].payload)
     self.assertIn('model=santa', tasks[0].payload)
+
+  def testNewBuildWithModelsForHWTestSanityRequired(self):
+    """Test the new_build suite with an existing models entry."""
+    normal_suite = 'FakeModelsNewBuildTask'
+    self.fake_config.add_section(normal_suite)
+    self.fake_config.set(normal_suite, 'run_on', 'new_build')
+    self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
+    self.fake_config.set(normal_suite, 'models', 'nami_akali, nami_bard')
+    self.fake_config.set(normal_suite, 'boards', 'nami')
+    self.fake_config.set(normal_suite, 'only_hwtest_sanity_required', 'True')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [normal_suite])
+    self.assertIn('new_build', suite_trigger.event_results)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 2)
+    self.assertIn('model=akali', tasks[0].payload)
+    self.assertIn('9868.0.0', tasks[0].payload)
+    self.assertIn('model=bard', tasks[1].payload)
+    self.assertIn('9867.0.0', tasks[1].payload)
 
   def testNewBuildWithExcludeModels(self):
     """Test the new_build suite with an existing exclude_models entry."""
