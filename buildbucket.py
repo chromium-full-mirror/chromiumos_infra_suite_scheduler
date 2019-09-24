@@ -278,11 +278,11 @@ def _request_tags(task_params, build, pool):
     'build': build,
     'label-pool': pool,
   }
-  if 'board' in task_params:
+  if task_params.get('board') not in (None, 'None'):
     tags['label-board'] = task_params['board']
-  if 'model' in task_params:
+  if task_params.get('model') not in (None, 'None'):
     tags['label-model'] = task_params['model']
-  if 'suite' in task_params:
+  if task_params.get('suite') not in (None, 'None'):
     tags['suite'] = task_params['suite']
   return tags
 

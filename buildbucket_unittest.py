@@ -144,6 +144,50 @@ class TestPlatformClientTestCase(unittest.TestCase):
                       self.client.run, **params)
     self._assert_bb_client_not_called()
 
+  def testRequestNoneStringTags(self):
+    tp = _get_suite_params(
+      board='some_board',
+      model='None',
+      pool='DUT_POOL_SUITES',
+      suite='some_suite',
+      cros_build='some_build',
+    )
+    self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
+    want = {
+      'label-board:some_board',
+      'label-pool:DUT_POOL_SUITES',
+      'suite:some_suite',
+      'build:some_build',
+    }
+    req = self._extract_request_from_bb_client()
+    req_tags = set([t for t in req.params.decorations.tags])
+    self.assertEqual(want, req_tags)
+    bb_tags = set([t for t in self._extract_tags_from_bb_client()])
+    self.assertEqual(want, bb_tags)
+
+  def testRequestNoneTags(self):
+    tp = _get_suite_params(
+      board='some_board',
+      model=None,
+      pool='DUT_POOL_SUITES',
+      suite='some_suite',
+      cros_build='some_build',
+    )
+    self.client.run(**self._marshal_to_tq_params(tp))
+    self._assert_bb_client_called()
+    want = {
+      'label-board:some_board',
+      'label-pool:DUT_POOL_SUITES',
+      'suite:some_suite',
+      'build:some_build',
+    }
+    req = self._extract_request_from_bb_client()
+    req_tags = set([t for t in req.params.decorations.tags])
+    self.assertEqual(want, req_tags)
+    bb_tags = set([t for t in self._extract_tags_from_bb_client()])
+    self.assertEqual(want, bb_tags)
+
   def testRequestTags(self):
     tp = _get_suite_params(
       board='some_board',
