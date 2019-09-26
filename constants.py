@@ -117,16 +117,16 @@ class Priorities(object):
   """Constants related to task priority."""
 
   # weekly task's priority
-  WEEKLY = 10
+  WEEKLY = 230
 
   # daily task's priority
-  DAILY = 20
+  DAILY = 200
 
   # postbuild task's priority
-  POSTBUILD = 30
+  POSTBUILD = 170
 
   # the default task priority
-  DEFAULT = 40
+  DEFAULT = 140
 
 
 def environment():
