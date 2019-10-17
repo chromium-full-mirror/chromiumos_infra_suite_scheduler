@@ -295,11 +295,11 @@ class BigqueryRestClient(object):
         body=query_data).execute()
 
 
-class CrOSSwarmingBigqueryClient(BigqueryRestClient):
-  """REST client for chromeos-swarming Bigquery API."""
+class CrOSTestPlatformBigqueryClient(BigqueryRestClient):
+  """REST client for cros_test_platform builder Bigquery API."""
 
-  def get_past_skylab_job_nums(self, hours):
-    """Query the count of jobs kicked off to chromeos-swarming in past hours.
+  def get_past_job_nums(self, hours):
+    """Query the count of the jobs kicked off to cros_test_platform.
 
     Args:
       hours: An integer.
@@ -311,11 +311,10 @@ class CrOSSwarmingBigqueryClient(BigqueryRestClient):
         SELECT
           COUNT(*)
         FROM
-          `chromeos-swarming.swarming.task_requests` AS r
+          `cr-buildbucket.chromeos.builds`
         WHERE
-          'user:suite_scheduler' in UNNEST(r.tags) and
-          create_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(),
-          INTERVAL %d HOUR);
+          created_by = 'user:suite-scheduler.google.com@appspot.gserviceaccount.com'
+          and create_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR);
     """
     res = self.query(query_str % hours)
     try:
@@ -351,7 +350,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           end_time desc
         LIMIT 1
     """
-    logging.info('Getting artifact link of the latest build for %s', build_config)
+    logging.info('Getting artifact link of the latest build for %s',
+                 build_config)
     res = self.query(query_str % build_config)
     res = _parse_bq_job_query(res)
     if res is None:

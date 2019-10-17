@@ -127,6 +127,19 @@ class _FakeBigqueryGetRelaxedPassedHandler(webapp2.RequestHandler):
       self.response.write('\n')
 
 
+class _FakeCrOSTestPlatformBigqueryHandler(webapp2.RequestHandler):
+
+  def get(self):
+    bq_client = rest_client.CrOSTestPlatformBigqueryClient(
+        rest_client.BaseRestClient(
+            constants.RestClient.BIGQUERY_CLIENT.scopes,
+            constants.RestClient.BIGQUERY_CLIENT.service_name,
+            constants.RestClient.BIGQUERY_CLIENT.service_version))
+    res = bq_client.get_past_job_nums(72)
+    if res > 0:
+      self.response.write('ok')
+
+
 class _FakeBuildbucketLibCompatibilityHandler(webapp2.RequestHandler):
 
   def get(self):
@@ -148,6 +161,7 @@ app = webapp2.WSGIApplication([
      _FakeSkylabBackwardCompatibilityWithSanityHandler),
     ('/test_push/bq_get_passed', _FakeBigqueryGetPassedHandler),
     ('/test_push/bq_get_relaxed_passed', _FakeBigqueryGetRelaxedPassedHandler),
+    ('/test_push/bq_get_last_hours', _FakeCrOSTestPlatformBigqueryHandler),
     ('/test_push/buildbucket_lib_compatibility',
      _FakeBuildbucketLibCompatibilityHandler)
     ], debug=True)

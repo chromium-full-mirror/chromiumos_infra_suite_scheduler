@@ -130,6 +130,13 @@ class IntegrationTest(unittest.TestCase):
         ['curl', '%s/test_push/bq_get_relaxed_passed' % DEV_APPSERVER_URL])
     self.assertIn('release', output)
 
+  def testBigqueryGetJobsLastHours(self):
+    """Test get_past_buildbucket_job_nums from cros_test_platform BQ database"""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/bq_get_last_hours' % DEV_APPSERVER_URL])
+    self.assertIn('ok', output)
+
   def testBuildbucketClient(self):
     """Test buildbucket client by calling test-platform's dev builder."""
     output = _subprocess_wrapper(
