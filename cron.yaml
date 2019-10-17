@@ -14,7 +14,7 @@ cron:
   target: beta
   schedule: every 4 hours
 
-- description: check if skylab jobs can be scheduled
-  url: /cron/check_skylab_jobs
+- description: check if suite tests can be scheduled
+  url: /cron/check_jobs
   target: beta
   schedule: every 30 minutes

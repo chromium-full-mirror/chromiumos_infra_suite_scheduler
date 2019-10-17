@@ -41,11 +41,11 @@ _LOG_TIME_ADDON_MIN = 1
 # The format of url of loggings.
 _LOGGING_URL_FORMAT = 'http://%s/logger?start_time=%s&end_time=%s&resource=%s'
 
-# The past number of hours to check if skylab jobs are well scheduled.
-_PAST_HOURS = 2
+# The past number of hours to check if jobs are well scheduled.
+_PAST_HOURS = 6
 
-# The minimum number of skylab jobs scheduled in past hours.
-_MIN_SCHEDULED_SKYLAB_JOB_NUMS = 5
+# The minimum number of jobs scheduled in past hours.
+_MIN_SCHEDULED_SUITES_NUMS = 5
 
 
 class TriggerEvent(webapp2.RequestHandler):
@@ -218,27 +218,27 @@ def _add_to_calendar(keyword, task_results, log_url, start_time, end_time,
     logging.info(event)
 
 
-class CheckSkylabJobs(webapp2.RequestHandler):
-  """Check if skylab jobs are well scheduled."""
+class CheckJobs(webapp2.RequestHandler):
+  """Check if jobs are well scheduled."""
 
   def get(self):
     if global_config.is_in_staging():
       return
 
-    bq_client = rest_client.CrOSSwarmingBigqueryClient(
+    bq_client = rest_client.CrOSTestPlatformBigqueryClient(
         rest_client.BaseRestClient(
             constants.RestClient.BIGQUERY_CLIENT.scopes,
             constants.RestClient.BIGQUERY_CLIENT.service_name,
             constants.RestClient.BIGQUERY_CLIENT.service_version))
-    res = bq_client.get_past_skylab_job_nums(_PAST_HOURS)
-    if res <= _MIN_SCHEDULED_SKYLAB_JOB_NUMS:
-      raise ValueError('Too few (%d) Skylab jobs scheduled in the past '
-                       '%d hours.' % (res, _PAST_HOURS))
+    res = bq_client.get_past_job_nums(_PAST_HOURS)
+    if res <= _MIN_SCHEDULED_SUITES_NUMS:
+      raise ValueError('Too few (%d) suite tests scheduled to frontdoor'
+                       'in the past %d hours.' % (res, _PAST_HOURS))
 
 
 app = webapp2.WSGIApplication([
     ('/cron/trigger_event', TriggerEvent),
     ('/cron/execute_task', ExecuteTask),
     ('/cron/test_push', TestPush),
-    ('/cron/check_skylab_jobs', CheckSkylabJobs),
+    ('/cron/check_jobs', CheckJobs),
 ], debug=True)
