@@ -153,6 +153,10 @@ def _form_test_platform_request(task_params):
   request = request_pb2.Request()
   params = request.params
 
+  if task_params.get('override_qs_account') or task_params.get('override_pool'):
+    logging.debug('Override qs account: %s. Override pool: %s.' %
+                  (task_params.get('override_qs_account'),
+                  task_params.get('override_pool')))
   quota = task_params.get('override_qs_account')
   if quota:
     params.scheduling.quota_account = quota
