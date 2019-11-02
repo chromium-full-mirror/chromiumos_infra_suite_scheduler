@@ -513,7 +513,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(link_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(link_suite, 'exclude_board_families', 'ivybridge')
     self.fake_config.set(link_suite, 'exclude_boards',
-                         'asuka, paine, banon, coral, reef, nami')
+        'asuka, paine, banon, coral, reef, nami, samus-kernelnext')
     self._mock_config_reader.return_value = self.fake_config
 
     suite_trigger = trigger_receiver.TriggerReceiver()
@@ -524,6 +524,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
                      [link_suite])
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
     self.assertNotIn('link-release', tasks[0].payload)
     self.assertNotIn('asuka-release', tasks[0].payload)
     self.assertIn('zako-release', tasks[0].payload)
