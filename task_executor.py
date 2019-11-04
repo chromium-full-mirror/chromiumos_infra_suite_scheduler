@@ -5,13 +5,11 @@
 """Module for executing tasks queued by suite scheduler."""
 # pylint: disable=g-bad-import-order
 
-import ast
 import logging
 
 import buildbucket
 import constants
 import global_config
-import swarming_lib
 
 import apiclient
 from google.appengine.api import taskqueue
@@ -29,17 +27,13 @@ class TaskProcessor(object):
   represented by tasks' params through ChromeOS swarming proxy server.
   """
 
-  def __init__(self, queue_name, afe_server, skylab_swarming_server):
+  def __init__(self, queue_name):
     """Initialize a task executor for further pulling & execution.
 
     Args:
       queue_name: The name of a pull queue.
-      afe_server: A string of the address for the afe_server.
-      skylab_swarming_server: A string of swarming server url for skylab.
     """
     self.queue = taskqueue.Queue(queue_name)
-    self.swarming = swarming_lib.SwarmingRunner(
-        afe_server, skylab_swarming_server)
     # Schedule tests to PROD_BUILDER if in production project, otherwise use
     # STAGING_BUILDER.
     builder = constants.Buildbucket.STAGING_BUILDER
@@ -54,56 +48,50 @@ class TaskProcessor(object):
 
   def batch_execute(self):
     """Execute tasks."""
-    try:
-      tasks = self.queue.lease_tasks(3600, BATCH_SIZE, deadline=60)
-    except (taskqueue.UnknownQueueError,
-            taskqueue.TransientError,
-            apiproxy_errors.DeadlineExceededError) as e:
-      logging.exception(e)
-      raise
-
-    if tasks:
-      executed_tasks = []
+    executed_tasks_count = 0
+    while (executed_tasks_count +
+           constants.Buildbucket.MULTIREQUEST_SIZE <= BATCH_SIZE):
       try:
-        for task in tasks:
-          try:
-            params = task.extract_params()
-            self._execute(**params)
+        tasks = self.queue.lease_tasks_by_tag(3600,
+            constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+      except (taskqueue.UnknownQueueError,
+              taskqueue.TransientError,
+              apiproxy_errors.DeadlineExceededError) as e:
+        logging.exception(e)
+        raise
 
-            executed_tasks.append(task)
-          except (ValueError, swarming_lib.SwarmingRunError,
-                  apiclient.errors.HttpError) as e:
-            logging.exception('Failed to kick off %r', params)
+      executed_tasks = []
+      if not tasks:
+        return
+
+      try:
+        executed_tasks.extend(
+            self.test_platform_client.multirequest_run(tasks, tasks[0].tag))
+      except (ValueError,
+              buildbucket.BuildbucketRunError,
+              apiclient.errors.HttpError) as e:
+        logging.exception('Failed to kick off %d tasks for suite %s',
+                          len(tasks), tasks[0].tag)
       finally:
         if executed_tasks:
-          logging.info('Successfully kicking %d tasks', len(executed_tasks))
+          executed_tasks_count += len(executed_tasks)
+          logging.info('Successfully kicking %d tasks for suite %s',
+                       len(executed_tasks), tasks[0].tag)
           self.queue.delete_tasks(executed_tasks)
 
-  def _execute(self, **params):
-    """A wrapper to execute each single task."""
-    # No dummy run for frontdoor enabled test.
-    is_frontdoor = ast.literal_eval(params.get('is_frontdoor', 'False'))
-    if is_frontdoor:
-      return self.test_platform_client.run(**params)
-
-    # Test environment.
-    if global_config.GAE_TESTING:
-      self.swarming.dummy_run(**params)
-      return
-    # Production environment.
-    return self.swarming.run(**params)
 
   def purge(self):
     """Purge the entire tasks in the task queue."""
     self.queue.purge()
 
 
-def push(queue_name, **suite_kwargs):
+def push(queue_name, tag=None, **suite_kwargs):
   """Push suites to suite queue for later kickoff.
 
   Args:
     queue_name: the name of a pull queue.
+    tag: tag of a pull queue task.
     **suite_kwargs: the args for a suite to kick off.
   """
   queue = taskqueue.Queue(queue_name)
-  queue.add(taskqueue.Task(method='PULL', params=suite_kwargs))
+  queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
