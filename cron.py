@@ -91,13 +91,7 @@ class ExecuteTask(webapp2.RequestHandler):
     if global_config.is_in_staging():
       return
 
-    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
-        file_getter.LAB_CONFIG_FILE))
-    afe_server = lab_config.get_dedicated_afe()
-    task_processor = task_executor.TaskProcessor(
-        task_executor.SUITES_QUEUE,
-        afe_server,
-        swarming_lib.SKYLAB_SWARMING_SERVER)
+    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
     task_processor.batch_execute()
 
 
@@ -130,13 +124,7 @@ class TestPush(webapp2.RequestHandler):
         '/cron/test_push')
     logging.info('URL for logs of current round of test_push: %s', log_url)
 
-    lab_config = config_reader.LabConfig(config_reader.ConfigReader(
-        file_getter.LAB_CONFIG_FILE))
-    afe_server = lab_config.get_dedicated_afe()
-    task_processor = task_executor.TaskProcessor(
-        task_executor.SUITES_QUEUE,
-        afe_server,
-        swarming_lib.SKYLAB_STAGING_SWARMING_SERVER)
+    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
     task_processor.batch_execute()
     # In testing, after one round of batch_execute() to execute all tasks,
     # the suite queue will be purged.

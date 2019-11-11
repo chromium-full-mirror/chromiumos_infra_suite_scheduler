@@ -4,6 +4,7 @@
 
 """Module for interacting with Buildbucket."""
 
+import collections
 import datetime
 import logging
 import re
@@ -61,57 +62,87 @@ class TestPlatformClient(object):
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
 
-  def run(self, **task_params):
-    """Call TestPlatform Builder to schedule a test.
+  def multirequest_run(self, tasks, suite):
+    """Call TestPlatform Builder to schedule a batch of tests.
 
     Args:
-      **task_params: The suite parameters to run.
+      tasks: The suite tasks to run.
+      suite: suite name for the batch request.
+
+    Returns:
+      List of executed tasks.
 
     Raises:
       BuildbucketRunError: if failed to get build info from task parameters.
     """
-    req = _form_test_platform_request(task_params)
-    req_struct = _request_pb2_to_struct_pb2(req)
-    req_build = self._build_request(req_struct, _request_tags_to_bb_tags(req))
-    logging.debug('Raw request to buildbucket: %s' % req_build)
+    requests = []
+    executed_tasks = []
+    counter = collections.defaultdict(int)
+    for task in tasks:
+      try:
+        params = task.extract_params()
+        req = _form_test_platform_request(params)
+        req_json = json_format.MessageToJson(req)
+        counter_key = params['board']
+        counter_key += '' if params['model'] in [None, 'None'] else (
+            '_' + params['model'])
+        counter[counter_key] += 1
+        req_name = counter_key
+        if counter[counter_key] > 1:
+          req_name += '_' + str(counter[counter_key] - 1)
+        requests.append('"%s": %s' % (req_name, req_json))
+        executed_tasks.append(task)
+      except (ValueError, BuildbucketRunError):
+        logging.debug('Failed to process task: %r', params)
+    if not requests:
+      return []
+    try:
+      requests_json = '{ "requests": { %s } }' % ', '.join(requests)
+      req_build = self._build_request(requests_json,
+          _suite_bb_tag(suite))
+      logging.debug('Raw request to buildbucket: %r', req_build)
 
-    if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
-        self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
-      # If running locally, use the staging service account.
-      sa_key = self._gen_service_account_key(
-          file_getter.STAGING_CLIENT_SECRETS_FILE)
-      cred = prpc_client.service_account_credentials(service_account_key=sa_key)
-    else:
-      cred = prpc_client.service_account_credentials()
-
-    resp = self.client.ScheduleBuild(req_build, credentials=cred)
-    logging.debug('Response from buildbucket: %s' % resp)
+      if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
+          self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
+        # If running locally, use the staging service account.
+        sa_key = self._gen_service_account_key(
+            file_getter.STAGING_CLIENT_SECRETS_FILE)
+        cred = prpc_client.service_account_credentials(
+            service_account_key=sa_key)
+      else:
+        cred = prpc_client.service_account_credentials()
+      #TODO(linxinan): only add the tasks returned from bb to executed_tasks.
+      resp = self.client.ScheduleBuild(req_build, credentials=cred)
+      logging.debug('Response from buildbucket: %r', resp)
+      return executed_tasks
+    except Exception as e:
+      logging.debug('Failed to process tasks: %r', tasks)
+      logging.exception(str(e))
+      return []
 
   def dummy_run(self):
     """Perform a dummy run of prpc call to cros_test_platform-dev."""
 
-    req = request_pb2.Request()
-    req_struct = _request_pb2_to_struct_pb2(req)
-
+    requests_json = '{ "requests": { "dummy": {} } }'
+    req_build = self._build_request(requests_json, tags=None)
     # Use the staging service account to authorize the request.
     sa_key = self._gen_service_account_key(
         file_getter.STAGING_CLIENT_SECRETS_FILE)
     cred = prpc_client.service_account_credentials(service_account_key=sa_key)
-    return self.client.ScheduleBuild(
-        self._build_request(req_struct, tags=[]), credentials=cred)
+    return self.client.ScheduleBuild(req_build, credentials=cred)
 
-  def _build_request(self, req_struct, tags):
+  def _build_request(self, reqs_json, tags):
     """Generate ScheduleBuildRequest for calling buildbucket.
 
     Args:
-      req_struct: A struct_pb2 instance.
+      reqs_json: A json string of requests.
       tags: A list of tags for the buildbucket build.
 
     Returns:
       A ScheduleBuildRequest instance.
     """
-    recipe_struct = struct_pb2.Struct(fields={
-        'request': struct_pb2.Value(struct_value=req_struct)})
+    requests_struct = struct_pb2.Struct()
+    recipe_struct = json_format.Parse(reqs_json, requests_struct)
     return rpc_pb2.ScheduleBuildRequest(builder=self.builder,
                                         properties=recipe_struct,
                                         tags=tags)
@@ -214,8 +245,8 @@ def _scheduling_for_pool(pool):
   if match:
     pool = string.lower(match.group('munged_pool'))
   if NONSTANDARD_POOL_NAMES.get(pool):
-      return request_pb2.Request.Params.Scheduling(
-          managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
+    return request_pb2.Request.Params.Scheduling(
+        managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
   return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
 
 
@@ -291,8 +322,8 @@ def _request_tags(task_params, build, pool):
   return tags
 
 
-def _request_tags_to_bb_tags(request):
-  """Convert given request_pb.Request tags to buildbucket tags.
+def _suite_bb_tag(suite):
+  """Convert suite name to a buildbucket tag.
 
   Args:
     request: A request_pb2.Request.
@@ -300,26 +331,4 @@ def _request_tags_to_bb_tags(request):
   Returns:
     [bb_common_pb2.StringPair] tags to include the buildbucket request.
   """
-  bb_tags = []
-  for t in request.params.decorations.tags:
-    k, v = t.split(':')
-    bb_tag = bb_common_pb2.StringPair()
-    bb_tag.key = k
-    bb_tag.value = v
-    bb_tags.append(bb_tag)
-  return bb_tags
-
-
-# TODO(linxinan): Handle exceptions when fail to transform proto.
-def _request_pb2_to_struct_pb2(req):
-  """Transform test_platform_request to google struct proto.
-
-  Args:
-    req: A request_pb2 instance.
-
-  Returns:
-    A struct_pb2 instance.
-  """
-  json = json_format.MessageToJson(req)
-  structpb = struct_pb2.Struct()
-  return json_format.Parse(json, structpb, ignore_unknown_fields=True)
+  return [bb_common_pb2.StringPair(key='suite', value=suite)]

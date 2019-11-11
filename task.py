@@ -471,7 +471,9 @@ class Task(object):
         'override_qs_account': override_qs_account,
     }
 
-    task_executor.push(task_executor.SUITES_QUEUE, **suite_job_parameters)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag=self.suite,
+                       **suite_job_parameters)
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
