@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -109,9 +110,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.params.scheduling.managed_pool,
                       request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
       self.assertEqual(req.params.time.maximum_duration.seconds, 165600)
-      self.assertEqual(req.params.metadata.test_metadata_url,
-                       ('gs://chromeos-image-archive/%s' %
-                       suite_kwargs[i]['test_source_build']))
+      gs_url = ('gs://chromeos-image-archive/%s' %
+                suite_kwargs[i]['test_source_build'])
+      self.assertEqual(req.params.metadata.test_metadata_url, gs_url)
+      self.assertEqual(req.params.metadata.debug_symbols_archive_url, gs_url)
       self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
       self.assertEqual(req.params.software_attributes.build_target.name,
                       suite_kwargs[i]['board'])

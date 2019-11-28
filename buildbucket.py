@@ -198,9 +198,11 @@ def _form_test_platform_request(task_params):
 
   params.software_dependencies.add().chromeos_build = build
   params.software_attributes.build_target.name = task_params['board']
-  params.metadata.test_metadata_url = (
-      GS_PREFIX + task_params['test_source_build']
-  )
+
+  gs_url = GS_PREFIX + task_params['test_source_build']
+  params.metadata.test_metadata_url = gs_url
+  params.metadata.debug_symbols_archive_url = gs_url
+
   params.time.maximum_duration.FromTimedelta(timeout)
 
   for key, value in _request_tags(task_params, build, pool).iteritems():
