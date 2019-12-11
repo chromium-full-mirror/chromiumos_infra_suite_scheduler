@@ -28,12 +28,31 @@ class FakeTask(object):
     self.launch_control_branches = lc_branches.split(',')
     self.launch_control_targets = lc_targets.split(',')
 
-  def schedule(self, lc_builds, cros_builds, lab_config, db_client=None):
+  def schedule(self, lc_builds, cros_builds, firmware_builds,
+               lab_config):
     if not self.success:
       raise task.SchedulingError('Failed to run task.')
 
     return self.success
-# pylint: enable=unused-argument
+
+
+class FakeBuildClient(object):
+  """Mock rest_client.BuildBucketBigqueryClient."""
+
+  def get_latest_passed_firmware_builds(self):
+    """Mock get_passed_firmware_builds."""
+    return [
+        ['cros', 'fake_board', ('gs://chromeos-image-archive/'
+                                'fake_board-release/R30-6182.0.0-rc2/'
+                                'fake_board')],
+        ['firmware', 'fake_board', ('gs://chromeos-image-archive/'
+                                    'firmware-fake_board-12345.67.'
+                                    'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
+        ['firmware', 'foo_board', ('gs://chromeos-image-archive-foo/'
+                                    'firmware-foo_board-12345.67.'
+                                    'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
+    ]
+  # pylint: enable=unused-argument
 
 
 class BaseEventTestCase(unittest.TestCase):
@@ -126,3 +145,10 @@ class BaseEventTestCase(unittest.TestCase):
       event = self._KLASS(
           task_config_reader.EventSettings(True, None), utc_now, utc_now)
       self.assertTrue(event.should_handle)
+
+  def testGetFirmwareBuilds(self):
+    """Test filter out  invalid firmware build from BuildBucket."""
+    utc_now = datetime.datetime(2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
+    event = self._KLASS(
+        task_config_reader.EventSettings(True, None), utc_now, utc_now)
+    self.assertEqual(2, len(event.get_firmware_builds(FakeBuildClient())))

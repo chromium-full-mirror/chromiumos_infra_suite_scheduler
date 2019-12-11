@@ -97,12 +97,13 @@ class TriggerReceiver(object):
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)
     logging.debug('Found launch_control_builds: %r', launch_control_builds)
+    firmware_builds = event.get_firmware_builds(self._build_client)
 
     self.event_results[event.KEYWORD] = event.process_tasks(
         launch_control_builds=launch_control_builds,
         cros_builds_tuple=cros_builds_tuple,
+        firmware_builds=firmware_builds,
         configs=config_reader.Configs(
             lab_config=self._lab_config,
-            migration_config=self._migration_config),
-        build_client=self._build_client)
+            migration_config=self._migration_config))
     logging.info('Finished processing all tasks')

@@ -15,7 +15,6 @@ import task
 import task_config_reader
 import tot_manager
 
-
 class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
   """Mock class for tot_manager.TotMilestoneManager."""
 
@@ -23,34 +22,6 @@ class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
     self.is_sanity = is_sanity
     self.storage_client = None
     self.tot = self._tot_milestone()
-
-
-class FakeBuildClient(object):
-  """Mock rest_client.BuildBucketBigqueryClient."""
-
-  def __init__(self, success=True, failed_result=None):
-    self.success = success
-    self.failed_result = failed_result
-    self.firmware_artifact_cros = ('gs://chromeos-image-archive/'
-                                   'fake_board-release/'
-                                   'R30-6182.0.0-rc2')
-    self.firmware_artifact = ('gs://chromeos-image-archive/'
-                              'firmware-fake_board-12345.67.A-firmwarebranch/'
-                              'RFoo-1.0.0-b1234567')
-
-  def get_latest_passed_builds_artifact_link(self, build_config):
-    if not self.success:
-      raise ValueError('No valid builds')
-    if self.failed_result:
-      return self.failed_result
-    return self.firmware_artifact_cros
-
-  def get_latest_passed_builds_artifact_link_firmware(self, board):
-    if not self.success:
-      raise ValueError('No valid builds')
-    if self.failed_result:
-      return self.failed_result
-    return self.firmware_artifact
 
 
 class FakeLabConfig(object):
@@ -104,6 +75,13 @@ class TaskBaseTestCase(unittest.TestCase):
     self._fake_configs = config_reader.Configs(
         lab_config=FakeLabConfig(),
         migration_config=FakeMigrationConfig())
+
+    self.firmware_dict = {
+        ('cros', 'fake_board'): ('fake_board-release/R30-6182.0.0-rc2'),
+        ('firmware', 'fake_board'): ('firmware-fake_board-12345.67.'
+                                     'A-firmwarebranch/RFoo-1.0.0-b1234567'
+                                     '/fake_board')
+      }
 
 
 class TaskTestCase(TaskBaseTestCase):
@@ -171,7 +149,8 @@ class TaskTestCase(TaskBaseTestCase):
     with mock.patch('config_reader.LabConfig.get_firmware_ro_build_list',
                     return_value='build1,build2'):
       firmware = self.task._get_firmware_build(
-          'released_ro_2', self.BOARD, config_reader.LabConfig(None), None)
+          'released_ro_2', self.BOARD, self.firmware_dict,
+          config_reader.LabConfig(None))
       self.assertEqual(firmware, 'build2')
 
   def testGetFirmwareFromLabConfigOutofIndex(self):
@@ -184,60 +163,53 @@ class TaskTestCase(TaskBaseTestCase):
                         self.BOARD,
                         config_reader.LabConfig(None))
       self.assertIsNone(self.task._get_firmware_build(
-          'released_ro_3', self.BOARD, config_reader.LabConfig(None), None))
+          'released_ro_3', self.BOARD, self.firmware_dict,
+          config_reader.LabConfig(None)))
 
-  def testGetFirmwareFromDBSuccessfully(self):
-    """Test get firmware from BuildBucket successfully."""
+  def testGetFirmwareSuccessfully(self):
+    """Test get firmware from firmware_dict successfully."""
 
     firmware = self.task._get_firmware_build(
-        'cros', self.BOARD, None, FakeBuildClient())
+        'cros', self.BOARD, self.firmware_dict, None)
     self.assertEqual(
         firmware,
         '{0}-release/R{1}-{2}'.format(self.BOARD,
                                       self.MILESTONE,
                                       self.PLATFORM))
     firmware = self.task._get_firmware_build(
-        'firmware', self.BOARD, None, FakeBuildClient())
+        'firmware', self.BOARD, self.firmware_dict, None)
     self.assertEqual(
         firmware,
         'firmware-{0}-12345.67.A-firmwarebranch/'
         'RFoo-1.0.0-b1234567/{0}'.format(self.BOARD))
 
-  def testGetFirmwareFromDBFailure(self):
-    """Test get invalid firmware build from BuildBucket."""
-
-    # This should raise a ValueError due to the unexpected prefix.
-    foo_artifact_link = ('gs://chromeos-image-foo/'
-                         'firmware-fake_board-12345.67.A-firmwarebranch/'
-                         'RFoo-1.0.0-b1234567')
-    self.assertRaises(ValueError, self.task._get_firmware_build(
-        'firmware',
-        self.BOARD,
-        None,
-        FakeBuildClient(failed_result=foo_artifact_link)))
+  def testGetNonExistentBoard(self):
+    """Test get firmware for non-existent board from firmware_dict."""
+    self.assertIsNone(self.task._get_firmware_build(
+        'firmware', 'non-existent', self.firmware_dict, None))
 
   def testScheduleCrosSuccessfully(self):
     """test schedule cros builds successfully."""
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    self._fake_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 1)
 
   def testScheduleCrosNonvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
     branch_builds = {('%s_2' % self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._empty_configs)
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosExcludeBoard(self):
     """Test schedule no cros builds due to board is excluded."""
     branch_builds = {(self.EXCLUDE_BOARD, None, 'release', '56'): '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._empty_configs)
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosSuccessfullyWithSpecifiedModel(self):
@@ -248,8 +220,8 @@ class TaskTestCase(TaskBaseTestCase):
                      (self.UNIBUILD_BOARD, 'lava', 'release', '56'):
                      '0000.00.00'}
     self.task._schedule_cros_builds(branch_builds,
-                                    self._fake_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 2)
 
   def testScheduleCrosNonValidSpec(self):
@@ -259,8 +231,8 @@ class TaskTestCase(TaskBaseTestCase):
     self.task.branch_specs = re.split(r'\s*,\s*', '==tot')
     self.task._set_spec_compare_info()
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._empty_configs)
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleCrosSuccessfullyWithValidFirmware(self):
@@ -268,17 +240,17 @@ class TaskTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
-                                    self._fake_configs,
-                                    FakeBuildClient())
+                                    self.firmware_dict,
+                                    self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 1)
 
   def testScheduleCrosWithNonValidFirmware(self):
     """Test schedule no cros builds due to non-existent firmware."""
-    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
+    branch_builds = {('foo-board', None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
     self.task._schedule_cros_builds(branch_builds,
-                                    self._empty_configs,
-                                    FakeBuildClient(success=False))
+                                    self.firmware_dict,
+                                    self._empty_configs)
     self.assertEqual(self._mock_push.call_count, 0)
 
   def testScheduleLaunchControlWithFullBranches(self):
@@ -345,8 +317,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertTrue(self.task.schedule(
-        [], (branch_builds, []), self._fake_configs,
-        FakeBuildClient()))
+        [], (branch_builds, []), self.firmware_dict, self._fake_configs))
 
   def testScheduleLaunchControlIsPushSuccessfully(self):
     """Test IS_PUSHED is changed if some launch control suites are scheduled."""
@@ -357,7 +328,8 @@ class TaskPushTestCase(TaskBaseTestCase):
         t.lstrip() for t in lc_branches.split(',')]
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.assertTrue(self.task.schedule(
-        lc_builds, ([], []), self._empty_configs, FakeBuildClient()))
+        lc_builds, ([], []), self.firmware_dict,
+        self._empty_configs))
 
   def testScheduleCrosIsPushInvalidBoard(self):
     """Test schedule no cros builds due to non-allowed board."""
@@ -366,7 +338,7 @@ class TaskPushTestCase(TaskBaseTestCase):
     )
     self.task.os_type = build_lib.OS_TYPE_CROS
     self.assertFalse(self.task.schedule(
-        [], branch_builds, self._empty_configs, FakeBuildClient()))
+        [], branch_builds, self.firmware_dict, self._empty_configs))
 
   def testScheduleLaunchControlIsPushInvalidBoard(self):
     """Test schedule none of launch control builds due to board check."""
@@ -379,4 +351,5 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.task.os_type = build_lib.OS_TYPES_LAUNCH_CONTROL
     self.task._schedule_launch_control_builds(lc_builds)
     self.assertFalse(self.task.schedule(
-        lc_builds, ([], []), self._empty_configs, FakeBuildClient()))
+        lc_builds, ([], []), self.firmware_dict,
+        self._empty_configs))

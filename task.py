@@ -3,14 +3,12 @@
 # found in the LICENSE file.
 
 """Module for tasks triggered by suite scheduler."""
-# pylint: disable=g-bad-import-order
 # pylint: disable=dangerous-default-value
 
 from distutils import version
 import logging
 
 import build_lib
-import re
 import skylab
 import task_executor
 import tot_manager
@@ -182,8 +180,8 @@ class Task(object):
 
     self._set_spec_compare_info()
 
-  def schedule(self, launch_control_builds, cros_builds_tuple, configs,
-               build_client):
+  def schedule(self, launch_control_builds, cros_builds_tuple,
+               firmware_builds, configs):
     """Schedule the task by its settings.
 
     Args:
@@ -191,9 +189,9 @@ class Task(object):
         return value of |get_launch_control_builds|.
       cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
+      firmware_builds:  a dict of firmware artifact, see return value of
+        |base_event.get_firmware_builds|.
       configs: a config_reader.Configs object.
-      build_client: a rest_client.BuildBucketBigqueryClient object, to
-        connect Buildbucket Bigquery.
 
     Raises:
       SchedulingError: if tasks that should be scheduled fail to schedule.
@@ -215,7 +213,7 @@ class Task(object):
       if not builds_dict:
         logging.info('No CrOS build to run, skip running.')
       else:
-        self._schedule_cros_builds(builds_dict, configs, build_client)
+        self._schedule_cros_builds(builds_dict, firmware_builds, configs)
     else:
       if not launch_control_builds:
         logging.info('No Android build to run, skip running.')
@@ -292,45 +290,6 @@ class Task(object):
     else:
       return False
 
-  def _get_latest_firmware_build(self, spec, board, build_client):
-    """Get the latest firmware build.
-
-    Args:
-      spec: a string build spec for RO or RW firmware, eg. firmware,
-        cros. For RO firmware, the value can also be released_ro_X.
-      board: the board against which this task will run suite job.
-      build_client: a rest_client.BuildBucketBigqueryClient object, to
-        connect Buildbucket Bigquery.
-
-    Returns:
-      A string the latest firmware build. This is the path for the
-      downstream systems to download the built firmware. For "cros"
-      build_type, it is "<board>-release/R<milestone>-<platform>".
-      For "firmware" type, it has the form of
-      "firmware-<board>-1234.56.A-firmwarebranch/RFoo-1.0.0-b123456/<board>".
-
-    """
-    build_type = 'release' if spec == 'cros' else spec
-    suffix = ''
-    if build_type == 'firmware':
-      artifact = build_client.get_latest_passed_builds_artifact_link_firmware(
-          board)
-      suffix = '/' + board
-    else:
-      artifact = build_client.get_latest_passed_builds_artifact_link('%s-%s' %
-          (board, build_type))
-    if artifact is None:
-      return None
-
-    ARTIFACT_PATTERN = r'gs://chromeos-image-archive/(?P<firmware_build>.+)'
-    match = re.match(ARTIFACT_PATTERN, artifact)
-    if not match:
-      raise ValueError('Artifact path of firmware is not valid: %s', artifact)
-
-    firmware_build = match.group('firmware_build') + suffix
-    logging.debug('latest firmware build for %s', firmware_build)
-    return firmware_build
-
   def _get_latest_firmware_build_from_lab_config(self, spec, board,
                                                  lab_config):
     """Get latest firmware from lab config file.
@@ -357,16 +316,16 @@ class Task(object):
     logging.debug('Get ro_build: %s', released_ro_builds[index - 1])
     return released_ro_builds[index - 1]
 
-  def _get_firmware_build(self, spec, board, lab_config, build_client):
+  def _get_firmware_build(self, spec, board, firmware_build_dict, lab_config):
     """Get the firmware build name to test with ChromeOS build.
 
     Args:
       spec: a string build spec for RO or RW firmware, eg. firmware,
         cros. For RO firmware, the value can also be released_ro_X.
       board: a string board against which this task will run suite job.
+      firmware_build_dict:  a dict of firmware artifacts, see return value of
+        |base_event.get_firmware_builds|.
       lab_config: a config.LabConfig object, to read lab config file.
-      build_client: a rest_client.BuildBucketBigqueryClient object, to
-        connect Buildbucket Bigquery.
 
     Returns:
       A string firmware build name.
@@ -389,8 +348,10 @@ class Task(object):
         # return firmware RO build should be 'build2'.
         return self._get_latest_firmware_build_from_lab_config(
             spec, board, lab_config)
+      elif firmware_build_dict:
+        return firmware_build_dict.get((spec, board), None)
       else:
-        return self._get_latest_firmware_build(spec, board, build_client)
+        return None
     except ValueError as e:
       logging.warning('Failed to get firmware from lab config file'
                       'for spec %s, board %s: %s', spec, board, str(e))
@@ -477,15 +438,15 @@ class Task(object):
     logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
-  def _schedule_cros_builds(self, build_dict, configs, build_client):
+  def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):
     """Schedule tasks with branch builds.
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
         value of |build_lib.get_cros_builds_since_date|.
+      firmware_build_dict:  a dict of firmware artifact, see return value of
+        |base_event.get_firmware_builds|.
       configs: A config_reader.Configs object.
-      build_client: a rest_client.BuildBucketBigqueryClient object, to
-        connect Buildbucket Bigquery.
     """
     lab_config = configs.lab_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
@@ -516,9 +477,9 @@ class Task(object):
       firmware_ro_build = None
       if self.firmware_rw_build_spec or self.firmware_ro_build_spec:
         firmware_rw_build = self._get_firmware_build(
-            self.firmware_rw_build_spec, board, lab_config, build_client)
+            self.firmware_rw_build_spec, board, firmware_build_dict, lab_config)
         firmware_ro_build = self._get_firmware_build(
-            self.firmware_ro_build_spec, board, lab_config, build_client)
+            self.firmware_ro_build_spec, board, firmware_build_dict, lab_config)
 
       if not firmware_ro_build and self.firmware_ro_build_spec:
         logging.debug('No firmware ro build to run, skip running')

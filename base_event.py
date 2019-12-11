@@ -6,6 +6,7 @@
 
 import datetime
 import logging
+import re
 
 import build_lib
 import constants
@@ -106,8 +107,36 @@ class BaseEvent(object):
         android_client, lab_config.get_android_board_list(),
         self.launch_control_branch_targets)
 
+  def get_firmware_builds(self, build_client):
+    """Get the latest firmware builds for all boards.
+
+    Args:
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
+
+    Returns:
+      A dict of artifact link for the firmware. The key is
+        ([cros|firmware], board).
+    """
+    firmware_builds = build_client.get_latest_passed_firmware_builds()
+    if not firmware_builds:
+      return None
+    firmware_build_dict = {}
+    ARTIFACT_PATTERN = r'gs://chromeos-image-archive/(?P<firmware_build>.+)'
+    for spec, board, artifact in firmware_builds:
+      match = re.match(ARTIFACT_PATTERN, artifact)
+      if not match:
+        logging.debug('Artifact path of firmware is not valid: %s, %s, %s',
+                      spec, board, artifact)
+        continue
+      firmware_build = match.group('firmware_build')
+      logging.debug('latest firmware build of (%s, %s): %s',
+                    spec, board, firmware_build)
+      firmware_build_dict[(spec, board)] = firmware_build
+    return firmware_build_dict
+
   def process_tasks(self, launch_control_builds, cros_builds_tuple,
-                    configs, build_client):
+                    firmware_builds, configs):
     """Schedule tasks in task_list.
 
     Args:
@@ -115,10 +144,10 @@ class BaseEvent(object):
         return value of |get_launch_control_builds|.
       cros_builds_tuple: a two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
+      firmware_builds: a dict of firmware artifact, see return value of
+        |get_firmware_builds|.
       configs: a config_reader.Configs object, to contain several config
         readers.
-      build_client: a rest_client.BuildBucketBigqueryClient object, to
-        connect Buildbucket Bigquery.
 
     Returns:
       A list of finished tasks' names.
@@ -127,7 +156,7 @@ class BaseEvent(object):
     for per_task in self.task_list:
       try:
         if per_task.schedule(launch_control_builds, cros_builds_tuple,
-                             configs, build_client):
+                             firmware_builds, configs):
           scheduled_tasks.append(per_task.name)
         else:
           logging.debug('No suites are scheduled in suites queue for '

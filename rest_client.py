@@ -328,68 +328,84 @@ class CrOSTestPlatformBigqueryClient(BigqueryRestClient):
 class BuildBucketBigqueryClient(BigqueryRestClient):
   """Rest client for buildbucket Bigquery API."""
 
-  def get_latest_passed_builds_artifact_link(self, build_config):
-    """Get artifact link of the latest passed builds by build_config.
+  def get_latest_passed_firmware_builds(self):
+    """Get artifact link of the latest passed firmware builds for board.
 
-    Args:
-      build_config: a string like '{board}-{build_type}', eg. link-release
+    The query returns the latest firmware build for the combination of
+    board and build spec, which is cros or firmware. No restriction set
+    in the query, so it should return all available builds.
 
     Returns:
-      A string: artifact_link of this firmware build.
+      A list of (spec, board, firmware_artifact_link).
     """
     query_str = """
         SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.artifact_link')
+          spec,
+          board,
+          /*
+          * Firmware builds may contain artifacts for multiple boards in a
+          * single build - each in a separate directory.
+          */
+          IF(spec = 'firmware', CONCAT(artifact, '/', board), artifact) as artifact
         FROM
-          `cr-buildbucket.chromeos.completed_builds_BETA`
-        WHERE
-          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') = '%s' and
-          status = 'SUCCESS' and
-          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
-        ORDER BY
-          end_time desc
-        LIMIT 1
+          (
+            SELECT
+              spec,
+              board,
+              artifact,
+              RANK() OVER (PARTITION BY spec, board ORDER BY end_time DESC) AS rank
+            FROM
+              (
+                SELECT
+                  /*
+                  * build_config is a string contains the board and build type.
+                  * For Cros build, it has the form of "BoardName-release", while
+                  * the firmware config shows like "firmware-BoardName-[1]-firmwarebranch".
+                  * [1] is the firmware ver.
+                  */
+                  IF(prefix = 'firmware', 'firmware', 'cros') AS spec,
+                  IF(prefix = 'firmware', firmware_post_prefix, cros_prefix) AS board,
+                  artifact,
+                  end_time
+                FROM
+                  (
+                    SELECT
+                      SPLIT(build_config, '-') [OFFSET(0)] AS prefix,
+                      SPLIT(build_config, '-') [OFFSET(1)] AS firmware_post_prefix,
+                      REGEXP_EXTRACT(
+                        build_config, r"(^[a-zA-Z0-9_.+-]+)-release"
+                      ) as cros_prefix,
+                      end_time,
+                      artifact
+                    FROM
+                      (
+                        SELECT
+                          JSON_EXTRACT_SCALAR(
+                            output.properties, '$.artifact_link'
+                          ) as artifact,
+                          JSON_EXTRACT_SCALAR(
+                            output.properties, '$.cbb_config'
+                          ) as build_config,
+                          end_time
+                        FROM `cr-buildbucket.chromeos.completed_builds_BETA`
+                        WHERE
+                          status = 'SUCCESS'
+                          AND JSON_EXTRACT_SCALAR(
+                            output.properties, '$.suite_scheduling'
+                          ) = 'True'
+                      )
+                  )
+              )
+          )
+        WHERE rank = 1
     """
-    logging.info('Getting artifact link of the latest build for %s',
-                 build_config)
-    res = self.query(query_str % build_config)
+    res = self.query(query_str)
     res = _parse_bq_job_query(res)
     if res is None:
       return None
-
-    return res[0][0]
-
-  def get_latest_passed_builds_artifact_link_firmware(self, board):
-    """Get artifact link of the latest passed firmware builds by board.
-
-    Args:
-      board: the board against which this task will run suite job.
-
-    Returns:
-      A string: artifact_link of this firmware build.
-    """
-    query_str = """
-        SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.artifact_link')
-        FROM
-          `cr-buildbucket.chromeos.completed_builds_BETA`
-        WHERE
-          SPLIT(JSON_EXTRACT_SCALAR(output.properties,  '$.cbb_config'), '-')[OFFSET(0)] = 'firmware' and
-          SPLIT(JSON_EXTRACT_SCALAR(output.properties,  '$.cbb_config'), '-')[OFFSET(1)] = '%s' and
-          status = 'SUCCESS' and
-          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
-        ORDER BY
-          end_time desc
-        LIMIT 1
-    """
-    logging.info('Getting artifact link of the latest build for %s-firmware',
-                 board)
-    res = self.query(query_str % board)
-    res = _parse_bq_job_query(res)
-    if res is None:
-      return None
-
-    return res[0][0]
+    logging.info('Fetched the latest artifact links: %s',
+        [row[2] for row in res])
+    return res
 
   def get_passed_builds_since_date(self, since_date):
     """Get passed builds since a given date.

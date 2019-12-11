@@ -126,6 +126,17 @@ class FakeBuildClient(object):
         build_lib.BuildInfo('nami', 'bard', '62', '9866.0.0', 'nami-release'),
     ]
 
+  def get_latest_passed_firmware_builds(self):
+    """Mock get_passed_firmware_builds."""
+    return [
+        ['cros', 'fake_board', ('gs://chromeos-image-archive/'
+                                'fake_board-release/R30-6182.0.0-rc2/'
+                                'fake_board')],
+        ['firmware', 'fake_board', ('gs://chromeos-image-archive/'
+                                    'firmware-fake_board-12345.67.'
+                                    'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
+    ]
+
 
 class FakeAndroidBuildRestClient(object):
   """Mock rest_client.AndroidBuildRestClient."""
