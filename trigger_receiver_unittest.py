@@ -91,6 +91,9 @@ def _should_schedule_new_build_task(last_now, now):
 class FakeBuildClient(object):
   """Mock rest_client.BuildBucketBigqueryClient."""
 
+  def __init__(self):
+    self.firmware_builds_called = 0
+
   def get_passed_builds_since_date(self, since_date):
     """Mock get_passed_builds_since_date."""
     del since_date  # unused
@@ -128,6 +131,7 @@ class FakeBuildClient(object):
 
   def get_latest_passed_firmware_builds(self):
     """Mock get_passed_firmware_builds."""
+    self.firmware_builds_called += 1
     return [
         ['cros', 'fake_board', ('gs://chromeos-image-archive/'
                                 'fake_board-release/R30-6182.0.0-rc2/'
@@ -135,6 +139,9 @@ class FakeBuildClient(object):
         ['firmware', 'fake_board', ('gs://chromeos-image-archive/'
                                     'firmware-fake_board-12345.67.'
                                     'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
+        ['firmware', 'zako', ('gs://chromeos-image-archive/'
+                              'firmware-zako-12345.67.'
+                              'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
     ]
 
 
@@ -782,6 +789,50 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 1)
     self.assertIn('model=None', tasks[0].payload)
+
+  def testNewBuildWithFirmwareTask(self):
+    """Test the new_build suite with firmware option set."""
+    # Construct a fake config with firmware build.
+    fsnbt_name = 'FakeStrictNewBuildTask'
+    self.fake_config.add_section(fsnbt_name)
+    self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
+    self.fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    self.fake_config.set(fsnbt_name, 'boards', 'zako')
+    self.fake_config.set(fsnbt_name, 'firmware_ro_build_spec', 'firmware')
+    self.fake_config.set(fsnbt_name, 'test_source', 'cros')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    some_event = suite_trigger.events['new_build']
+    suite_trigger.cron()
+
+    # The firmware query has run for once.
+    self.assertEqual(suite_trigger._build_client.firmware_builds_called, 1)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('firmware-zako-12345.67', tasks[0].payload)
+
+
+  def testNewBuildWithoutFirmwareTask(self):
+    """Test the event skips fetch the firmware builds."""
+    # Construct a fake config without firmware build.
+    fsnbt_name = 'FakeStrictNewBuildTask'
+    self.fake_config.add_section(fsnbt_name)
+    self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
+    self.fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    self.fake_config.set(fsnbt_name, 'boards', 'zako')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger.cron()
+
+    # The firmware query was not called.
+    self.assertEqual(suite_trigger._build_client.firmware_builds_called, 0)
+    # Validate that the expected tests got kicked off.
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
 
 
 class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
