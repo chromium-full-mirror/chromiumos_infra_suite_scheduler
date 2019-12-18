@@ -45,7 +45,9 @@ class Buildbucket(object):
   MAX_BUILDBUCKET_TIMEOUT_MINS = 46*60
   MAX_RETRY = 3
 
-  MULTIREQUEST_SIZE = 50
+  # TODO(crbug.com/1034166): this is a workaround to reduce the child task count
+  # in swarming.
+  MULTIREQUEST_SIZE = 25
 
 class CalendarID(object):
   """Constants refer to calendar id."""
