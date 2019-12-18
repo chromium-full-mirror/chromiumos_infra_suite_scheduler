@@ -61,14 +61,14 @@ class TaskExecutorTestCase(unittest.TestCase):
     self.assertEqual(suite_kwargs, tasks[0].extract_params())
 
   def testBatchExecuteTask(self):
-    """Test task_executor execute tasks in batch in testing on GAE."""
+    """Test task_executor executes tasks not greater than the BATCH_SIZE."""
     extra_num = 10
-    for i in range(constants.Buildbucket.MULTIREQUEST_SIZE):
+    for i in range(task_executor.BATCH_SIZE/2):
       suite_kwargs = {'suite': 'foo_suite',
                       'num': i + 1}
       task_executor.push(task_executor.SUITES_QUEUE,
                          tag='foo_suite', **suite_kwargs)
-    for i in range(constants.Buildbucket.MULTIREQUEST_SIZE + extra_num):
+    for i in range(task_executor.BATCH_SIZE/2 + extra_num):
       suite_kwargs = {'suite': 'hoo_suite',
                       'num': i + 1}
       task_executor.push(task_executor.SUITES_QUEUE,
@@ -79,15 +79,7 @@ class TaskExecutorTestCase(unittest.TestCase):
         task_processor = task_executor.TaskProcessor(
             task_executor.SUITES_QUEUE)
         task_processor.batch_execute()
-        client = task_processor.test_platform_client
-        self.assertEqual(1, len(client.frontdoor_run_count['foo_suite']))
-        self.assertEqual(constants.Buildbucket.MULTIREQUEST_SIZE,
-            len(client.frontdoor_run_count['foo_suite'][0]))
-        self.assertEqual(1, len(client.frontdoor_run_count['hoo_suite']))
-        self.assertEqual(constants.Buildbucket.MULTIREQUEST_SIZE,
-            len(client.frontdoor_run_count['hoo_suite'][0]))
-        # Now BATCH_SIZE = 2 * MULTIREQUEST_SIZE. After batch_execute run,
-        # the extra tasks should remain in the queue.
+        # After batch_execute runs, the extra tasks should remain in the queue.
         tasks = self.taskqueue_stub.get_filtered_tasks()
         self.assertEqual(extra_num, len(tasks))
 
