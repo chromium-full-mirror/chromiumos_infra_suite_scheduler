@@ -443,7 +443,7 @@ class Task(object):
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
-        value of |build_lib.get_cros_builds_since_date|.
+        value of |build_lib.get_cros_builds|.
       firmware_build_dict:  a dict of firmware artifact, see return value of
         |base_event.get_firmware_builds|.
       configs: A config_reader.Configs object.
@@ -595,7 +595,7 @@ def _split_unibuilds(build_dict, configs):
 
   Args:
     build_dict: the build dict for ChromeOS boards, see return
-      value of |build_lib.get_cros_builds_since_date|.
+      value of |build_lib.get_cros_builds|.
     configs: a config_reader.Configs object.
 
   Returns:

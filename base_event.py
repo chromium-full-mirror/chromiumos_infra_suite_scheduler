@@ -13,6 +13,7 @@ import constants
 import datastore_client
 import global_config
 import task
+import time_converter
 
 # The suffix for section
 _SECTION_SUFFIX = '_params'
@@ -86,10 +87,16 @@ class BaseEvent(object):
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
-        |build_lib.get_cros_builds_since_date|.
+        |build_lib.get_cros_builds|.
     """
-    return build_lib.get_cros_builds_since_date(
-        build_client, lab_config.get_cros_board_list(), self.since_date)
+    # delay_hours ensures suite scheduler fetch the builds which have inserted
+    # to BigQuery.
+    delay_hours = datetime.timedelta(hours=constants.BaseEvent.DELAY_HOURS)
+    return build_lib.get_cros_builds(
+        build_client,
+        lab_config.get_cros_board_list(),
+        self.since_date - delay_hours,
+        time_converter.utc_now() - delay_hours)
 
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.

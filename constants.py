@@ -49,6 +49,17 @@ class Buildbucket(object):
   # in swarming.
   MULTIREQUEST_SIZE = 25
 
+
+class BaseEvent(object):
+  """Constants used for base_event."""
+
+  # The new build may not get inserted to BQ right after they are
+  # created(crbug/1038318). DELAY_HOURS delays the period of
+  # the builds suite scheduler queries, to ensure the target
+  # builds exist in BQ.
+  DELAY_HOURS = 5
+
+
 class CalendarID(object):
   """Constants refer to calendar id."""
 

@@ -103,7 +103,7 @@ class _FakeBigqueryGetPassedHandler(webapp2.RequestHandler):
     # Get passed builds in 3 days.
     utc_now = time_converter.utc_now()
     since_date = utc_now - datetime.timedelta(days=3)
-    res = bq_client.get_passed_builds_since_date(since_date)
+    res = bq_client.get_passed_builds(since_date, utc_now)
     for r in res:
       self.response.write(r)
       self.response.write('\n')
@@ -121,7 +121,7 @@ class _FakeBigqueryGetRelaxedPassedHandler(webapp2.RequestHandler):
     # Get passed builds in 3 days.
     utc_now = time_converter.utc_now()
     since_date = utc_now - datetime.timedelta(days=3)
-    res = bq_client.get_relaxed_passed_builds_since_date(since_date)
+    res = bq_client.get_relaxed_passed_builds(since_date, utc_now)
     for r in res:
       self.response.write(r)
       self.response.write('\n')

@@ -104,7 +104,7 @@ class TestPush(webapp2.RequestHandler):
 
     # Test Cron jobs
     # 1) No tasks will be filtered by nightly/weekly constraints.
-    # 2) Randomly select builds in |get_cros_builds_since_date|.
+    # 2) Randomly select builds in |get_cros_builds|.
     # 3) Every task will be kicked off with dummy swarming run |dummy_run|.
     start_time = time_converter.pst_now()
     utc_start_time = time_converter.utc_now()

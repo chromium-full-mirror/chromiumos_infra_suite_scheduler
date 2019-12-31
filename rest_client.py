@@ -407,11 +407,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         [row[2] for row in res])
     return res
 
-  def get_passed_builds_since_date(self, since_date):
-    """Get passed builds since a given date.
+  def get_passed_builds(self, earliest_end_time, latest_end_time):
+    """Get passed builds inside a given time span.
 
     Args:
-      since_date: a datetime.datetime object in UTC.
+      earliest_end_time: a datetime.datetime object in UTC.
+      latest_end_time: a datetime.datetime object in UTC.
 
     Returns:
       A list of build_lib.BuildInfo objects.
@@ -426,17 +427,23 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           `cr-buildbucket.chromeos.completed_builds_BETA`
         WHERE
           end_time > '%s' and
+          end_time < '%s' and
           status = 'SUCCESS' and
           JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
     if global_config.GAE_TESTING:
-      since_date_str = '2019-05-19 20:00:00'
+      earliest_end_time_str = '2019-05-19 20:00:00'
+      latest_end_time_str = '2019-05-20 20:00:00'
       query_str += 'limit 10'
     else:
-      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+      earliest_end_time_str = earliest_end_time.strftime(
+          time_converter.TIME_FORMAT)
+      latest_end_time_str = latest_end_time.strftime(
+          time_converter.TIME_FORMAT)
 
-    logging.info('Getting passed builds since %s', since_date_str)
-    res = self.query(query_str % since_date_str)
+    logging.info('Getting passed builds finished between %s and %s',
+                 earliest_end_time_str, latest_end_time_str)
+    res = self.query(query_str % (earliest_end_time_str, latest_end_time_str))
     res = _parse_bq_job_query(res)
     if res is None:
       return []
@@ -449,11 +456,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
     return build_infos
 
-  def get_relaxed_passed_builds_since_date(self, since_date):
-    """Get builds with successful "HWTest [sanity]" stages since a given date.
+  def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time):
+    """Get builds with successful "HWTest [sanity]" stages between a given span.
 
     Args:
-      since_date: a datetime.datetime object in UTC.
+      earliest_end_time: a datetime.datetime object in UTC.
+      latest_end_time: a datetime.datetime object in UTC.
 
     Returns:
       A list of build_lib.BuildInfo objects.
@@ -471,19 +479,25 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           UNNEST(c.steps) AS s
         WHERE
           c.end_time > '%s' and
+          c.end_time < '%s' and
           c.status != 'SUCCESS' and
           s.name like '%%HWTest [sanity]%%' and
           s.status = 'SUCCESS' and
           JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
     if global_config.GAE_TESTING:
-      since_date_str = '2019-05-19 20:00:00'
+      earliest_end_time_str = '2019-05-19 20:00:00'
+      latest_end_time_str = '2019-05-20 20:00:00'
       query_str += 'limit 10'
     else:
-      since_date_str = since_date.strftime(time_converter.TIME_FORMAT)
+      earliest_end_time_str = earliest_end_time.strftime(
+          time_converter.TIME_FORMAT)
+      latest_end_time_str = latest_end_time.strftime(
+          time_converter.TIME_FORMAT)
 
-    logging.info('Getting passed builds since %s', since_date_str)
-    res = self.query(query_str % since_date_str)
+    logging.info('Getting relaxed passed builds finished between %s and %s',
+                 earliest_end_time_str, latest_end_time_str)
+    res = self.query(query_str % (earliest_end_time_str, latest_end_time_str))
     res = _parse_bq_job_query(res)
     if res is None:
       return []
