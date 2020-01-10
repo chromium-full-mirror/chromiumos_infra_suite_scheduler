@@ -481,7 +481,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           c.end_time > '%s' and
           c.end_time < '%s' and
           c.status != 'SUCCESS' and
-          s.name like '%%SkylabHWTest%%' and
+          s.name like 'SkylabHWTest%%' and
           s.status = 'SUCCESS' and
           JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
