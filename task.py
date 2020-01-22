@@ -9,7 +9,6 @@ from distutils import version
 import logging
 
 import build_lib
-import skylab
 import task_executor
 import tot_manager
 
@@ -494,17 +493,7 @@ class Task(object):
         test_source_build = cros_build
 
       hwtest_board = build_lib.reshape_board(board)
-      is_skylab = skylab.should_run_in_skylab(configs.migration_config,
-                                              hwtest_board,
-                                              passed_model,
-                                              self.suite,
-                                              self.pool)
-      override_pool, override_qs_account = skylab.get_override_info(
-          configs.migration_config,
-          hwtest_board,
-          passed_model,
-          self.suite,
-          self.pool)
+
       models = models_by_board.get(board, [None])
 
       for model in models:
@@ -538,10 +527,7 @@ class Task(object):
               cros_build=cros_build,
               firmware_rw_build=firmware_rw_build,
               firmware_ro_build=firmware_ro_build,
-              test_source_build=test_source_build,
-              is_skylab=is_skylab,
-              override_pool=override_pool,
-              override_qs_account=override_qs_account)
+              test_source_build=test_source_build)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.

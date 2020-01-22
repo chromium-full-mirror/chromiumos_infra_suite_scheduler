@@ -10,11 +10,8 @@ import logging
 import webapp2
 
 import constants
-import config_reader
-import file_getter
 import global_config
 import rest_client
-import swarming_lib
 import task_executor
 import time_converter
 import trigger_receiver

@@ -182,25 +182,6 @@ class FakeLabConfig(object):
     }
 
 
-class FakeMigrationConfig(object):
-  """Mock config_reader.MigrationConfig."""
-
-  def get_skylab_suites_dump(self):
-    """Mock config_reader.MigrationConfig.get_skylab_suite_list."""
-    return {'suite:ent-nightly':
-            {'pool:suites':
-             {'model:santa': {
-                 'skylab': True,
-                 'override_pool': '',
-                 'override_qs_account': '',
-             },
-              'model:zako': {
-                  'skylab': True,
-                  'override_pool': 'QUOTA_POOL',
-                  'override_qs_account': 'QUOTA_ACCOUNT',
-              }}}}
-
-
 class TriggerReceiverBaseTestCase(unittest.TestCase):
 
   def setUp(self):
@@ -239,7 +220,6 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_build_client.return_value = FakeBuildClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
     self._mock_lab_config.return_value = FakeLabConfig()
-    self._mock_migration_config.return_value = FakeMigrationConfig()
 
     board_family_patcher = mock.patch(
         'build_lib.get_board_family_mapping_from_gs')
@@ -588,29 +568,6 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertEqual(len(tasks), 1)
     self.assertNotIn('asuka-release', tasks[0].payload)
     self.assertIn('zako-release', tasks[0].payload)
-
-  def testNewBuildWithSkylab(self):
-    """Test the case that suites run in skylab."""
-    normal_suite = 'FakeSkylabSuite'
-    self.fake_config.add_section(normal_suite)
-    self.fake_config.set(normal_suite, 'run_on', 'new_build')
-    self.fake_config.set(normal_suite, 'suite', 'ent-nightly')
-    self.fake_config.set(normal_suite, 'pool', 'suites')
-    self.fake_config.set(normal_suite, 'boards', 'zako, asuka')
-    self._mock_config_reader.return_value = self.fake_config
-
-    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
-    suite_trigger.cron()
-
-    self.assertEqual(len(suite_trigger.event_results), 1)
-    self.assertEqual(suite_trigger.event_results['new_build'],
-                     [normal_suite])
-    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 1)
-    self.assertIn('is_skylab=True', tasks[0].payload)
-    self.assertIn('override_pool=QUOTA_POOL', tasks[0].payload)
-    self.assertIn('override_qs_account=QUOTA_ACCOUNT', tasks[0].payload)
 
   def testNewBuildWithKernelnext(self):
     """Test the case that suites run with board-kernelnext build."""

@@ -9,7 +9,6 @@ import os
 import subprocess
 import unittest
 
-import swarming_lib
 import utils
 
 
@@ -80,41 +79,6 @@ class IntegrationTest(unittest.TestCase):
   def tearDownClass(cls):
     super(IntegrationTest, cls).tearDownClass()
     cls.dev_app_proc.terminate()
-
-  def testAFESwarmingDummyRun(self):
-    """Swarming test with local configs and dev_appservers."""
-    output = _subprocess_wrapper(
-        subprocess.check_output,
-        ['curl', '%s/test_push/afe_dummy' % DEV_APPSERVER_URL])
-    self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
-
-  def testSkylabSwarmingDummyRun(self):
-    """Swarming test with local configs and dev_appservers."""
-    output = _subprocess_wrapper(
-        subprocess.check_output,
-        ['curl', '%s/test_push/skylab_dummy' % DEV_APPSERVER_URL])
-    self.assertEqual(output, swarming_lib.DUMMY_TASK_NAME)
-
-  def testAFESwarmingSanity(self):
-    """Swarming test with local configs and dev_appservers."""
-    output = _subprocess_wrapper(
-        subprocess.check_output,
-        ['curl', '%s/test_push/afe_sanity' % DEV_APPSERVER_URL])
-    self.assertIn('sanity', output)
-
-  def testSkylabSwarmingSanity(self):
-    """Swarming test with local configs and dev_appservers."""
-    output = _subprocess_wrapper(
-        subprocess.check_output,
-        ['curl', '%s/test_push/skylab_sanity' % DEV_APPSERVER_URL])
-    self.assertIn('sanity', output)
-
-  def testSkylabBackwardCompatibilitySwarmingSanity(self):
-    """Swarming test with local configs and dev_appservers."""
-    output = _subprocess_wrapper(
-        subprocess.check_output,
-        ['curl', '%s/test_push/skylab_sanity_bc_test' % DEV_APPSERVER_URL])
-    self.assertIn('sanity', output)
 
   def testBigqueryGetPassedFromBB(self):
     """Test get_passed_builds from Buildbucket Bigquery database."""

@@ -18,8 +18,6 @@ libraries:
   version: latest
 - name: jinja2
   version: latest
-- name: MySQLdb
-  version: latest
 - name: pycrypto
   version: "latest"
 # [END libraries]
