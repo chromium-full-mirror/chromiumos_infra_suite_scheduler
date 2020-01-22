@@ -31,13 +31,6 @@ class FakeLabConfig(object):
     return {'coral': ['robo', 'nasher', 'lava']}
 
 
-class FakeMigrationConfig(object):
-  """Mock class for config_reader.MigrationConfig."""
-
-  def get_skylab_suites_dump(self):
-    return {}
-
-
 class TaskBaseTestCase(unittest.TestCase):
 
   BOARD = 'fake_board'
@@ -70,11 +63,9 @@ class TaskBaseTestCase(unittest.TestCase):
         timeout=self.TIMEOUT))
 
     self._empty_configs = config_reader.Configs(
-        lab_config=config_reader.LabConfig(None),
-        migration_config=config_reader.MigrationConfig(None))
+        lab_config=config_reader.LabConfig(None))
     self._fake_configs = config_reader.Configs(
-        lab_config=FakeLabConfig(),
-        migration_config=FakeMigrationConfig())
+        lab_config=FakeLabConfig())
 
     self.firmware_dict = {
         ('cros', 'fake_board'): ('fake_board-release/R30-6182.0.0-rc2'),

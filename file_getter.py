@@ -34,10 +34,6 @@ TEST_SUITE_SCHEDULER_CONFIG_FILE = SUITE_SCHEDULER_CONFIG_FILE
 # Lab config file
 LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
 
-# Migration config file
-MIGRATION_CONFIG_FILE = os.path.join(CONFIG_PATH, 'migration_config.ini')
-MIGRATION_CONFIG_JSON = os.path.join(CONFIG_PATH, 'dump_migration.json')
-
 # Service account secret json file used for staging project.
 STAGING_CLIENT_SECRETS_FILE = os.path.join(
     CREDENTIALS_PATH,

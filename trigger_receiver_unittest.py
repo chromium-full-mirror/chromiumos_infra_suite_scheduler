@@ -209,10 +209,6 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_lab_config = mock_lab_config.start()
     self.addCleanup(mock_lab_config.stop)
 
-    mock_migration_config = mock.patch('config_reader.MigrationConfig')
-    self._mock_migration_config = mock_migration_config.start()
-    self.addCleanup(mock_migration_config.stop)
-
     mock_utc_now = mock.patch('time_converter.utc_now')
     self._mock_utc_now = mock_utc_now.start()
     self.addCleanup(mock_utc_now.stop)

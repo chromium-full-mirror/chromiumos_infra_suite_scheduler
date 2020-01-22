@@ -18,7 +18,6 @@ Configs = collections.namedtuple(
     'Configs',
     [
         'lab_config',
-        'migration_config',
     ])
 
 # The entries of android settings in lab config file.
@@ -26,15 +25,6 @@ ANDROID_SETTINGS = 'ANDROID'
 
 # The entries of CrOS settings in lab config file.
 CROS_SETTINGS = 'CROS'
-
-# The entries of Skylab settings in migration config file.
-SKYLAB_SETTINGS = 'SKYLAB'
-
-# The entries of override settings in migration config file.
-OVERRIDE_SETTINGS = 'OVERRIDE'
-# The key of override info dict.
-OVERRIDE_POOL = 'override_pool'
-OVERRIDE_QS_ACCOUNT = 'override_qs_account'
 
 # The entry of release ro builds in lab config file.
 RELEASED_RO_BUILDS = 'RELEASED_RO_BUILDS'
@@ -187,178 +177,6 @@ class LabConfig(object):
                        release_board)
 
     return board_list
-
-
-class MigrationConfig(object):
-  """Class for reading migration config file for suite scheduler."""
-
-  def __init__(self, config_reader):
-    """Initialize a MigrationConfig to read migration info.
-
-    Args:
-      config_reader: a ConfigReader object to read migration configs.
-    """
-    self._config_reader = config_reader
-
-  def get_override_mappings(self, pool, model):
-    """Get the override info from migration config file.
-
-    Args:
-      pool: A string pool name
-      model: A string model name
-
-    Returns:
-      A dict of override info, including override_pool and override_account.
-    """
-    if not self._config_reader:
-      return {}
-
-    override_mappings = self._config_reader.getstring(OVERRIDE_SETTINGS,
-                                                      _pool_model_key(pool))
-    if override_mappings is None:
-      override_mappings = self._config_reader.getstring(
-          OVERRIDE_SETTINGS, _pool_model_key(pool, model))
-
-    if override_mappings is None:
-      return {OVERRIDE_POOL: '', OVERRIDE_QS_ACCOUNT: ''}
-
-    return {OVERRIDE_POOL: override_mappings.split(',')[0].strip(" '"),
-            OVERRIDE_QS_ACCOUNT: override_mappings.split(',')[1].strip(" '")}
-
-  def get_skylab_pools(self):
-    if not self._config_reader:
-      return []
-
-    skylab_pools = self._config_reader.getstring(SKYLAB_SETTINGS, 'pools')
-    if skylab_pools is None:
-      return []
-
-    return [p.strip() for p in skylab_pools.split(',')]
-
-  def get_skylab_models_by_pool(self, pool):
-    """Get a model list in skylab from migration config file.
-
-    Args:
-      pool: A string pool name
-
-    Returns:
-      A list of CrOS models for the given pool which should be scheduled on
-      skylab:
-        e.g. ['astronaut', 'reef', ...]
-    """
-    models = self._config_reader.getstring(SKYLAB_SETTINGS, pool)
-    if models is None:
-      return []
-
-    return list(_parse_model_list(models))
-
-  def get_skylab_suites_dump(self):
-    """Get a dict of configs for skylab suites.
-
-    Returns:
-      A dict to contain skylab suite configs.
-    """
-    result = collections.defaultdict(dict)
-
-    suites = self._config_reader.sections()
-    for s in suites:
-      if s in [SKYLAB_SETTINGS, OVERRIDE_SETTINGS]:
-        continue
-
-      pools = self._config_reader.getstring(s, 'pools')
-      if not pools:
-        raise ValueError('Need to specify "pools" for suite %s' % s)
-
-      pools = list(set([p.strip() for p in pools.split(',')]))
-
-      whitelist = _parse_pool_list(
-          self._config_reader.getstring(s, 'whitelist'))
-      blacklist = _parse_pool_list(
-          self._config_reader.getstring(s, 'blacklist'))
-
-      result[suite_key(s)] = self._get_configs_for_suite(
-          pools, whitelist, blacklist)
-
-    return result
-
-  def _get_configs_for_suite(self, pool_list, whitelist, blacklist):
-    """Get migration configs for a suite.
-
-    Args:
-      pool_list: A list of string pool.
-        e.g. ('cq', 'bvt', ...)
-      whitelist: A list of whitelist pool/model combinations, in the form
-        'pool:model'. Suites for these will run in skylab.
-        e.g. ['cq:astronaut', 'bvt:peppy', ...]
-      blacklist: A set of blacklisted pool/model combinations,
-        in the same form as whitelist.
-
-    Returns:
-      A dict containing migration configs for a given suite, e.g.
-      {
-          'pool:cq': {
-              model:astronaut: {
-                  skylab: True,
-                  override_pool: '',
-                  override_qs_account: '',
-              }
-          }
-          'pool:bvt': {
-              'model:peppy': {
-                  skylab: True,
-                  override_pool: DUT_POOL_QUOTA,
-                  override_qs_account: xxx,
-              }
-              'model:link': {
-                  ...,
-              }
-          }
-          ...
-      }
-    """
-    result = {}
-    for pool in pool_list:
-      skylab_models = self.get_skylab_models_by_pool(pool)
-      white_models = _get_models_by_pool(whitelist, pool)
-      if white_models:
-        result[pool_key(pool)] = self._get_configs_for_models(pool,
-                                                              white_models)
-        continue
-
-      black_models = _get_models_by_pool(blacklist, pool)
-      result[pool_key(pool)] = self._get_configs_for_models(
-          pool,
-          list(set(skylab_models) - set(black_models)))
-
-    return result
-
-  def _get_configs_for_models(self, pool, white_models):
-    """Get configs for a list of models.
-
-    Args:
-      pool: A string pool name.
-      white_models: A list of string models. e.g.
-        ['peppy', 'link', ...]
-
-    Returns:
-      A dict containing migration configs of models. e.g.
-        {
-            'peppy': {
-                skylab: True,
-                override_pool: DUT_POOL_QUOTA,
-                override_account: '',
-            }
-            'link':  {
-                ...,
-            }
-        }
-    """
-    result = {}
-    for m in white_models:
-      result[model_key(m)] = {'skylab': True}
-      result[model_key(m)].update(self.get_override_mappings(pool, m))
-
-    return result
 
 
 def config_dump(res):
