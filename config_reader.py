@@ -148,7 +148,7 @@ class LabConfig(object):
     if encoded_map is None:
       return result
 
-    # Models are encoded in form boardName_modelName
+    # Models are read from boardName_modelName/familyName_boardName_modelName.
     for full_model in encoded_map.split(','):
       board_name, model_name = build_utils.parse_full_model(full_model)
       if board_name in result:
