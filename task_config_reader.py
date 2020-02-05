@@ -59,7 +59,8 @@ COMMON_TASK_ENTRIES = ['any_model',
                        'only_hwtest_sanity_required',
                        'suite',
                        'test_source',
-                       'timeout']
+                       'timeout',
+                       'dimensions']
 
 # Namedtuple for storing task info.
 TaskInfo = collections.namedtuple(
@@ -292,6 +293,8 @@ class TaskConfig(object):
           'Invalid board family in list: %r\nBoard family name should be in '
           '%r' % (families, self._board_family_config.keys()))
 
+    dimensions = self._config_reader.getstring(section, 'dimensions')
+
     return TaskInfo(name=section,
                     keyword=keyword,
                     suite=suite,
@@ -321,7 +324,8 @@ class TaskConfig(object):
                     lc_targets=lc_targets,
                     os_type=os_type,
                     testbed_dut_count=testbed_dut_count,
-                    only_hwtest_sanity_required=only_hwtest_sanity_required)
+                    only_hwtest_sanity_required=only_hwtest_sanity_required,
+                    dimensions=dimensions)
 
   def _validate_task_section(self, task_info):
     """Validate a task section.

@@ -321,7 +321,26 @@ def _request_tags(task_params, build, pool):
     tags['label-model'] = task_params['model']
   if task_params.get('suite') not in (None, 'None'):
     tags['suite'] = task_params['suite']
+  # Add user configured dimensions.
+  if task_params.get('dimensions') not in (None, 'None'):
+    for label in task_params.get('dimensions').split(','):
+      key, value = _get_key_val_from_label(label)
+      if all([key, value]) and not key in tags:
+        tags[key] = value
   return tags
+
+
+def _get_key_val_from_label(label):
+  """A helper to get key and value from the label.
+
+  Args:
+    label: A string of label, should be in the form of
+      key:value, e.g. 'pool:ChromeOSSkylab'.
+  """
+  res = label.split(':')
+  if len(res) == 2:
+    return res[0], res[1]
+  logging.warning('Failed to parse the label, %s', label)
 
 
 def _suite_bb_tag(suite):

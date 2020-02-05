@@ -33,6 +33,7 @@ class BaseTaskConfigReaderTestCase(unittest.TestCase):
   _POOL = 'bvt'
   _NUM = 2
   _BOARD = 'link'
+  _DIMENSIONS = 'label-wifi:foo'
 
   def setUp(self):
     self.config = config_reader.ConfigReader(None)
@@ -43,6 +44,7 @@ class BaseTaskConfigReaderTestCase(unittest.TestCase):
     self.config.set(self._TASK_NAME, 'pool', self._POOL)
     self.config.set(self._TASK_NAME, 'num', '%d' % self._NUM)
     self.config.set(self._TASK_NAME, 'boards', self._BOARD)
+    self.config.set(self._TASK_NAME, 'dimensions', self._DIMENSIONS)
 
     tot_patcher = mock.patch('tot_manager.TotMilestoneManager')
     self._tot = tot_patcher.start()
@@ -91,6 +93,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
                      [t.lstrip() for t in self._BOARD.split(',')])
     self.assertEqual(new_task.priority, self._PRIORITY)
     self.assertEqual(new_task.timeout, self._TIMEOUT)
+    self.assertEqual(new_task.dimensions, self._DIMENSIONS)
 
   def testGetTaskByKeywordNoRunonNoRaise(self):
     """Ensure a Task CANNOT be built without run_on, but not raise error."""

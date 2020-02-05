@@ -222,6 +222,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
         suite='fake_suite',
         cros_build='fake_build',
     )
+    suite_kwargs['dimensions'] = 'label-wifi:foo,label-bt:hoo'
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag='fake_suite', **suite_kwargs)
 
@@ -235,6 +236,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
       'label-pool:DUT_POOL_SUITES',
       'suite:fake_suite',
       'build:fake_build',
+      'label-wifi:foo',
+      'label-bt:hoo'
     }
     want_bb = {
       'suite:fake_suite',

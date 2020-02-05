@@ -23,6 +23,11 @@ class ConfigSanityTest(unittest.TestCase):
       response = task_config.get_tasks_by_keyword(keyword)
       if response['exceptions']:
         exceptions.extend(response['exceptions'])
+      for t in response['tasks']:
+        if t.dimensions is not None:
+          for label in t.dimensions.split(','):
+            if len(label.split(':')) != 2:
+              self.fail('Fail sanity check for dimensions %s.' % t.dimensions)
 
     if exceptions:
       self.fail('Fail sanity check for %s:\n%s' % (

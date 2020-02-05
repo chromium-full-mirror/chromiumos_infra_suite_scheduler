@@ -49,6 +49,8 @@ class Task(object):
             is None, which allows this task to run on all boards. If same board
             is specified in 'boards' and 'exclude_boards', we exclude this
             board.
+          dimensions, a comma separated lists of labels. Each label is in
+            the form of 'key:value'.
           exclude_board_families, a common separated list of board family not to
             run task on. Boards belong to one of the board family in this list
             would be added to task_info.exclude_boards.
@@ -176,6 +178,8 @@ class Task(object):
       self.tot_manager = tot_manager.TotMilestoneManager()
     else:
       self.tot_manager = tot
+
+    self.dimensions = task_info.dimensions
 
     self._set_spec_compare_info()
 
@@ -424,6 +428,7 @@ class Task(object):
         'job_retry': self.job_retry,
         'no_delay': self.no_delay,
         'force': self.force,
+        'dimensions': self.dimensions,
         'run_prod_code': run_prod_code,
         'is_skylab': is_skylab,
         'is_frontdoor': self.frontdoor,
