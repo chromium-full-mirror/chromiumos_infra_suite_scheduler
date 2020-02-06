@@ -255,10 +255,13 @@ class BigqueryRestClient(object):
 
   PROJECT_TO_RUN_BIGQUERY_JOB = 'google.com:suite-scheduler'
 
-  def __init__(self, rest_client):
+  def __init__(self, rest_client, project=None, dataset=None, table=None):
     """Initialize a REST client for connecting to Bigquery API."""
     self._rest_client = rest_client
     self._rest_client.create_service()
+    self.project = project
+    self.dataset = dataset
+    self.table = table
 
   def query(self, query_str):
     """Query bigquery.
@@ -294,6 +297,35 @@ class BigqueryRestClient(object):
         fields='rows',
         body=query_data).execute()
 
+  def insert(self, rows):
+    """Insert rows to specified Bigquery table.
+
+    Args:
+      rows: list of json objects.
+
+    Raise:
+      RestClientError: if project/dataset/table is not defined.
+    """
+    if not any([self.project, self.dataset, self.table]):
+      raise RestClientError('Project, dataset, table should be all set.'
+                            'Got project:%s, dataset:%s, table:%s' %
+                            (self.project, self.dataset, self.table))
+    body = {
+        'kind': 'bigquery#tableDataInsertAllRequest',
+        'rows': rows,
+    }
+    request = self._rest_client.service.tabledata().insertAll(
+        projectId=self.project,
+        datasetId=self.dataset,
+        tableId=self.table,
+        body=body)
+    response = request.execute(num_retries=3)
+    if response.get('insertErrors'):
+      logging.error('InsertRequest reported errors: %r',
+                    response.get('insertErrors'))
+      return False
+
+    return True
 
 class CrOSTestPlatformBigqueryClient(BigqueryRestClient):
   """REST client for cros_test_platform builder Bigquery API."""

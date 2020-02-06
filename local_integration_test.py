@@ -11,6 +11,9 @@ import unittest
 
 import utils
 
+import analytics
+import task_config_reader
+
 
 # The local dev_appserver script, only available when Google App Engine SDK
 # is set.
@@ -108,6 +111,14 @@ class IntegrationTest(unittest.TestCase):
         ['curl', '%s/test_push/buildbucket_lib_compatibility'
          % DEV_APPSERVER_URL])
     self.assertIn('status: SCHEDULED', output)
+
+  def testSchedulerSnapshot(self):
+    """Test SchedulerJobSection could be inserted to BQ."""
+    output = _subprocess_wrapper(
+        subprocess.check_output,
+        ['curl', '%s/test_push/fake_scheduler_job_section'
+         % DEV_APPSERVER_URL])
+    self.assertIn('ok', output)
 
 
 if __name__ == '__main__':

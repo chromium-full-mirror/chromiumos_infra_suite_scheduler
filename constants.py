@@ -32,6 +32,14 @@ class AppID(object):
   PROD_APP = 'suite-scheduler'
   STAGING_APP = 'suite-scheduler-staging'
 
+class Metrics(object):
+  """Constants for uplading analytic metrics."""
+
+  PROJECT_ID_STAGING = 'google.com:suite-scheduler-staging'
+  PROJECT_ID = 'google.com:suite-scheduler'
+  DATASET = 'metrics'
+  TRIGGER_EVENT_TABLE = 'trigger_events'
+  EXECUTION_TASK_TABLE = 'execution_tasks'
 
 class Buildbucket(object):
   """Constants used when making buildbucket calls."""

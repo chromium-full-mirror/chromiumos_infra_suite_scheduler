@@ -6,10 +6,12 @@
 
 import datetime
 
+import analytics
 import buildbucket
 import constants
 import rest_client
 import time_converter
+import task_config_reader
 
 import webapp2
 
@@ -75,10 +77,33 @@ class _FakeBuildbucketLibCompatibilityHandler(webapp2.RequestHandler):
     self.response.write(res)
 
 
+class _FakeScheduleJobSectionHandler(webapp2.RequestHandler):
+
+  def get(self):
+    job = analytics.ScheduleJobSection(task_config_reader.TaskInfo(
+        name='fake_board',
+        suite='fake_suite',
+        branch_specs=[],
+        pool='fake_pool',
+        num=1,
+        boards='foo',
+        priority=50,
+        timeout=600))
+    job.add_board('foo')
+    job.add_model('foo')
+    job.add_matched_build('foo', 'release', '80', '12345.0.0')
+    job.add_schedule_job('foo', 'foo', task_id='local_integration_test')
+    res = ''
+    if job.upload():
+      res = 'ok'
+    self.response.write(res)
+
+
 app = webapp2.WSGIApplication([
     ('/test_push/bq_get_passed', _FakeBigqueryGetPassedHandler),
     ('/test_push/bq_get_relaxed_passed', _FakeBigqueryGetRelaxedPassedHandler),
     ('/test_push/bq_get_last_hours', _FakeCrOSTestPlatformBigqueryHandler),
     ('/test_push/buildbucket_lib_compatibility',
-     _FakeBuildbucketLibCompatibilityHandler)
+     _FakeBuildbucketLibCompatibilityHandler),
+     ('/test_push/fake_scheduler_job_section', _FakeScheduleJobSectionHandler)
     ], debug=True)
