@@ -5,6 +5,7 @@
 """Module for task unittests."""
 # pylint: disable=g-missing-super-call
 
+import json
 import re
 import unittest
 
@@ -14,6 +15,14 @@ import mock
 import task
 import task_config_reader
 import tot_manager
+
+from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
+from chromite.api.gen.chromiumos import branch_pb2
+
+from google.protobuf import json_format
+
+FAKE_UUID = 'c78e0bf3-4142-11ea-bc66-88e9fe4c5349'
+
 
 class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
   """Mock class for tot_manager.TotMilestoneManager."""
@@ -29,6 +38,18 @@ class FakeLabConfig(object):
 
   def get_cros_model_map(self):
     return {'coral': ['robo', 'nasher', 'lava']}
+
+
+class FakeBigqueryRestClient(object):
+
+  def __init__(self, rest_client, project=None, dataset=None, table=None):
+    """Initialize the mock class."""
+    self.table = table
+    self.rows = []
+
+  def insert(self, rows):
+    self.rows = rows
+    return True
 
 
 class TaskBaseTestCase(unittest.TestCase):
@@ -51,6 +72,14 @@ class TaskBaseTestCase(unittest.TestCase):
     self.addCleanup(tot_patcher.stop)
     # Can't pass in False since storage_client is not mocked.
     self._mock_tot.return_value = FakeTotMilestoneManager(True)
+
+    _mock_bq_client = mock.patch('rest_client.BigqueryRestClient')
+    mock_bq_client = _mock_bq_client.start()
+    self.addCleanup(_mock_bq_client.stop)
+    self.mock_bq_client = FakeBigqueryRestClient(
+        None, project='proj', dataset='dataset', table='foo')
+    mock_bq_client.return_value = self.mock_bq_client
+
     self.task = task.Task(task_config_reader.TaskInfo(
         name=self.NAME,
         suite=self.SUITE,
@@ -344,3 +373,215 @@ class TaskPushTestCase(TaskBaseTestCase):
     self.assertFalse(self.task.schedule(
         lc_builds, ([], []), self.firmware_dict,
         self._empty_configs))
+
+
+class TaskJobSectionTestCase(TaskBaseTestCase):
+
+  def setUp(self):
+    super(TaskJobSectionTestCase, self).setUp()
+    mock_push = mock.patch('task_executor.push')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testJobSectionName(self):
+    """Test the job section name if recorded."""
+    self.task.schedule(
+        [], ([], []), self.firmware_dict, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 0)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(job_sec.job_name, 'fake_name')
+
+  def testAddBoard(self):
+    """Test the configured board is recorded."""
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=[],
+        boards='coral'))
+    new_task.schedule(
+        [], ([], []), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.build_targets), 1)
+    self.assertEqual(job_sec.build_targets[0].name, 'coral')
+
+  def testAddModel(self):
+    """Test the configured model is recorded."""
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=[],
+        boards='coral',
+        exclude_models='coral_robo,coral_nasher'))
+    new_task.schedule(
+        [], ([], []), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    # lava is the only coral model that was not excluded.
+    self.assertEqual(len(job_sec.models), 1)
+    self.assertEqual(job_sec.models[0].value, 'lava')
+
+  def testAddMatchedBuild(self):
+    """Test the matched build is recorded."""
+    branch_builds = {('coral', '', 'release', '40'):
+                     '0000.00.00',
+                     ('hatch', '', 'release', '37'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral,hatch',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.matched_builds), 1)
+    build = job_sec.matched_builds[0].release_build
+    # hatch should not be recorded as its build is too old.
+    self.assertEqual(build.build_target.name, 'coral')
+    self.assertEqual(build.milestone, 40)
+    self.assertEqual(build.chrome_os_version, '0000.00.00')
+    self.assertEqual(build.type, branch_pb2.Branch.RELEASE)
+
+  def testAddMatchedRelaxBuild(self):
+    """Test the matched relax build is recorded."""
+    relax_builds = {('coral', '', 'release', '40'):
+                     '0000.00.00',
+                     ('hatch', '', 'release', '37'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral,hatch',
+        only_hwtest_sanity_required=True,
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], ([], relax_builds), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.matched_builds), 1)
+    build = job_sec.matched_builds[0].relax_build
+    # hatch should not be recorded as its build is too old.
+    self.assertEqual(build.build_target.name, 'coral')
+    self.assertEqual(build.milestone, 40)
+    self.assertEqual(build.chrome_os_version, '0000.00.00')
+    self.assertEqual(build.type, branch_pb2.Branch.RELEASE)
+
+  def testAddMatchedFirmwareBuild(self):
+    """Test the matched firmware build is recorded."""
+    branch_builds = {('fake_board', '', 'release', '40'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='fake_board',
+        firmware_rw_build_spec='firmware',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.matched_builds), 2)
+    build = job_sec.matched_builds[1].firmware_rw_build
+    self.assertEqual(build.build_target.name, 'fake_board')
+    self.assertEqual(build.type, branch_pb2.Branch.FIRMWARE)
+    self.assertEqual(build.artifact.path,
+                     self.firmware_dict['firmware', 'fake_board'])
+
+  def testScheduleJobSuccessfully(self):
+    """Test the scheduled job is recorded."""
+    branch_builds = {('coral', 'lava', 'release', '40'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral',
+        os_type=build_lib.OS_TYPE_CROS))
+    with mock.patch('uuid.uuid1', return_value=FAKE_UUID):
+      new_task.schedule(
+              [], (branch_builds, []), self.firmware_dict, self._fake_configs)
+      job_sec = json_format.Parse(
+            json.dumps(self.mock_bq_client.rows[0]['json']),
+            analytics_pb2.ScheduleJobSection())
+      self.assertEqual(len(job_sec.schedule_jobs), 1)
+      job = job_sec.schedule_jobs[0]
+      self.assertEqual(job.build_target.name, 'coral')
+      self.assertEqual(job.model.value, 'lava')
+      self.assertEqual(job.queued_task_id, FAKE_UUID)
+
+  def testScheduleJobFailedforFirmwareRO(self):
+    """Test the dropped job due to firmware absence is recorded."""
+    branch_builds = {('coral', 'lava', 'release', '40'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral',
+        firmware_ro_build_spec='firmware',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), {}, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.schedule_jobs), 1)
+    job = job_sec.schedule_jobs[0]
+    self.assertEqual(job.build_target.name, 'coral')
+    self.assertEqual(job.model.value, 'lava')
+    self.assertIn('No RO firmware ro build to run', job.justification)
+
+  def testScheduleJobFailedforBranchNotMaching(self):
+    """Test the dropped job due to branch spec is recorded."""
+    branch_builds = {('coral', 'lava', 'release', '38'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-1'],
+        boards='coral',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), {}, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.schedule_jobs), 1)
+    job = job_sec.schedule_jobs[0]
+    self.assertEqual(job.build_target.name, 'coral')
+    self.assertEqual(job.model.value, 'lava')
+    self.assertIn('branch_build spec', job.justification)
+
+  def testScheduleJobFailedforAnyModel(self):
+    """Test the dropped job due to any_model is recorded."""
+    branch_builds = {('coral', None, 'release', '38'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral',
+        any_model=True,
+        exclude_models='coral_nasher',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), {}, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    jobs = job_sec.schedule_jobs
+    self.assertEqual(jobs[1].build_target.name, 'coral')
+    self.assertEqual(jobs[1].model.value, 'lava')
+    self.assertIn('Skip model lava as any_model enabled', jobs[1].justification)

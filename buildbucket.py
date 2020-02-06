@@ -10,6 +10,7 @@ import logging
 import re
 import string
 
+import analytics
 import build_lib
 import constants
 import file_getter
@@ -78,6 +79,7 @@ class TestPlatformClient(object):
     requests = []
     executed_tasks = []
     counter = collections.defaultdict(int)
+    task_executions = []
     for task in tasks:
       try:
         params = task.extract_params()
@@ -92,6 +94,8 @@ class TestPlatformClient(object):
           req_name += '_' + str(counter[counter_key] - 1)
         requests.append('"%s": %s' % (req_name, req_json))
         executed_tasks.append(task)
+        if params['task_id']:
+          task_executions.append(analytics.ExecutionTask(params['task_id']))
       except (ValueError, BuildbucketRunError):
         logging.debug('Failed to process task: %r', params)
     if not requests:
@@ -114,6 +118,15 @@ class TestPlatformClient(object):
       #TODO(linxinan): only add the tasks returned from bb to executed_tasks.
       resp = self.client.ScheduleBuild(req_build, credentials=cred)
       logging.debug('Response from buildbucket: %r', resp)
+      for t in task_executions:
+        t.update_result(resp)
+        try:
+          if not t.upload():
+            logging.warning('Failed to insert row: %r', t)
+        # For any exceptions from BQ, only log it.
+        except Exception as e: #pylint: disable=broad-except
+          logging.exception('Failed to insert row: %r, got error: %s',
+                            t, str(e))
       return executed_tasks
     except Exception as e:
       logging.debug('Failed to process tasks: %r', tasks)

@@ -5,6 +5,7 @@
 
 """Module for buildbucket unittests."""
 
+import json
 import mock
 import os
 import unittest
@@ -15,12 +16,16 @@ import buildbucket
 import task_executor
 
 from chromite.api.gen.test_platform import request_pb2
+from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
 from google.protobuf import json_format
+from infra_libs.buildbucket.proto import build_pb2
 
 
 ADDR = u'http://localhost:1'
+FAKE_UUID = 'c78e0bf3-4142-11ea-bc66-88e9fe4c5349'
+FAKE_BUILD_ID = 8890493019851395280
 
 
 def _get_suite_params(board='fake_board',
@@ -30,6 +35,7 @@ def _get_suite_params(board='fake_board',
                       cros_build='fake_cros_build'):
   return {
       'suite': suite,
+      'task_id': FAKE_UUID,
       'board': board,
       'model': model,
       build_lib.BuildVersionKey.CROS_VERSION: cros_build,
@@ -58,11 +64,25 @@ class FakeTestPlatformClient(object):
   def __init__(self, test):
     self._test = test
     self.called_with_requests = []
+    self.error = None
 
   def ScheduleBuild(self, req, credentials=None):
     self.called_with_requests.append(req)
-    # No test_platform_response proto. Simply return '200, ok'.
-    return '200 ok'
+    if self.error:
+      return self.error
+    return build_pb2.Build(id=FAKE_BUILD_ID)
+
+
+class FakeBigqueryRestClient(object):
+
+  def __init__(self, rest_client, project=None, dataset=None, table=None):
+    """Initialize the mock class."""
+    self.table = table
+    self.rows = []
+
+  def insert(self, rows):
+    self.rows = rows
+    return True
 
 
 class TestPlatformClientTestCase(unittest.TestCase):
@@ -268,6 +288,53 @@ class TestPlatformClientTestCase(unittest.TestCase):
   def _extract_tags_from_bb_client(self):
     return ['%s:%s' % (t.key, t.value)
             for t  in self.fake_client.called_with_requests[0].tags]
+
+
+class TestTaskExecutions(TestPlatformClientTestCase):
+
+  def setUp(self):
+    super(TestTaskExecutions, self).setUp()
+    _mock_bq_client = mock.patch('rest_client.BigqueryRestClient')
+    mock_bq_client = _mock_bq_client.start()
+    self.addCleanup(_mock_bq_client.stop)
+    self.mock_bq_client = FakeBigqueryRestClient(
+        None, project='proj', dataset='dataset', table='foo')
+    mock_bq_client.return_value = self.mock_bq_client
+
+  def testRecordSuccessfulTaskExecution(self):
+    suite_kwargs = [_get_suite_params(board=b)
+                    for b in ['foo', 'goo']]
+    for suite in suite_kwargs:
+      task_executor.push(task_executor.SUITES_QUEUE,
+                         tag='fake_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(3600,
+        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
+    task_execution = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ExecutionTask())
+    self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
+    self.assertEqual(task_execution.response.ctp_build_id, str(FAKE_BUILD_ID))
+    self.assertEqual(task_execution.error.error_message, '')
+
+  def testRecordFailedTaskExecution(self):
+    suite_kwargs = [_get_suite_params(board=b)
+                    for b in ['foo', 'goo']]
+    for suite in suite_kwargs:
+      task_executor.push(task_executor.SUITES_QUEUE,
+                         tag='fake_suite', **suite)
+    self.fake_client.error = "cros_test_platform error"
+    tasks = self.queue.lease_tasks_by_tag(3600,
+        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
+    task_execution = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ExecutionTask())
+    self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
+    self.assertEqual(task_execution.response.ctp_build_id, '')
+    self.assertEqual(task_execution.error.error_message, self.fake_client.error)
 
 
 def _struct_pb2_to_request_pb2(struct_pb2):

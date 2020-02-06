@@ -7,7 +7,9 @@
 
 from distutils import version
 import logging
+import uuid
 
+import analytics
 import build_lib
 import task_executor
 import tot_manager
@@ -182,6 +184,7 @@ class Task(object):
     self.dimensions = task_info.dimensions
 
     self._set_spec_compare_info()
+    self.job_section = analytics.ScheduleJobSection(task_info)
 
   def schedule(self, launch_control_builds, cros_builds_tuple,
                firmware_builds, configs):
@@ -211,6 +214,19 @@ class Task(object):
     if self.only_hwtest_sanity_required:
       builds_dict = _split_unibuilds(relaxed_builds, configs)
 
+    # Record all target boards and models into job section.
+    lab_config = configs.lab_config
+    models_by_board = lab_config.get_cros_model_map() if lab_config else {}
+    boards = self.boards if self.boards else lab_config.get_cros_board_list()
+    for b in boards:
+      if self.exclude_boards and b in self.exclude_boards:
+        continue
+      self.job_section.add_board(b)
+      models = self.models or models_by_board.get(b, [])
+      for m in models:
+        if m and '%s_%s' % (b, m) not in self.exclude_models:
+          self.job_section.add_model(m)
+
     logging.info('######## Scheduling task %s ########', self.name)
     if self.os_type == build_lib.OS_TYPE_CROS:
       if not builds_dict:
@@ -222,7 +238,14 @@ class Task(object):
         logging.info('No Android build to run, skip running.')
       else:
         self._schedule_launch_control_builds(launch_control_builds)
-
+    upload_result = False
+    try:
+      upload_result = self.job_section.upload()
+    # For any exceptions from BQ, only log it and move on.
+    except Exception as e: #pylint: disable=broad-except
+      logging.exception(str(e))
+    if not upload_result:
+      logging.warning('Failed to insert row: %r', self.job_section)
     return self.is_pushed
 
   def _set_spec_compare_info(self):
@@ -362,6 +385,7 @@ class Task(object):
 
   def _push_suite(
       self,
+      task_id=None,
       board=None,
       model=None,
       cros_build=None,
@@ -376,6 +400,7 @@ class Task(object):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
+      task_id: the id to track this task in exectuion.
       board: the board against which this suite job run.
       model: the model name for unibuild.
       cros_build: the CrOS build of this suite job.
@@ -410,6 +435,7 @@ class Task(object):
 
     suite_job_parameters = {
         'suite': self.suite,
+        'task_id': task_id,
         'board': board,
         'model': model,
         build_lib.BuildVersionKey.CROS_VERSION: cros_build,
@@ -473,9 +499,20 @@ class Task(object):
       # Check the fitness of the build's branch for task
       branch_build_spec = _pick_branch(build_type, milestone)
       if not self._fits_spec(branch_build_spec):
-        logging.debug("branch_build spec %s doesn't fit this task's "
-                      "requirement: %s", branch_build_spec, self.branch_specs)
+        msg = ("branch_build spec %s doesn't fit this task's "
+               "requirement: %s") % (branch_build_spec,
+                   ",".join(self.branch_specs))
+        logging.debug(msg)
+        self.job_section.add_schedule_job(board, passed_model, msg=msg)
         continue
+
+      # Record this build as it matches both board and branch specs.
+      if self.only_hwtest_sanity_required:
+        self.job_section.add_matched_relax_build(
+            board, build_type, milestone, manifest)
+      else:
+        self.job_section.add_matched_build(
+            board, build_type, milestone, manifest)
 
       firmware_rw_build = None
       firmware_ro_build = None
@@ -486,7 +523,9 @@ class Task(object):
             self.firmware_ro_build_spec, board, firmware_build_dict, lab_config)
 
       if not firmware_ro_build and self.firmware_ro_build_spec:
-        logging.debug('No firmware ro build to run, skip running')
+        msg = 'No RO firmware ro build to run, skip running'
+        logging.debug(msg)
+        self.job_section.add_schedule_job(board, passed_model, msg=msg)
         continue
 
       if self.test_source == build_lib.BuildType.FIRMWARE_RW:
@@ -496,6 +535,20 @@ class Task(object):
         # Past versions chose based on run_prod_code, but we no longer respect
         # that option and scheduler settings should always set it to False.
         test_source_build = cros_build
+
+      # Record the matched firwmare build.
+      if firmware_rw_build:
+        self.job_section.add_matched_fw_build(
+            board,
+            self.firmware_rw_build_spec,
+            firmware_rw_build,
+            read_only=False)
+      if firmware_ro_build:
+        self.job_section.add_matched_fw_build(
+            board,
+            self.firmware_ro_build_spec,
+            firmware_ro_build,
+            read_only=True)
 
       hwtest_board = build_lib.reshape_board(board)
 
@@ -523,16 +576,22 @@ class Task(object):
             unique_build = str(cros_build)
             if unique_build in model_agnostic_cros_builds:
               # Skip since we've already run with no explicit model set.
+              msg = "Skip model %s as any_model enabled for this job." % model
+              self.job_section.add_schedule_job(board, model, msg=msg)
               continue
             model_agnostic_cros_builds.add(unique_build)
 
+          task_id = str(uuid.uuid1())
           self._push_suite(
+              task_id=task_id,
               board=hwtest_board,
               model=explicit_model,
               cros_build=cros_build,
               firmware_rw_build=firmware_rw_build,
               firmware_ro_build=firmware_ro_build,
               test_source_build=test_source_build)
+
+          self.job_section.add_schedule_job(board, model, task_id=task_id)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
