@@ -94,7 +94,7 @@ class TestPlatformClient(object):
           req_name += '_' + str(counter[counter_key] - 1)
         requests.append('"%s": %s' % (req_name, req_json))
         executed_tasks.append(task)
-        if params['task_id']:
+        if params.get('task_id'):
           task_executions.append(analytics.ExecutionTask(params['task_id']))
       except (ValueError, BuildbucketRunError):
         logging.debug('Failed to process task: %r', params)

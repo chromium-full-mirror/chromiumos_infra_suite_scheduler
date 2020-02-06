@@ -35,7 +35,6 @@ def _get_suite_params(board='fake_board',
                       cros_build='fake_cros_build'):
   return {
       'suite': suite,
-      'task_id': FAKE_UUID,
       'board': board,
       'model': model,
       build_lib.BuildVersionKey.CROS_VERSION: cros_build,
@@ -302,11 +301,10 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     mock_bq_client.return_value = self.mock_bq_client
 
   def testRecordSuccessfulTaskExecution(self):
-    suite_kwargs = [_get_suite_params(board=b)
-                    for b in ['foo', 'goo']]
-    for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite)
+    suite = _get_suite_params(board='foo')
+    suite['task_id'] = FAKE_UUID
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite', **suite)
     tasks = self.queue.lease_tasks_by_tag(3600,
         constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
@@ -319,11 +317,10 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self.assertEqual(task_execution.error.error_message, '')
 
   def testRecordFailedTaskExecution(self):
-    suite_kwargs = [_get_suite_params(board=b)
-                    for b in ['foo', 'goo']]
-    for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite)
+    suite = _get_suite_params(board='foo')
+    suite['task_id'] = FAKE_UUID
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite', **suite)
     self.fake_client.error = "cros_test_platform error"
     tasks = self.queue.lease_tasks_by_tag(3600,
         constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -335,6 +332,17 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
     self.assertEqual(task_execution.response.ctp_build_id, '')
     self.assertEqual(task_execution.error.error_message, self.fake_client.error)
+
+  def testIgnoreTaskWithoutTaskID(self):
+    suite = _get_suite_params(board='foo')
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite', **suite)
+    self.fake_client.error = "cros_test_platform error"
+    tasks = self.queue.lease_tasks_by_tag(3600,
+        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
+    self.assertEqual(len(self.mock_bq_client.rows), 0)
 
 
 def _struct_pb2_to_request_pb2(struct_pb2):
