@@ -50,7 +50,9 @@ class Buildbucket(object):
   PROD_BUILDER = 'cros_test_platform'
   STAGING_BUILDER = 'cros_test_platform-dev'
 
-  MAX_BUILDBUCKET_TIMEOUT_MINS = 46*60
+  # Source of truth:
+  # https://chrome-internal.googlesource.com/chromeos/infra/config/+/8f12edac54383831aaed9ed1819ef909a66ecc97/testplatform/main.star#90
+  MAX_BUILDBUCKET_TIMEOUT_MINS = (1*24*60) + 18*60 + 30
   MAX_RETRY = 3
 
   # TODO(crbug.com/1034166): this is a workaround to reduce the child task count

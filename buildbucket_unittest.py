@@ -128,7 +128,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.params.scheduling.priority, 10)
       self.assertEqual(req.params.scheduling.managed_pool,
                       request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
-      self.assertEqual(req.params.time.maximum_duration.seconds, 165600)
+      # Don't check for exact max timeout to stay DRY.
+      # But do check that the maximum is sane.
+      self.assertLess(req.params.time.maximum_duration.seconds, 2*24*60*60)
       gs_url = ('gs://chromeos-image-archive/%s' %
                 suite_kwargs[i]['test_source_build'])
       self.assertEqual(req.params.metadata.test_metadata_url, gs_url)
