@@ -12,20 +12,20 @@ import build_utils
 class BuildUtilsTestCase(unittest.TestCase):
 
   def testParseNormalModelName(self):
-    full_model = 'octopus_mimrock'
-    board = 'octopus'
-    model = 'mimrock'
+    full_model = 'board_model'
+    board = 'board'
+    model = 'model'
     self.assertEqual(build_utils.parse_full_model(full_model), (board, model))
 
-  def testParseModelNameWithFamily(self):
-    full_model = 'veyron_minnie_minnie'
-    board = 'veyron_minnie'
-    model = 'minnie'
+  def testParseModelNameWithFamilyModel(self):
+    full_model = 'family_board_family_model'
+    board = 'family_board'
+    model = 'family_model'
     self.assertEqual(build_utils.parse_full_model(full_model), (board, model))
 
   def testParseInvalidFullModelRaisesException(self):
     invalid_full_models = ['atlas',
-                           'veyron_minnie_veyron_minnie',
+                           'family_board_model',
                            'too_long_name_a_name']
     for invalid_model in invalid_full_models:
       self.assertRaises(ValueError, build_utils.parse_full_model, invalid_model)

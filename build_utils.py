@@ -23,8 +23,8 @@ def parse_full_model(full_model):
   model_tokens = full_model.strip().split('_')
   if len(model_tokens) == 2:
     return model_tokens[0], model_tokens[1]
-  if len(model_tokens) == 3:
-    return '_'.join(model_tokens[:2]), model_tokens[2]
+  if len(model_tokens) == 4:
+    return '_'.join(model_tokens[:2]), '_'.join(model_tokens[2:])
 
   logging.error('Invalid full_model format: %s', full_model)
   raise ValueError
