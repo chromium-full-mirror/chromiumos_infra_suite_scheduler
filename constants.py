@@ -64,10 +64,10 @@ class BaseEvent(object):
   """Constants used for base_event."""
 
   # The new build may not get inserted to BQ right after they are
-  # created(crbug/1038729). DELAY_HOURS delays the period of
-  # the builds suite scheduler queries, to ensure the target
+  # created(crbug/1038729). DELAY_MINUTES delays the period of
+  # the builds suite scheduler queries, to ensure the most of the target
   # builds exist in BQ.
-  DELAY_HOURS = 10
+  DELAY_MINUTES = 30
 
 
 class CalendarID(object):
