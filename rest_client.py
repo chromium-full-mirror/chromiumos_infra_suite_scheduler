@@ -442,6 +442,17 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
   def get_passed_builds(self, earliest_end_time, latest_end_time):
     """Get passed builds inside a given time span.
 
+    BigQuery does not guarantee the inserted time of rows. A new build
+    may not get inserted when suite scheduler runs the query. To avoid
+    it, we run the query twice:
+    - the first run catches the new build from earliest_end_time to
+      latest_end_time, and inserts the result to a temp BQ table.
+    - the second run checks the build from (earliest_end_time - 1Day)
+      to (latest_end_time - 1Day) plus (earliest_end_time to
+      latest_end_time). The query returns the build which does not
+      appear in the temp table. Thus, if a build was not fetched by the
+      first run, we still could schedule test on it at most 1 day later.
+
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
       latest_end_time: a datetime.datetime object in UTC.
@@ -449,33 +460,99 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
-    query_str = """
+    base_query_str = """
         SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config')
+          JSON_EXTRACT_SCALAR(output.properties, '$.board') AS board,
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version') AS milestone,
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version') AS platform,
+          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') AS build_config,
+          -- Time info
+          end_time as build_end_time,
+          CURRENT_TIMESTAMP() as inserted_time
         FROM
-          `cr-buildbucket.chromeos.completed_builds_BETA`
+          `cr-buildbucket.chromeos.builds`
         WHERE
-          end_time > '%s' and
-          end_time < '%s' and
-          status = 'SUCCESS' and
-          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+          status = 'SUCCESS'
+          AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
-    if global_config.GAE_TESTING:
-      earliest_end_time_str = '2019-05-19 20:00:00'
-      latest_end_time_str = '2019-05-20 20:00:00'
-      query_str += 'limit 10'
-    else:
-      earliest_end_time_str = earliest_end_time.strftime(
-          time_converter.TIME_FORMAT)
-      latest_end_time_str = latest_end_time.strftime(
-          time_converter.TIME_FORMAT)
+
+    insert_passed_builds = """
+        INSERT
+          `google.com:{0}.builds.passed_builds`(
+            board,
+            milestone,
+            platform,
+            build_config,
+            build_end_time,
+            inserted_time
+        ) {1}
+        AND end_time > '{2}'
+        AND end_time < '{3}'
+    """
+    earliest_end_time_str = earliest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+    latest_end_time_str = latest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+
+    # Insert the currently visible builds to BQ.
+    if constants.application_id():
+      logging.info('Insert the visible passed builds '
+                   'between %s and %s to BQ.',
+                   earliest_end_time_str, latest_end_time_str)
+      self.query(
+          insert_passed_builds.format(
+              constants.application_id(),
+              base_query_str,
+              earliest_end_time_str,
+              latest_end_time_str))
 
     logging.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
-    res = self.query(query_str % (earliest_end_time_str, latest_end_time_str))
+    query_str = """
+        WITH passed_builds AS
+            ({0})
+        SELECT
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          passed_builds AS b
+        LEFT JOIN
+          `google.com:{1}.builds.passed_builds` AS r
+          ON (
+            r.board = b.board
+            AND r.milestone = b.milestone
+            AND r.build_config = b.build_config
+            AND r.platform = b.platform
+            AND r.build_end_time > TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+                INTERVAL 1 DAY)
+            AND r.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
+                INTERVAL 1 DAY)
+          )
+        WHERE
+          -- Check if any build was inserted to release builder
+          -- in the past 24 hours.
+          (b.build_end_time > TIMESTAMP_SUB(
+              PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+              INTERVAL 1 DAY)
+            AND b.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
+                INTERVAL 1 DAY)
+            AND r.inserted_time is null)
+          OR (b.build_end_time > '{2}' 
+            AND b.build_end_time < '{3}')
+    """
+    if global_config.GAE_TESTING:
+      query_str += 'limit 10'
+    res = self.query(
+        query_str.format(
+            base_query_str,
+            constants.application_id(),
+            earliest_end_time_str,
+            latest_end_time_str))
     res = _parse_bq_job_query(res)
     if res is None:
       return []
@@ -491,6 +568,9 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
   def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time):
     """Get builds with successful "HWTest [sanity]" stages between a given span.
 
+    Same as get_passed_builds, we run the query twice to ensure we fetched all
+    builds from BQ.
+
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
       latest_end_time: a datetime.datetime object in UTC.
@@ -498,38 +578,107 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
-    query_str = """
+    base_query_str = """
         SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.unibuild'),
-          s.name,
-          JSON_EXTRACT_SCALAR(output.properties, '$.board'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
-          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config')
+          JSON_EXTRACT_SCALAR(output.properties, '$.unibuild') as unibuild,
+          s.name as stage_name,
+          JSON_EXTRACT_SCALAR(output.properties, '$.board') as board,
+          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version') as milestone,
+          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version') as platform,
+          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') as build_config,
+          -- Time info
+          c.end_time as build_end_time,
+          CURRENT_TIMESTAMP() as inserted_time
         FROM
-          `cr-buildbucket.chromeos.completed_builds_BETA` as c,
+          `cr-buildbucket.chromeos.builds` as c,
           UNNEST(c.steps) AS s
         WHERE
-          c.end_time > '%s' and
-          c.end_time < '%s' and
-          c.status != 'SUCCESS' and
-          s.name like 'SkylabHWTest%%' and
-          s.status = 'SUCCESS' and
-          JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+          c.status != 'SUCCESS'
+          AND s.name like 'SkylabHWTest%%'
+          AND s.status = 'SUCCESS'
+          AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
-    if global_config.GAE_TESTING:
-      earliest_end_time_str = '2019-05-19 20:00:00'
-      latest_end_time_str = '2019-05-20 20:00:00'
-      query_str += 'limit 10'
-    else:
-      earliest_end_time_str = earliest_end_time.strftime(
-          time_converter.TIME_FORMAT)
-      latest_end_time_str = latest_end_time.strftime(
-          time_converter.TIME_FORMAT)
+
+    insert_relaxed_builds = """
+        INSERT
+          `google.com:{0}.builds.relaxed_builds`(
+            unibuild,
+            stage_name,
+            board,
+            milestone,
+            platform,
+            build_config,
+            build_end_time,
+            inserted_time
+        ) {1}
+        AND c.end_time > '{2}'
+        AND c.end_time < '{3}'
+    """
+    earliest_end_time_str = earliest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+    latest_end_time_str = latest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+
+    if constants.application_id():
+      logging.info('Insert the visible relaxed builds '
+                   'between %s and %s to BQ.',
+                   earliest_end_time_str, latest_end_time_str)
+      self.query(
+          insert_relaxed_builds.format(
+              constants.application_id(),
+              base_query_str,
+              earliest_end_time_str,
+              latest_end_time_str))
 
     logging.info('Getting relaxed passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
-    res = self.query(query_str % (earliest_end_time_str, latest_end_time_str))
+    query_str = """
+        WITH relaxed_builds AS
+            ({0})
+        SELECT
+          b.unibuild,
+          b.stage_name,
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          relaxed_builds AS b
+        LEFT JOIN
+          `google.com:{1}.builds.relaxed_builds` AS r
+          ON (
+            r.board = b.board
+            AND r.milestone = b.milestone
+            AND r.build_config = b.build_config
+            AND r.platform = b.platform
+            AND r.build_end_time > TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+                INTERVAL 1 DAY)
+            AND r.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
+                INTERVAL 1 DAY)
+          )
+        WHERE
+          -- Check if any build was inserted to release builder
+          -- in the past 24 hours.
+          (b.build_end_time > TIMESTAMP_SUB(
+              PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+              INTERVAL 1 DAY)
+            AND b.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
+                INTERVAL 1 DAY)
+            AND r.inserted_time is null)
+          OR (b.build_end_time > '{2}'
+              AND b.build_end_time < '{3}')
+    """
+    if global_config.GAE_TESTING:
+      query_str += 'limit 10'
+    res = self.query(
+        query_str.format(
+            base_query_str,
+            constants.application_id(),
+            earliest_end_time_str,
+            latest_end_time_str))
     res = _parse_bq_job_query(res)
     if res is None:
       return []

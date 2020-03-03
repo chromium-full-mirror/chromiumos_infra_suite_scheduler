@@ -89,14 +89,13 @@ class BaseEvent(object):
       A two-tuples of dicts containing cros builds, see return from
         |build_lib.get_cros_builds|.
     """
-    # delay_hours ensures suite scheduler fetch the builds which have inserted
-    # to BigQuery.
-    delay_hours = datetime.timedelta(hours=constants.BaseEvent.DELAY_HOURS)
+    # delay_minutes ensures that most of the target builds were inserted to BQ.
+    delay_minutes = datetime.timedelta(minutes=constants.BaseEvent.DELAY_MINUTES)
     return build_lib.get_cros_builds(
         build_client,
         lab_config.get_cros_board_list(),
-        self.since_date - delay_hours,
-        time_converter.utc_now() - delay_hours)
+        self.since_date - delay_minutes,
+        time_converter.utc_now() - delay_minutes)
 
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.
