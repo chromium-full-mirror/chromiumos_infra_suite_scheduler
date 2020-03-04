@@ -493,18 +493,19 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         time_converter.TIME_FORMAT)
     latest_end_time_str = latest_end_time.strftime(
         time_converter.TIME_FORMAT)
-
+    project_id = constants.AppID.STAGING_APP
+    if constants.environment() == constants.RunningEnv.ENV_PROD:
+      project_id = constants.application_id()
     # Insert the currently visible builds to BQ.
-    if constants.application_id():
-      logging.info('Insert the visible passed builds '
-                   'between %s and %s to BQ.',
-                   earliest_end_time_str, latest_end_time_str)
-      self.query(
-          insert_passed_builds.format(
-              constants.application_id(),
-              base_query_str,
-              earliest_end_time_str,
-              latest_end_time_str))
+    logging.info('Insert the visible passed builds '
+                  'between %s and %s to BQ.',
+                  earliest_end_time_str, latest_end_time_str)
+    self.query(
+        insert_passed_builds.format(
+            project_id,
+            base_query_str,
+            earliest_end_time_str,
+            latest_end_time_str))
 
     logging.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
@@ -542,7 +543,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                 PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
                 INTERVAL 1 DAY)
             AND r.inserted_time is null)
-          OR (b.build_end_time > '{2}' 
+          OR (b.build_end_time > '{2}'
             AND b.build_end_time < '{3}')
     """
     if global_config.GAE_TESTING:
@@ -550,7 +551,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     res = self.query(
         query_str.format(
             base_query_str,
-            constants.application_id(),
+            project_id,
             earliest_end_time_str,
             latest_end_time_str))
     res = _parse_bq_job_query(res)
@@ -618,17 +619,18 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         time_converter.TIME_FORMAT)
     latest_end_time_str = latest_end_time.strftime(
         time_converter.TIME_FORMAT)
-
-    if constants.application_id():
-      logging.info('Insert the visible relaxed builds '
-                   'between %s and %s to BQ.',
-                   earliest_end_time_str, latest_end_time_str)
-      self.query(
-          insert_relaxed_builds.format(
-              constants.application_id(),
-              base_query_str,
-              earliest_end_time_str,
-              latest_end_time_str))
+    project_id = constants.AppID.STAGING_APP
+    if constants.environment() == constants.RunningEnv.ENV_PROD:
+      project_id = constants.application_id()
+    logging.info('Insert the visible relaxed builds '
+                  'between %s and %s to BQ.',
+                  earliest_end_time_str, latest_end_time_str)
+    self.query(
+        insert_relaxed_builds.format(
+            project_id,
+            base_query_str,
+            earliest_end_time_str,
+            latest_end_time_str))
 
     logging.info('Getting relaxed passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
@@ -676,7 +678,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     res = self.query(
         query_str.format(
             base_query_str,
-            constants.application_id(),
+            project_id,
             earliest_end_time_str,
             latest_end_time_str))
     res = _parse_bq_job_query(res)
