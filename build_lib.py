@@ -463,7 +463,7 @@ def reshape_board(board):
     A string board name after reshaping.
   """
   # The hack derives from build info structure saved in CIDB/buildbucket:
-  # *-kernelnext/*-arcnext are saved as board name, but not the real board
+  # *-kernelnext/*-arcnext etc are saved as board name, but not the real board
   # for DUT.
-  board = board.replace('-kernelnext', '')
+  board = re.sub('-(kernelnext|arcvm|arc-r)$', '', board)
   return board
