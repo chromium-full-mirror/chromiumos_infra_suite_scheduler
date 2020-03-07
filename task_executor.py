@@ -17,13 +17,12 @@ from google.appengine.runtime import apiproxy_errors
 
 
 SUITES_QUEUE = 'suitesQueue'
-BATCH_SIZE = 100
 
 Options = collections.namedtuple('Options',
                                  ['batch_size', 'multirequest_size'])
 
 _DEFAULT_OPTIONS = Options(
-    batch_size=BATCH_SIZE,
+    batch_size=100,
     multirequest_size=constants.Buildbucket.MULTIREQUEST_SIZE,
 )
 
