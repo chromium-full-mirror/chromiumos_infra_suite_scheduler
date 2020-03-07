@@ -58,48 +58,34 @@ class TaskExecutorTestCase(unittest.TestCase):
     self.addCleanup(p.stop)
 
   def testPushTask(self):
-    suite_kwargs = {'suite': 'fake_suite'}
-    task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
+    _push_tasks('fake_suite', 1)
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), 1)
-    self.assertEqual(suite_kwargs, tasks[0].extract_params())
+    self.assertEqual('fake_suite', tasks[0].extract_params()['suite'])
 
   def testBatchExecuteTask(self):
     """Test task_executor executes tasks not greater than the BATCH_SIZE."""
     batch_size = 100
     extra_num = 10
-    for i in range(batch_size / 2):
-      suite_kwargs = {'suite': 'foo_suite',
-                      'num': i + 1}
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='foo_suite', **suite_kwargs)
-    for i in range(batch_size / 2 + extra_num):
-      suite_kwargs = {'suite': 'hoo_suite',
-                      'num': i + 1}
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='hoo_suite', **suite_kwargs)
+    _push_tasks('foo_suite', batch_size / 2)
+    _push_tasks('hoo_suite', batch_size / 2 + extra_num)
     with mock.patch('buildbucket.TestPlatformClient',
                     return_value=FakeFrontdoorClient()):
-      with mock.patch('global_config.GAE_TESTING', return_value=True):
-        task_processor = task_executor.TaskProcessor(
-            task_executor.SUITES_QUEUE,
-            options=task_executor.Options(
-                batch_size=batch_size, multirequest_size=1))
-        task_processor.batch_execute()
-        # After batch_execute runs, the extra tasks should remain in the queue.
-        tasks = self.taskqueue_stub.get_filtered_tasks()
-        self.assertEqual(extra_num, len(tasks))
+      task_processor = task_executor.TaskProcessor(
+          task_executor.SUITES_QUEUE,
+          options=task_executor.Options(
+              batch_size=batch_size, multirequest_size=1))
+      task_processor.batch_execute()
+      # After batch_execute runs, the extra tasks should remain in the queue.
+      tasks = self.taskqueue_stub.get_filtered_tasks()
+      self.assertEqual(extra_num, len(tasks))
 
   def testBatchExecuteTaskFailedFrontdoorTotally(self):
     """Test task_executor fails at the beginning, and no tasks are deleted."""
     batch_size = 100
     multirequest_size = 30
     extra_num = 10
-    suite_kwargs = {'suite': 'fake_suite'}
-    for i in range(multirequest_size + extra_num):
-      suite_kwargs['num'] = i + 1
-      task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
-
+    _push_tasks('fake_suite', multirequest_size + extra_num)
     # Before batch_execute
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), multirequest_size + extra_num)
@@ -121,12 +107,9 @@ class TaskExecutorTestCase(unittest.TestCase):
     batch_size = 1000
     multirequest_size = 30
     extra_num = 10
-    suite_kwargs = {'suite': 'fake_suite'}
     success_num = (multirequest_size + extra_num) / 2
     error_num = multirequest_size + extra_num
-    for i in range(multirequest_size + extra_num):
-      suite_kwargs['num'] = i + 1
-      task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
+    _push_tasks('fake_suite', multirequest_size + extra_num)
 
     # Before batch_execute
     tasks = self.taskqueue_stub.get_filtered_tasks()
@@ -145,9 +128,7 @@ class TaskExecutorTestCase(unittest.TestCase):
 
   def testBatchExecuteTaskFailedLeasing(self):
     """Test task_executor fails to lease task."""
-    suite_kwargs = {'suite': 'fake_suite'}
-    task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
-
+    _push_tasks('fake_suite', 1)
     with mock.patch('buildbucket.TestPlatformClient',
                     return_value=FakeFrontdoorClient(False)):
       task_processor = task_executor.TaskProcessor('nonExistentQueue')
@@ -156,6 +137,13 @@ class TaskExecutorTestCase(unittest.TestCase):
       # After batch_execute fails, no tasks are deleted from task queue.
       tasks = self.taskqueue_stub.get_filtered_tasks()
       self.assertEqual(len(tasks), 1)
+
+
+def _push_tasks(suite, count):
+  """Push count tasks in the executor queue for suite."""
+  for i in range(count):
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag=suite, suite=suite, num=i + 1)
 
 
 if __name__ == '__main__':
