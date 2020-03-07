@@ -29,7 +29,19 @@ _DEFAULT_OPTIONS = Options(
 
 def new_task_processor():
   """Factory function to create a task processor appropriate to environment."""
-  return TaskProcessor(queue_name=SUITES_QUEUE, options=_DEFAULT_OPTIONS)
+  # Schedule tests to PROD_BUILDER if in production project, otherwise use
+  # STAGING_BUILDER.
+  builder = constants.Buildbucket.STAGING_BUILDER
+  if (constants.environment() == constants.RunningEnv.ENV_PROD
+      and constants.application_id() == constants.AppID.PROD_APP):
+    builder = constants.Buildbucket.PROD_BUILDER
+  test_platform_client = buildbucket.TestPlatformClient(
+      constants.Buildbucket.HOST, constants.Buildbucket.PROJECT,
+      constants.Buildbucket.BUCKET, builder)
+  return TaskProcessor(
+      queue_name=SUITES_QUEUE,
+      test_platform_client=test_platform_client,
+      options=_DEFAULT_OPTIONS)
 
 
 class TaskProcessor(object):
@@ -39,26 +51,17 @@ class TaskProcessor(object):
   represented by tasks' params.
   """
 
-  def __init__(self, queue_name, options):
+  def __init__(self, queue_name, test_platform_client, options):
     """Initialize a task executor for further pulling & execution.
 
     Args:
       queue_name: The name of a pull queue.
+      test_platform_client: A buildbucket.TestPlatformClient object.
       options: Options to configure the task processor.
     """
     self.queue = taskqueue.Queue(queue_name)
     self._options = options
-    # Schedule tests to PROD_BUILDER if in production project, otherwise use
-    # STAGING_BUILDER.
-    builder = constants.Buildbucket.STAGING_BUILDER
-    if (constants.environment() == constants.RunningEnv.ENV_PROD and
-        constants.application_id() == constants.AppID.PROD_APP):
-      builder = constants.Buildbucket.PROD_BUILDER
-    self.test_platform_client = buildbucket.TestPlatformClient(
-        constants.Buildbucket.HOST,
-        constants.Buildbucket.PROJECT,
-        constants.Buildbucket.BUCKET,
-        builder)
+    self.test_platform_client = test_platform_client
 
   def batch_execute(self):
     """Execute tasks."""

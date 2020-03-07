@@ -69,16 +69,17 @@ class TaskExecutorTestCase(unittest.TestCase):
     extra_num = 10
     _push_tasks('foo_suite', batch_size / 2)
     _push_tasks('hoo_suite', batch_size / 2 + extra_num)
-    with mock.patch('buildbucket.TestPlatformClient',
-                    return_value=FakeFrontdoorClient()):
-      task_processor = task_executor.TaskProcessor(
-          task_executor.SUITES_QUEUE,
-          options=task_executor.Options(
-              batch_size=batch_size, multirequest_size=1))
-      task_processor.batch_execute()
-      # After batch_execute runs, the extra tasks should remain in the queue.
-      tasks = self.taskqueue_stub.get_filtered_tasks()
-      self.assertEqual(extra_num, len(tasks))
+
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=FakeFrontdoorClient(),
+        options=task_executor.Options(
+            batch_size=batch_size, multirequest_size=1))
+    task_processor.batch_execute()
+
+    # After batch_execute runs, the extra tasks should remain in the queue.
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(extra_num, len(tasks))
 
   def testBatchExecuteTaskFailedFrontdoorTotally(self):
     """Test task_executor fails at the beginning, and no tasks are deleted."""
@@ -89,17 +90,18 @@ class TaskExecutorTestCase(unittest.TestCase):
     # Before batch_execute
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), multirequest_size + extra_num)
-    with mock.patch('buildbucket.TestPlatformClient',
-                    return_value=FakeFrontdoorClient(0, error_num=len(tasks))):
-      task_processor = task_executor.TaskProcessor(
-          task_executor.SUITES_QUEUE,
-          options=task_executor.Options(
-              batch_size=batch_size, multirequest_size=multirequest_size))
-      task_processor.batch_execute()
-      # After batch_execute, no tasks are deleted from task queue, due
-      # to they're all failed to kick off.
-      tasks = self.taskqueue_stub.get_filtered_tasks()
-      self.assertEqual(len(tasks), multirequest_size + extra_num)
+
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=FakeFrontdoorClient(0, error_num=len(tasks)),
+        options=task_executor.Options(
+            batch_size=batch_size, multirequest_size=multirequest_size))
+    task_processor.batch_execute()
+
+    # After batch_execute, no tasks are deleted from task queue, due
+    # to they're all failed to kick off.
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(len(tasks), multirequest_size + extra_num)
 
   def testBatchExecuteTaskFailedFrontdoorPartially(self):
     """Test task_executor fails halfway, and only executed tasks are deleted."""
@@ -114,30 +116,33 @@ class TaskExecutorTestCase(unittest.TestCase):
     # Before batch_execute
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), multirequest_size + extra_num)
-    with mock.patch('buildbucket.TestPlatformClient',
-                    return_value=FakeFrontdoorClient(success_num, error_num)):
-      task_processor = task_executor.TaskProcessor(
-          task_executor.SUITES_QUEUE,
-          options=task_executor.Options(
-              batch_size=batch_size, multirequest_size=multirequest_size))
-      task_processor.batch_execute()
-      # After batch_execute, only failed suites and extra suites are
-      # kept in task queue.
-      tasks = self.taskqueue_stub.get_filtered_tasks()
-      self.assertEqual(len(tasks), error_num)
+
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=FakeFrontdoorClient(success_num, error_num),
+        options=task_executor.Options(
+            batch_size=batch_size, multirequest_size=multirequest_size))
+    task_processor.batch_execute()
+
+    # After batch_execute, only failed suites and extra suites are
+    # kept in task queue.
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(len(tasks), error_num)
 
   def testBatchExecuteTaskFailedLeasing(self):
     """Test task_executor fails to lease task."""
     _push_tasks('fake_suite', 1)
-    with mock.patch('buildbucket.TestPlatformClient',
-                    return_value=FakeFrontdoorClient(False)):
-      task_processor = task_executor.TaskProcessor(
-          'nonExistentQueue', options=task_executor.Options(10, 10))
-      self.assertRaises(taskqueue.UnknownQueueError,
-                        task_processor.batch_execute)
-      # After batch_execute fails, no tasks are deleted from task queue.
-      tasks = self.taskqueue_stub.get_filtered_tasks()
-      self.assertEqual(len(tasks), 1)
+
+    task_processor = task_executor.TaskProcessor(
+        'nonExistentQueue',
+        test_platform_client=FakeFrontdoorClient(False),
+        options=task_executor.Options(10, 10))
+    self.assertRaises(taskqueue.UnknownQueueError,
+                      task_processor.batch_execute)
+
+    # After batch_execute fails, no tasks are deleted from task queue.
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(len(tasks), 1)
 
 
 def _push_tasks(suite, count):
