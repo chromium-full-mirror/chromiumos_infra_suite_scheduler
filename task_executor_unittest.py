@@ -74,7 +74,9 @@ class TaskExecutorTestCase(unittest.TestCase):
         task_executor.SUITES_QUEUE,
         test_platform_client=FakeFrontdoorClient(),
         options=task_executor.Options(
-            batch_size=batch_size, multirequest_size=1))
+            batch_size=batch_size,
+            multirequest_size=1,
+            per_suite_multirequest_size={}))
     task_processor.batch_execute()
 
     # After batch_execute runs, the extra tasks should remain in the queue.
@@ -95,7 +97,9 @@ class TaskExecutorTestCase(unittest.TestCase):
         task_executor.SUITES_QUEUE,
         test_platform_client=FakeFrontdoorClient(0, error_num=len(tasks)),
         options=task_executor.Options(
-            batch_size=batch_size, multirequest_size=multirequest_size))
+            batch_size=batch_size,
+            multirequest_size=multirequest_size,
+            per_suite_multirequest_size={}))
     task_processor.batch_execute()
 
     # After batch_execute, no tasks are deleted from task queue, due
@@ -121,7 +125,9 @@ class TaskExecutorTestCase(unittest.TestCase):
         task_executor.SUITES_QUEUE,
         test_platform_client=FakeFrontdoorClient(success_num, error_num),
         options=task_executor.Options(
-            batch_size=batch_size, multirequest_size=multirequest_size))
+            batch_size=batch_size,
+            multirequest_size=multirequest_size,
+            per_suite_multirequest_size={}))
     task_processor.batch_execute()
 
     # After batch_execute, only failed suites and extra suites are
@@ -136,13 +142,41 @@ class TaskExecutorTestCase(unittest.TestCase):
     task_processor = task_executor.TaskProcessor(
         'nonExistentQueue',
         test_platform_client=FakeFrontdoorClient(False),
-        options=task_executor.Options(10, 10))
+        options=task_executor.Options(10, 10, {}))
     self.assertRaises(taskqueue.UnknownQueueError,
                       task_processor.batch_execute)
 
     # After batch_execute fails, no tasks are deleted from task queue.
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), 1)
+
+  def testBatchExecuteTaskWithPerSuiteLimit(self):
+    """Test task_executor executes respects per-suite limit."""
+    batch_size = 100
+    multirequest_size = 10
+    foo_suite_limit = 3
+    _push_tasks('foo_suite', batch_size)
+
+    frontdoor_client = FakeFrontdoorClient()
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=frontdoor_client,
+        options=task_executor.Options(
+            batch_size=batch_size,
+            multirequest_size=multirequest_size,
+            per_suite_multirequest_size={'foo_suite': foo_suite_limit}))
+    task_processor.batch_execute()
+
+    executed_count = 0
+    for tasks in frontdoor_client.frontdoor_run_count['foo_suite']:
+      self.assertEqual(foo_suite_limit, len(tasks))
+      executed_count += len(tasks)
+    # Even though per-request size is very limited now, most tasks should get
+    # scheduled, without being dropped due to the restriction.
+    self.assertGreater(
+        executed_count,
+        80,
+    )
 
 
 def _push_tasks(suite, count):

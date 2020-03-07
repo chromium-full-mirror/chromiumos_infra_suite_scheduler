@@ -18,13 +18,22 @@ from google.appengine.runtime import apiproxy_errors
 
 SUITES_QUEUE = 'suitesQueue'
 
-Options = collections.namedtuple('Options',
-                                 ['batch_size', 'multirequest_size'])
+Options = collections.namedtuple(
+    'Options',
+    ['batch_size', 'multirequest_size', 'per_suite_multirequest_size'])
 
 _DEFAULT_OPTIONS = Options(
     batch_size=100,
     multirequest_size=constants.Buildbucket.MULTIREQUEST_SIZE,
-)
+    # A limit on the number of tasks included per request for specific suites.
+    per_suite_multirequest_size={
+        # crbug.com/1028732: Generates too many results to store in BuildBucket
+        # output properties.
+        'arc-gts': 10,
+        # crbug.com/1028732: Generates too many results to store in BuildBucket
+        # output properties.
+        'graphics_per-day': 10,
+    })
 
 
 def new_task_processor():
@@ -77,28 +86,43 @@ class TaskProcessor(object):
         logging.exception(e)
         raise
 
-      executed_tasks = []
       if not tasks:
         return
 
+      tasks = self._limit_heavy_tasks(tasks)
+      executed_tasks = []
       try:
         executed_tasks.extend(
-            self.test_platform_client.multirequest_run(tasks, tasks[0].tag))
+            self.test_platform_client.multirequest_run(tasks, _suite(tasks)))
       except (ValueError,
               buildbucket.BuildbucketRunError,
               apiclient.errors.HttpError) as e:
         logging.exception('Failed to kick off %d tasks for suite %s',
-                          len(tasks), tasks[0].tag)
+                          len(tasks), _suite(tasks))
       finally:
         if executed_tasks:
           executed_tasks_count += len(executed_tasks)
           logging.info('Successfully kicking %d tasks for suite %s',
-                       len(executed_tasks), tasks[0].tag)
+                       len(executed_tasks), _suite(tasks))
           self.queue.delete_tasks(executed_tasks)
 
   def purge(self):
     """Purge the entire tasks in the task queue."""
     self.queue.purge()
+
+  def _limit_heavy_tasks(self, tasks):
+    """Further limits tasks known to cause large load on cros_test_platform."""
+    if not tasks:
+      return tasks
+    limit = self._options.per_suite_multirequest_size.get(
+        _suite(tasks),
+        self._options.multirequest_size,
+    )
+    keep = tasks[:limit]
+    forget = tasks[limit:]
+    for task in forget:
+      self.queue.modify_task_lease(task, 0)
+    return keep
 
 
 def push(queue_name, tag=None, **suite_kwargs):
@@ -111,3 +135,7 @@ def push(queue_name, tag=None, **suite_kwargs):
   """
   queue = taskqueue.Queue(queue_name)
   queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
+
+
+def _suite(tasks):
+  return tasks[0].tag
