@@ -5,11 +5,11 @@
 """Module for executing tasks queued by suite scheduler."""
 # pylint: disable=g-bad-import-order
 
+import collections
 import logging
 
 import buildbucket
 import constants
-import global_config
 
 import apiclient
 from google.appengine.api import taskqueue
@@ -19,6 +19,14 @@ from google.appengine.runtime import apiproxy_errors
 SUITES_QUEUE = 'suitesQueue'
 BATCH_SIZE = 100
 
+Options = collections.namedtuple('Options',
+                                 ['batch_size', 'multirequest_size'])
+
+_DEFAULT_OPTIONS = Options(
+    batch_size=BATCH_SIZE,
+    multirequest_size=constants.Buildbucket.MULTIREQUEST_SIZE,
+)
+
 
 class TaskProcessor(object):
   """A class capable of executing tasks by kicking off suites.
@@ -27,13 +35,14 @@ class TaskProcessor(object):
   represented by tasks' params through ChromeOS swarming proxy server.
   """
 
-  def __init__(self, queue_name):
+  def __init__(self, queue_name, options=_DEFAULT_OPTIONS):
     """Initialize a task executor for further pulling & execution.
 
     Args:
       queue_name: The name of a pull queue.
     """
     self.queue = taskqueue.Queue(queue_name)
+    self._options = options
     # Schedule tests to PROD_BUILDER if in production project, otherwise use
     # STAGING_BUILDER.
     builder = constants.Buildbucket.STAGING_BUILDER
@@ -49,11 +58,11 @@ class TaskProcessor(object):
   def batch_execute(self):
     """Execute tasks."""
     executed_tasks_count = 0
-    while (executed_tasks_count +
-           constants.Buildbucket.MULTIREQUEST_SIZE <= BATCH_SIZE):
+    while (executed_tasks_count + self._options.multirequest_size <=
+           self._options.batch_size):
       try:
-        tasks = self.queue.lease_tasks_by_tag(3600,
-            constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+        tasks = self.queue.lease_tasks_by_tag(
+            3600, self._options.multirequest_size, deadline=60)
       except (taskqueue.UnknownQueueError,
               taskqueue.TransientError,
               apiproxy_errors.DeadlineExceededError) as e:
