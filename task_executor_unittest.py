@@ -53,6 +53,10 @@ class TaskExecutorTestCase(unittest.TestCase):
     self.taskqueue_stub = self.testbed.get_stub(
         testbed.TASKQUEUE_SERVICE_NAME)
 
+    p = mock.patch('global_config.GAE_TESTING', return_value=True)
+    p.start()
+    self.addCleanup(p.stop)
+
   def testPushTask(self):
     suite_kwargs = {'suite': 'fake_suite'}
     task_executor.push(task_executor.SUITES_QUEUE, **suite_kwargs)
