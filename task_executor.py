@@ -40,6 +40,7 @@ class TaskProcessor(object):
 
     Args:
       queue_name: The name of a pull queue.
+      options: Options to configure the task processor.
     """
     self.queue = taskqueue.Queue(queue_name)
     self._options = options
@@ -87,7 +88,6 @@ class TaskProcessor(object):
           logging.info('Successfully kicking %d tasks for suite %s',
                        len(executed_tasks), tasks[0].tag)
           self.queue.delete_tasks(executed_tasks)
-
 
   def purge(self):
     """Purge the entire tasks in the task queue."""
