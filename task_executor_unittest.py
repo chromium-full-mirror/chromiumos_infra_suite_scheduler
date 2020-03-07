@@ -131,7 +131,8 @@ class TaskExecutorTestCase(unittest.TestCase):
     _push_tasks('fake_suite', 1)
     with mock.patch('buildbucket.TestPlatformClient',
                     return_value=FakeFrontdoorClient(False)):
-      task_processor = task_executor.TaskProcessor('nonExistentQueue')
+      task_processor = task_executor.TaskProcessor(
+          'nonExistentQueue', options=task_executor.Options(10, 10))
       self.assertRaises(taskqueue.UnknownQueueError,
                         task_processor.batch_execute)
       # After batch_execute fails, no tasks are deleted from task queue.

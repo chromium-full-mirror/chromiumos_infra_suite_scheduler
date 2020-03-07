@@ -88,7 +88,7 @@ class ExecuteTask(webapp2.RequestHandler):
     if global_config.is_in_staging():
       return
 
-    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+    task_processor = task_executor.new_task_processor()
     task_processor.batch_execute()
 
 
@@ -121,7 +121,7 @@ class TestPush(webapp2.RequestHandler):
         '/cron/test_push')
     logging.info('URL for logs of current round of test_push: %s', log_url)
 
-    task_processor = task_executor.TaskProcessor(task_executor.SUITES_QUEUE)
+    task_processor = task_executor.new_task_processor()
     task_processor.batch_execute()
     # In testing, after one round of batch_execute() to execute all tasks,
     # the suite queue will be purged.

@@ -27,14 +27,19 @@ _DEFAULT_OPTIONS = Options(
 )
 
 
+def new_task_processor():
+  """Factory function to create a task processor appropriate to environment."""
+  return TaskProcessor(queue_name=SUITES_QUEUE, options=_DEFAULT_OPTIONS)
+
+
 class TaskProcessor(object):
   """A class capable of executing tasks by kicking off suites.
 
-  This class fetches tasks from pullqueue, and kicking off suites
-  represented by tasks' params through ChromeOS swarming proxy server.
+  This class fetches tasks from pullqueue, and kicks off suites
+  represented by tasks' params.
   """
 
-  def __init__(self, queue_name, options=_DEFAULT_OPTIONS):
+  def __init__(self, queue_name, options):
     """Initialize a task executor for further pulling & execution.
 
     Args:
