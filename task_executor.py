@@ -29,10 +29,16 @@ _DEFAULT_OPTIONS = Options(
     per_suite_multirequest_size={
         # crbug.com/1028732: Generates too many results to store in BuildBucket
         # output properties.
+        'arc-cts': 15,
+        'arc-cts-qual': 15,
+        'arc-cts-unibuild': 15,
         'arc-gts': 10,
-        # crbug.com/1028732: Generates too many results to store in BuildBucket
-        # output properties.
+        'crosbolt_perf_perbuild': 15,
+        'ent-nightly': 15,
+        'faft_bios': 15,
         'graphics_per-day': 10,
+        'graphics_per-week': 15,
+        'wifi_matfunc': 10,
     })
 
 
