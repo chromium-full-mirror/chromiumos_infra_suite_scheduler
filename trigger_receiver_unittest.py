@@ -94,10 +94,11 @@ class FakeBuildClient(object):
   def __init__(self):
     self.firmware_builds_called = 0
 
-  def get_passed_builds(self, earliest, latest):
+  def get_passed_builds(self, earliest, latest, event_type):
     """Mock get_passed_builds."""
     del earliest  # unused
     del latest # unused
+    del event_type  #unused
     return [
         build_lib.BuildInfo(
             'link', None, '62', '9868.0.0', 'link-release'),
@@ -115,15 +116,11 @@ class FakeBuildClient(object):
             'coral', 'lava', '62', '9868.0.0', 'coral-release'),
     ]
 
-  def get_latest_passed_builds(self, build_config):
-    """Mock get_latest_passed_builds."""
-    del build_config  # unused
-    return build_lib.BuildInfo('link', '62', '9868.0.0', build_config)
-
-  def get_relaxed_passed_builds(self, earliest, latest):
+  def get_relaxed_passed_builds(self, earliest, latest, event_type):
     """Mock get_relaxed_pased_builds."""
     del earliest  # unused
     del latest # unused
+    del event_type  #unused
     return [
         build_lib.BuildInfo('grunt', None, '63', '9968.0.0', 'grunt-release'),
         build_lib.BuildInfo('nami', None, '62', '9867.0.0', 'nami-release'),

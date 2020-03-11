@@ -439,23 +439,28 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         [row[2] for row in res])
     return res
 
-  def get_passed_builds(self, earliest_end_time, latest_end_time):
+  def get_passed_builds(self, earliest_end_time, latest_end_time, event_type):
     """Get passed builds inside a given time span.
 
     BigQuery does not guarantee the inserted time of rows. A new build
     may not get inserted when suite scheduler runs the query. To avoid
-    it, we run the query twice:
+    it, we scan each time span twice:
     - the first run catches the new build from earliest_end_time to
       latest_end_time, and inserts the result to a temp BQ table.
     - the second run checks the build from (earliest_end_time - 1Day)
       to (latest_end_time - 1Day) plus (earliest_end_time to
       latest_end_time). The query returns the build which does not
       appear in the temp table. Thus, if a build was not fetched by the
-      first run, we still could schedule test on it at most 1 day later.
+      first run, we still could schedule test on it at most 1 day later
+      for new_build event. Weekly and nightly events have an interval >= 24
+      hours, so the missed builds will be picked up in the next run, one week
+      later for weekly and one day later for nightly.
 
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
       latest_end_time: a datetime.datetime object in UTC.
+      event_type: a string of event type. It could be one of
+        [WEEKLY|NIGHTLY|new_build].
 
     Returns:
       A list of build_lib.BuildInfo objects.
@@ -468,13 +473,20 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') AS build_config,
           -- Time info
           end_time as build_end_time,
-          CURRENT_TIMESTAMP() as inserted_time
+          CURRENT_TIMESTAMP() as inserted_time,
+          '{0}' as event_type
         FROM
           `cr-buildbucket.chromeos.builds`
         WHERE
           status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
+    earliest_end_time_str = earliest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+    latest_end_time_str = latest_end_time.strftime(time_converter.TIME_FORMAT)
+    project_id = constants.AppID.STAGING_APP
+    if constants.environment() == constants.RunningEnv.ENV_PROD:
+      project_id = constants.application_id()
 
     insert_passed_builds = """
         INSERT
@@ -484,34 +496,34 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
             platform,
             build_config,
             build_end_time,
-            inserted_time
+            inserted_time,
+            event_type
         ) {1}
         AND end_time > '{2}'
         AND end_time < '{3}'
     """
-    earliest_end_time_str = earliest_end_time.strftime(
-        time_converter.TIME_FORMAT)
-    latest_end_time_str = latest_end_time.strftime(
-        time_converter.TIME_FORMAT)
-    project_id = constants.AppID.STAGING_APP
-    if constants.environment() == constants.RunningEnv.ENV_PROD:
-      project_id = constants.application_id()
     # Insert the currently visible builds to BQ.
-    logging.info('Insert the visible passed builds '
-                  'between %s and %s to BQ.',
-                  earliest_end_time_str, latest_end_time_str)
+    logging.info(
+        'Insert the visible passed builds '
+        'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
     self.query(
-        insert_passed_builds.format(
-            project_id,
-            base_query_str,
-            earliest_end_time_str,
-            latest_end_time_str))
+        insert_passed_builds.format(project_id,
+                                    base_query_str.format(event_type),
+                                    earliest_end_time_str,
+                                    latest_end_time_str))
 
-    logging.info('Getting passed builds finished between %s and %s',
-                 earliest_end_time_str, latest_end_time_str)
     query_str = """
         WITH passed_builds AS
-            ({0})
+          (
+            {0}
+            AND (
+              (end_time > TIMESTAMP_SUB(
+                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY)
+              AND end_time < TIMESTAMP_SUB(
+                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'), INTERVAL 1 DAY))
+              OR (end_time > '{2}' AND end_time < '{3}')
+            )
+          )
         SELECT
           b.board,
           b.milestone,
@@ -526,6 +538,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
             AND r.milestone = b.milestone
             AND r.build_config = b.build_config
             AND r.platform = b.platform
+            AND r.event_type = b.event_type
             AND r.build_end_time > TIMESTAMP_SUB(
                 PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
                 INTERVAL 1 DAY)
@@ -534,20 +547,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                 INTERVAL 1 DAY)
           )
         WHERE
-          -- Check if any build was inserted to release builder
-          -- in the past 24 hours.
-          (b.build_end_time > TIMESTAMP_SUB(
-              PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
-              INTERVAL 1 DAY)
-            AND b.build_end_time < TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
-                INTERVAL 1 DAY)
-            AND r.inserted_time is null)
-          OR (b.build_end_time > '{2}'
-            AND b.build_end_time < '{3}')
+          r.inserted_time is null
     """
     if global_config.GAE_TESTING:
-      query_str += 'limit 10'
+      query_str += 'LIMIT 10'
+    logging.info('Getting passed builds finished between %s and %s',
+                 earliest_end_time_str, latest_end_time_str)
     res = self.query(
         query_str.format(
             base_query_str,
@@ -566,15 +571,17 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
     return build_infos
 
-  def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time):
+  def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time,
+                                event_type):
     """Get builds with successful "HWTest [sanity]" stages between a given span.
 
-    Same as get_passed_builds, we run the query twice to ensure we fetched all
-    builds from BQ.
+    Same as get_passed_builds, we run the query twice to ensure we
+    fetched all builds from BQ.
 
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
       latest_end_time: a datetime.datetime object in UTC.
+      event_type: a string of event type.
 
     Returns:
       A list of build_lib.BuildInfo objects.
@@ -589,7 +596,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') as build_config,
           -- Time info
           c.end_time as build_end_time,
-          CURRENT_TIMESTAMP() as inserted_time
+          CURRENT_TIMESTAMP() as inserted_time,
+          '{0}' as event_type
         FROM
           `cr-buildbucket.chromeos.builds` as c,
           UNNEST(c.steps) AS s
@@ -599,6 +607,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           AND s.status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
+    earliest_end_time_str = earliest_end_time.strftime(
+        time_converter.TIME_FORMAT)
+    latest_end_time_str = latest_end_time.strftime(time_converter.TIME_FORMAT)
+    project_id = constants.AppID.STAGING_APP
+    if constants.environment() == constants.RunningEnv.ENV_PROD:
+      project_id = constants.application_id()
 
     insert_relaxed_builds = """
         INSERT
@@ -610,33 +624,33 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
             platform,
             build_config,
             build_end_time,
-            inserted_time
+            inserted_time,
+            event_type
         ) {1}
         AND c.end_time > '{2}'
         AND c.end_time < '{3}'
     """
-    earliest_end_time_str = earliest_end_time.strftime(
-        time_converter.TIME_FORMAT)
-    latest_end_time_str = latest_end_time.strftime(
-        time_converter.TIME_FORMAT)
-    project_id = constants.AppID.STAGING_APP
-    if constants.environment() == constants.RunningEnv.ENV_PROD:
-      project_id = constants.application_id()
-    logging.info('Insert the visible relaxed builds '
-                  'between %s and %s to BQ.',
-                  earliest_end_time_str, latest_end_time_str)
+    logging.info(
+        'Insert the visible relaxed builds '
+        'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
     self.query(
-        insert_relaxed_builds.format(
-            project_id,
-            base_query_str,
-            earliest_end_time_str,
-            latest_end_time_str))
+        insert_relaxed_builds.format(project_id,
+                                     base_query_str.format(event_type),
+                                     earliest_end_time_str,
+                                     latest_end_time_str))
 
-    logging.info('Getting relaxed passed builds finished between %s and %s',
-                 earliest_end_time_str, latest_end_time_str)
     query_str = """
         WITH relaxed_builds AS
-            ({0})
+            (
+              {0}
+              AND (
+                (c.end_time > TIMESTAMP_SUB(
+                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY)
+                AND c.end_time < TIMESTAMP_SUB(
+                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'), INTERVAL 1 DAY))
+                OR (c.end_time > '{2}' AND c.end_time < '{3}')
+              )
+            )
         SELECT
           b.unibuild,
           b.stage_name,
@@ -653,6 +667,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
             AND r.milestone = b.milestone
             AND r.build_config = b.build_config
             AND r.platform = b.platform
+            AND r.event_type = b.event_type
             AND r.build_end_time > TIMESTAMP_SUB(
                 PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
                 INTERVAL 1 DAY)
@@ -661,20 +676,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                 INTERVAL 1 DAY)
           )
         WHERE
-          -- Check if any build was inserted to release builder
-          -- in the past 24 hours.
-          (b.build_end_time > TIMESTAMP_SUB(
-              PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
-              INTERVAL 1 DAY)
-            AND b.build_end_time < TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
-                INTERVAL 1 DAY)
-            AND r.inserted_time is null)
-          OR (b.build_end_time > '{2}'
-              AND b.build_end_time < '{3}')
+          r.inserted_time is null
     """
     if global_config.GAE_TESTING:
-      query_str += 'limit 10'
+      query_str += 'LIMIT 10'
+    logging.info('Getting relaxed passed builds finished between %s and %s',
+                 earliest_end_time_str, latest_end_time_str)
     res = self.query(
         query_str.format(
             base_query_str,

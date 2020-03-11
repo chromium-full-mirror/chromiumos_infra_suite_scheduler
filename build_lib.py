@@ -246,8 +246,8 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
   return branch_build_dict
 
 
-def get_cros_builds(build_client, cros_board_list,
-                    earliest_end_time, latest_end_time):
+def get_cros_builds(build_client, cros_board_list, earliest_end_time,
+                    latest_end_time, event_type):
   """Get branch builds for ChromeOS boards inside the given time span.
 
   Args:
@@ -256,6 +256,7 @@ def get_cros_builds(build_client, cros_board_list,
     cros_board_list: The board list including all CrOS boards.
     earliest_end_time: a datetime.datetime object in UTC.
     latest_end_time: a datetime.datetime object in UTC.
+    event: a string of event type.
 
   Returns:
     a two-tuple of branch build dicts.  Each branch build dict has
@@ -270,9 +271,9 @@ def get_cros_builds(build_client, cros_board_list,
   """
   # Buildbucket Bigquery use UTC timezone
   all_branch_builds = build_client.get_passed_builds(
-      earliest_end_time, latest_end_time)
+      earliest_end_time, latest_end_time, event_type)
   relaxed_builds = build_client.get_relaxed_passed_builds(
-      earliest_end_time, latest_end_time)
+      earliest_end_time, latest_end_time, event_type)
 
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)
