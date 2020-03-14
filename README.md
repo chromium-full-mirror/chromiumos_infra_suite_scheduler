@@ -36,7 +36,7 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
         gcloud.
 
      b. Your corp account is not whitelisted by suite-scheduler
-        project. Please contact @xixuan to whitelist your ldap.
+        project. Please contact @lxn to whitelist your ldap.
 
 # How to test:
 
@@ -83,3 +83,16 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
       cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
       local task queue to get purged.
 
+# How to add or update your job to schedule a suite test:
+
+1. Add or update your job configuration in `configs/suite_scheduler.ini`.
+
+2. Update `configs/lab_config.ini`, if the suite test relies on new board or
+   model. Note, suite scheduler does not automatically catch the new boards or
+   models added to the lab.
+
+3. Run `python runner.py --test_type sanity` to ensure config is eligible.
+
+4. Submit the change and ping/file bug to infra team. Test platform deputy will
+   rollout your change to the production. Once this is done, you may find the
+   scheduling status of the new suite via our [dashboard](go/ctp-).
