@@ -7,7 +7,7 @@ cron:
 - description: kick off suite scheduler jobs
   url: /cron/execute_task
   target: beta
-  schedule: every 10 minutes
+  schedule: every 1 minutes
 
 - description: test push for suite_scheduler on staging instance
   url: /cron/test_push
