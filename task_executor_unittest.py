@@ -65,7 +65,7 @@ class TaskExecutorTestCase(unittest.TestCase):
 
   def testBatchExecuteTask(self):
     """Test task_executor executes tasks not greater than the BATCH_SIZE."""
-    batch_size = 100
+    batch_size = 10
     extra_num = 10
     _push_tasks('foo_suite', batch_size / 2)
     _push_tasks('hoo_suite', batch_size / 2 + extra_num)
@@ -85,7 +85,7 @@ class TaskExecutorTestCase(unittest.TestCase):
 
   def testBatchExecuteTaskFailedFrontdoorTotally(self):
     """Test task_executor fails at the beginning, and no tasks are deleted."""
-    batch_size = 100
+    batch_size = 10
     multirequest_size = 30
     extra_num = 10
     _push_tasks('fake_suite', multirequest_size + extra_num)
@@ -110,7 +110,7 @@ class TaskExecutorTestCase(unittest.TestCase):
   def testBatchExecuteTaskFailedFrontdoorPartially(self):
     """Test task_executor fails halfway, and only executed tasks are deleted."""
     # Batch large enough to cover all added tasks.
-    batch_size = 1000
+    batch_size = 10
     multirequest_size = 30
     extra_num = 10
     success_num = (multirequest_size + extra_num) / 2
@@ -152,10 +152,11 @@ class TaskExecutorTestCase(unittest.TestCase):
 
   def testBatchExecuteTaskWithPerSuiteLimit(self):
     """Test task_executor executes respects per-suite limit."""
-    batch_size = 100
+    batch_size = 10
     multirequest_size = 10
     foo_suite_limit = 3
-    _push_tasks('foo_suite', batch_size)
+    extra_num = 5
+    _push_tasks('foo_suite', batch_size * foo_suite_limit + extra_num)
 
     frontdoor_client = FakeFrontdoorClient()
     task_processor = task_executor.TaskProcessor(
@@ -171,12 +172,9 @@ class TaskExecutorTestCase(unittest.TestCase):
     for tasks in frontdoor_client.frontdoor_run_count['foo_suite']:
       self.assertEqual(foo_suite_limit, len(tasks))
       executed_count += len(tasks)
-    # Even though per-request size is very limited now, most tasks should get
-    # scheduled, without being dropped due to the restriction.
-    self.assertGreater(
-        executed_count,
-        80,
-    )
+    self.assertEqual(executed_count, batch_size * foo_suite_limit)
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(extra_num, len(tasks))
 
 
 def _push_tasks(suite, count):
