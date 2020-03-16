@@ -23,7 +23,8 @@ Options = collections.namedtuple(
     ['batch_size', 'multirequest_size', 'per_suite_multirequest_size'])
 
 _DEFAULT_OPTIONS = Options(
-    batch_size=100,
+    # The maximum CTP multi-requests can be sent in this run.
+    batch_size=10,
     multirequest_size=constants.Buildbucket.MULTIREQUEST_SIZE,
     # A limit on the number of tasks included per request for specific suites.
     per_suite_multirequest_size={
@@ -80,9 +81,8 @@ class TaskProcessor(object):
 
   def batch_execute(self):
     """Execute tasks."""
-    executed_tasks_count = 0
-    while (executed_tasks_count + self._options.multirequest_size <=
-           self._options.batch_size):
+    sent_multireq_count = 0
+    while (sent_multireq_count < self._options.batch_size):
       try:
         tasks = self.queue.lease_tasks_by_tag(
             3600, self._options.multirequest_size, deadline=60)
@@ -107,7 +107,7 @@ class TaskProcessor(object):
                           len(tasks), _suite(tasks))
       finally:
         if executed_tasks:
-          executed_tasks_count += len(executed_tasks)
+          sent_multireq_count += 1
           logging.info('Successfully kicking %d tasks for suite %s',
                        len(executed_tasks), _suite(tasks))
           self.queue.delete_tasks(executed_tasks)
