@@ -42,11 +42,7 @@ def forgive_config_error(func):
 
 
 class ConfigReader(ConfigParser.SafeConfigParser):
-  """A SafeConfigReader that returns None on any error in get*().
-
-  TODO(xixuan): This config_reader uses ConfigParser class to read config
-  file. This config format could be replaced by other more expressive ones.
-  """
+  """A SafeConfigReader that returns None on any error in get*()."""
 
   def __init__(self, filename):
     """Initialize a config reader."""
