@@ -9,6 +9,7 @@ import datetime
 import logging
 import re
 import string
+import uuid
 
 import analytics
 import build_lib
@@ -158,6 +159,7 @@ class TestPlatformClient(object):
     recipe_struct = json_format.Parse(reqs_json, requests_struct)
     return rpc_pb2.ScheduleBuildRequest(builder=self.builder,
                                         properties=recipe_struct,
+                                        request_id=str(uuid.uuid1()),
                                         tags=tags)
 
   def _gen_service_account_key(self, sa):
