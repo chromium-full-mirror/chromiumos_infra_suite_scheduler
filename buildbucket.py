@@ -199,16 +199,12 @@ def _form_test_platform_request(task_params):
   request = request_pb2.Request()
   params = request.params
 
-  if task_params.get('override_qs_account') or task_params.get('override_pool'):
-    logging.debug('Override qs account: %s. Override pool: %s.' %
-                  (task_params.get('override_qs_account'),
-                  task_params.get('override_pool')))
-  quota = task_params.get('override_qs_account')
-  if quota:
-    params.scheduling.quota_account = quota
-  else:
-    params.scheduling.CopyFrom(_scheduling_for_pool(pool))
-  if 'priority' in task_params:
+  params.scheduling.CopyFrom(_scheduling_for_pool(pool))
+  if (task_params.get('qs_account') not in ['None', None]
+      and params.scheduling.unmanaged_pool):
+    params.scheduling.qs_account = task_params.get('qs_account')
+  # Quota Scheduler has no concept of priority.
+  if 'priority' in task_params and not params.scheduling.qs_account:
     params.scheduling.priority = int(task_params['priority'])
 
   params.software_dependencies.add().chromeos_build = build

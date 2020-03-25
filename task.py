@@ -96,6 +96,8 @@ class Task(object):
             launch control builds. The argument is required and only
             applicable for android/brillo builds.
           testbed_dut_count, number of duts to test when using a testbed.
+          qs_account, quota account for the unmanaged pool which has enabled
+            Quota Scheduler.
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
@@ -124,6 +126,7 @@ class Task(object):
     self.hour = task_info.hour
     self.day = task_info.day
     self.only_hwtest_sanity_required = task_info.only_hwtest_sanity_required
+    self.qs_account = task_info.qs_account
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -393,10 +396,7 @@ class Task(object):
       firmware_ro_build=None,
       test_source_build=None,
       launch_control_build=None,
-      run_prod_code=False,
-      is_skylab=False,
-      override_pool='',
-      override_qs_account=''):
+      run_prod_code=False):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
@@ -413,10 +413,6 @@ class Task(object):
         in prod aka the test code currently on the lab servers. If
         False, the control files and test code for this suite run will
         be retrieved from the build artifacts. Default is False.
-      is_skylab: If True, schedule this suite to skylab, otherwise schedule
-        it to AFE. Default is False.
-      override_pool: A string to indicate pool of quota scheduler.
-      override_qs_account: A string of quota scheduler account.
     """
     android_build = None
     testbed_build = None
@@ -456,10 +452,7 @@ class Task(object):
         'force': self.force,
         'dimensions': self.dimensions,
         'run_prod_code': run_prod_code,
-        'is_skylab': is_skylab,
-        'is_frontdoor': self.frontdoor,
-        'override_pool': override_pool,
-        'override_qs_account': override_qs_account,
+        'qs_account': self.qs_account,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

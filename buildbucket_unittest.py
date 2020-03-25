@@ -144,7 +144,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
                     for b in ['foo', 'goo', 'hoo']]
     suite_kwargs[0]['pool'] = 'cts'
     suite_kwargs[1]['pool'] = 'wifi'
-    suite_kwargs[2]['override_qs_account'] = 'dummy@foo.com'
     for suite in suite_kwargs:
       task_executor.push(task_executor.SUITES_QUEUE,
                          tag='some_suite', **suite)
@@ -163,8 +162,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_CTS)
     self.assertEqual(request_list[1].params.scheduling.unmanaged_pool,
                      suite_kwargs[1]['pool'])
-    self.assertEqual(request_list[2].params.scheduling.quota_account,
-                     suite_kwargs[2]['override_qs_account'])
 
   def testNoFinalBuild(self):
     suite_kwargs = _get_suite_params()
@@ -181,12 +178,48 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(len(executed), 0)
     self._assert_bb_client_not_called()
 
+  def testShouldSetQsAccount(self):
+    suite_kwargs = _get_suite_params(pool='foo')
+    suite_kwargs['priority'] = '30'
+    suite_kwargs['qs_account'] = 'qs-foo'
+
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    request_map = self._extract_request_map_from_bb_client()
+    self._assert_bb_client_called()
+    self.assertEqual(len(request_map), 1)
+    req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
+    self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
+    # If qs_account is set, priority should be 0, the default value
+    # defined by proto3.
+    self.assertEqual(req.params.scheduling.priority, 0)
+
+  def testShouldNotSetQsAccountForManagedPool(self):
+    suite_kwargs = _get_suite_params(pool='DUT_POOL_SUITES')
+    suite_kwargs['qs_account'] = 'qs-foo'
+
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    request_map = self._extract_request_map_from_bb_client()
+    self._assert_bb_client_called()
+    self.assertEqual(len(request_map), 1)
+    req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
+    self.assertEqual(req.params.scheduling.qs_account, '')
+
   def testShouldSetPriority(self):
     suite_kwargs = _get_suite_params()
     suite_kwargs['priority'] = '30'
 
-    task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite_kwargs)
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(3600,
         constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)

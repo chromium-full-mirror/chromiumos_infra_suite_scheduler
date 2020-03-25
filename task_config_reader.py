@@ -60,6 +60,7 @@ COMMON_TASK_ENTRIES = ['any_model',
                        'suite',
                        'test_source',
                        'timeout',
+                       'qs_account',
                        'dimensions']
 
 # Namedtuple for storing task info.
@@ -210,6 +211,7 @@ class TaskConfig(object):
     keyword = self._config_reader.getstring(section, 'run_on')
     suite = self._config_reader.getstring(section, 'suite')
     pool = self._config_reader.getstring(section, 'pool')
+    qs_account = self._config_reader.getstring(section, 'qs_account')
     boards = self._config_reader.getstring(section, 'boards')
     exclude_boards = self._config_reader.getstring(section,
                                                    'exclude_boards')
@@ -325,6 +327,7 @@ class TaskConfig(object):
                     os_type=os_type,
                     testbed_dut_count=testbed_dut_count,
                     only_hwtest_sanity_required=only_hwtest_sanity_required,
+                    qs_account=qs_account,
                     dimensions=dimensions)
 
   def _validate_task_section(self, task_info):
