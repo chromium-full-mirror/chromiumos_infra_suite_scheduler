@@ -465,7 +465,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
-    base_query_str = """
+    base_query_template = """
         SELECT
           JSON_EXTRACT_SCALAR(output.properties, '$.board') AS board,
           JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version') AS milestone,
@@ -481,6 +481,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
+    base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
         time_converter.TIME_FORMAT)
     latest_end_time_str = latest_end_time.strftime(time_converter.TIME_FORMAT)
@@ -508,7 +509,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
     self.query(
         insert_passed_builds.format(project_id,
-                                    base_query_str.format(event_type),
+                                    base_query_str,
                                     earliest_end_time_str,
                                     latest_end_time_str))
 
@@ -586,7 +587,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
-    base_query_str = """
+    base_query_template = """
         SELECT
           JSON_EXTRACT_SCALAR(output.properties, '$.unibuild') as unibuild,
           s.name as stage_name,
@@ -607,6 +608,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           AND s.status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
     """
+    base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
         time_converter.TIME_FORMAT)
     latest_end_time_str = latest_end_time.strftime(time_converter.TIME_FORMAT)
@@ -635,7 +637,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
     self.query(
         insert_relaxed_builds.format(project_id,
-                                     base_query_str.format(event_type),
+                                     base_query_str,
                                      earliest_end_time_str,
                                      latest_end_time_str))
 
