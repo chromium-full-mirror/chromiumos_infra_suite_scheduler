@@ -64,9 +64,11 @@ class TestScheduleJobSection(unittest.TestCase):
   def setUp(self):
     super(TestScheduleJobSection, self).setUp()
 
-  def testJobName(self):
+  def testJobInfo(self):
     client = analytics.ScheduleJobSection(_get_task_info())
     self.assertEqual(client.message.job_name, 'FakeSuiteTestPerBuild')
+    self.assertEqual(client.message.pool, 'fake_pool')
+    self.assertEqual(client.message.suite, 'fake_suite')
 
   def testBuildFilters(self):
     client = analytics.ScheduleJobSection(_get_task_info())
