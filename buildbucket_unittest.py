@@ -65,7 +65,7 @@ class FakeTestPlatformClient(object):
     self.called_with_requests = []
     self.error = None
 
-  def ScheduleBuild(self, req, credentials=None):
+  def ScheduleBuild(self, req, credentials=None, timeout=10):
     self.called_with_requests.append(req)
     if self.error:
       return self.error

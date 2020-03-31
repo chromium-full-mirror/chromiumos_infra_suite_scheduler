@@ -44,6 +44,13 @@ NONSTANDARD_POOL_NAMES = {
 GS_PREFIX = 'gs://chromeos-image-archive/'
 
 
+# The default prpc timeout(10 sec) is too short for the request_id
+# to propgate in buildbucket, and could not fully dedup the
+# ScheduleBuild request. Increase it while not hitting the default
+# GAE deadline(60 sec)
+PRPC_TIMEOUT_SEC = 55
+
+
 def _get_client(address):
   """Create a prpc client instance for given address."""
   return prpc_client.Client(address, BuildsServiceDescription)
@@ -117,7 +124,8 @@ class TestPlatformClient(object):
       else:
         cred = prpc_client.service_account_credentials()
       #TODO(linxinan): only add the tasks returned from bb to executed_tasks.
-      resp = self.client.ScheduleBuild(req_build, credentials=cred)
+      resp = self.client.ScheduleBuild(
+          req_build, credentials=cred, timeout=PRPC_TIMEOUT_SEC)
       logging.debug('Response from buildbucket: %r', resp)
       for t in task_executions:
         t.update_result(resp)
@@ -143,7 +151,8 @@ class TestPlatformClient(object):
     sa_key = self._gen_service_account_key(
         file_getter.STAGING_CLIENT_SECRETS_FILE)
     cred = prpc_client.service_account_credentials(service_account_key=sa_key)
-    return self.client.ScheduleBuild(req_build, credentials=cred)
+    return self.client.ScheduleBuild(
+        req_build, credentials=cred, timeout=PRPC_TIMEOUT_SEC)
 
   def _build_request(self, reqs_json, tags):
     """Generate ScheduleBuildRequest for calling buildbucket.
