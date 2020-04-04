@@ -452,9 +452,10 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       latest_end_time). The query returns the build which does not
       appear in the temp table. Thus, if a build was not fetched by the
       first run, we still could schedule test on it at most 1 day later
-      for new_build event. Weekly and nightly events have an interval >= 24
-      hours, so the missed builds will be picked up in the next run, one week
-      later for weekly and one day later for nightly.
+      for new_build events.
+    Weekly and nightly events do not need this arrangement because
+    they do not cover every single build.
+
 
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
@@ -489,77 +490,39 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     if constants.environment() == constants.RunningEnv.ENV_PROD:
       project_id = constants.application_id()
 
-    insert_passed_builds = """
-        INSERT
-          `google.com:{0}.builds.passed_builds`(
-            board,
-            milestone,
-            platform,
-            build_config,
-            build_end_time,
-            inserted_time,
-            event_type
-        ) {1}
-        AND end_time > '{2}'
-        AND end_time < '{3}'
-    """
-    # Insert the currently visible builds to BQ.
-    logging.info(
-        'Insert the visible passed builds '
-        'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
-    self.query(
-        insert_passed_builds.format(project_id,
-                                    base_query_str,
-                                    earliest_end_time_str,
-                                    latest_end_time_str))
+    if event_type == 'new_build':
+      insert_passed_builds = """
+          INSERT
+            `google.com:{0}.builds.passed_builds`(
+              board,
+              milestone,
+              platform,
+              build_config,
+              build_end_time,
+              inserted_time,
+              event_type
+          ) {1}
+          AND end_time > '{2}'
+          AND end_time < '{3}'
+      """
+      # Insert the currently visible builds to BQ.
+      logging.info(
+          'Insert the visible passed builds '
+          'between %s and %s to BQ.', earliest_end_time_str,
+          latest_end_time_str)
+      self.query(
+          insert_passed_builds.format(project_id, base_query_str,
+                                      earliest_end_time_str,
+                                      latest_end_time_str))
 
-    query_str = """
-        WITH passed_builds AS
-          (
-            {0}
-            AND (
-              (end_time > TIMESTAMP_SUB(
-                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY)
-              AND end_time < TIMESTAMP_SUB(
-                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'), INTERVAL 1 DAY))
-              OR (end_time > '{2}' AND end_time < '{3}')
-            )
-          )
-        SELECT
-          b.board,
-          b.milestone,
-          b.platform,
-          b.build_config,
-        FROM
-          passed_builds AS b
-        LEFT JOIN
-          `google.com:{1}.builds.passed_builds` AS r
-          ON (
-            r.board = b.board
-            AND r.milestone = b.milestone
-            AND r.build_config = b.build_config
-            AND r.platform = b.platform
-            AND r.event_type = b.event_type
-            AND r.build_end_time > TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
-                INTERVAL 1 DAY)
-            AND r.build_end_time < TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
-                INTERVAL 1 DAY)
-          )
-        WHERE
-          r.inserted_time is null
-    """
+    query_template = _passed_build_query_temptlate(event_type)
+    query_str = query_template.format(base_query_str, earliest_end_time_str,
+                                      latest_end_time_str, project_id)
     if global_config.GAE_TESTING:
       query_str += 'LIMIT 10'
     logging.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
-    res = self.query(
-        query_str.format(
-            base_query_str,
-            project_id,
-            earliest_end_time_str,
-            latest_end_time_str))
+    res = self.query(query_str)
     res = _parse_bq_job_query(res)
     if res is None:
       return []
@@ -577,7 +540,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     """Get builds with successful "HWTest [sanity]" stages between a given span.
 
     Same as get_passed_builds, we run the query twice to ensure we
-    fetched all builds from BQ.
+    fetched all builds from BQ for new_build event.
 
     Args:
       earliest_end_time: a datetime.datetime object in UTC.
@@ -616,80 +579,40 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     if constants.environment() == constants.RunningEnv.ENV_PROD:
       project_id = constants.application_id()
 
-    insert_relaxed_builds = """
-        INSERT
-          `google.com:{0}.builds.relaxed_builds`(
-            unibuild,
-            stage_name,
-            board,
-            milestone,
-            platform,
-            build_config,
-            build_end_time,
-            inserted_time,
-            event_type
-        ) {1}
-        AND c.end_time > '{2}'
-        AND c.end_time < '{3}'
-    """
-    logging.info(
-        'Insert the visible relaxed builds '
-        'between %s and %s to BQ.', earliest_end_time_str, latest_end_time_str)
-    self.query(
-        insert_relaxed_builds.format(project_id,
-                                     base_query_str,
-                                     earliest_end_time_str,
-                                     latest_end_time_str))
+    if event_type == 'new_build':
+      insert_relaxed_builds = """
+          INSERT
+            `google.com:{0}.builds.relaxed_builds`(
+              unibuild,
+              stage_name,
+              board,
+              milestone,
+              platform,
+              build_config,
+              build_end_time,
+              inserted_time,
+              event_type
+          ) {1}
+          AND c.end_time > '{2}'
+          AND c.end_time < '{3}'
+      """
+      logging.info(
+          'Insert the visible relaxed builds '
+          'between %s and %s to BQ.', earliest_end_time_str,
+          latest_end_time_str)
+      self.query(
+          insert_relaxed_builds.format(project_id, base_query_str,
+                                       earliest_end_time_str,
+                                       latest_end_time_str))
 
-    query_str = """
-        WITH relaxed_builds AS
-            (
-              {0}
-              AND (
-                (c.end_time > TIMESTAMP_SUB(
-                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY)
-                AND c.end_time < TIMESTAMP_SUB(
-                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'), INTERVAL 1 DAY))
-                OR (c.end_time > '{2}' AND c.end_time < '{3}')
-              )
-            )
-        SELECT
-          b.unibuild,
-          b.stage_name,
-          b.board,
-          b.milestone,
-          b.platform,
-          b.build_config,
-        FROM
-          relaxed_builds AS b
-        LEFT JOIN
-          `google.com:{1}.builds.relaxed_builds` AS r
-          ON (
-            r.board = b.board
-            AND r.milestone = b.milestone
-            AND r.build_config = b.build_config
-            AND r.platform = b.platform
-            AND r.event_type = b.event_type
-            AND r.build_end_time > TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
-                INTERVAL 1 DAY)
-            AND r.build_end_time < TIMESTAMP_SUB(
-                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{3}'),
-                INTERVAL 1 DAY)
-          )
-        WHERE
-          r.inserted_time is null
-    """
+    query_template = _relaxed_build_query_temptlate(event_type)
+    query_str = query_template.format(base_query_str, earliest_end_time_str,
+                                      latest_end_time_str, project_id)
     if global_config.GAE_TESTING:
       query_str += 'LIMIT 10'
     logging.info('Getting relaxed passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
-    res = self.query(
-        query_str.format(
-            base_query_str,
-            project_id,
-            earliest_end_time_str,
-            latest_end_time_str))
+    res = self.query(query_str)
     res = _parse_bq_job_query(res)
     if res is None:
       return []
@@ -804,3 +727,121 @@ def _parse_board(build_config, board):
     return match.groups()[0]
 
   return board
+
+
+def _passed_build_query_temptlate(event_type):
+  """Wrapper to create the query template for passed builds."""
+  if event_type == 'new_build':
+    return """
+        WITH passed_builds AS
+          (
+            {0}
+            AND (
+              (end_time > TIMESTAMP_SUB(
+                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'), INTERVAL 1 DAY)
+              AND end_time < TIMESTAMP_SUB(
+                  PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY))
+              OR (end_time > '{1}' AND end_time < '{2}')
+            )
+          )
+        SELECT
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          passed_builds AS b
+        LEFT JOIN
+          `google.com:{3}.builds.passed_builds` AS r
+          ON (
+            r.board = b.board
+            AND r.milestone = b.milestone
+            AND r.build_config = b.build_config
+            AND r.platform = b.platform
+            AND r.event_type = b.event_type
+            AND r.build_end_time > TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'),
+                INTERVAL 1 DAY)
+            AND r.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+                INTERVAL 1 DAY)
+          )
+        WHERE
+          r.inserted_time is null
+    """
+  return """
+          WITH passed_builds AS
+          (
+            {0}
+            AND end_time > '{1}'
+            AND end_time < '{2}'
+          )
+        SELECT
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          passed_builds AS b
+    """
+
+
+def _relaxed_build_query_temptlate(event_type):
+  """Wrapper to create the query template for relaxed builds."""
+  if event_type == 'new_build':
+    return """
+        WITH relaxed_builds AS
+            (
+              {0}
+              AND (
+                (c.end_time > TIMESTAMP_SUB(
+                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'), INTERVAL 1 DAY)
+                AND c.end_time < TIMESTAMP_SUB(
+                    PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY))
+                OR (c.end_time > '{1}' AND c.end_time < '{2}')
+              )
+            )
+        SELECT
+          b.unibuild,
+          b.stage_name,
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          relaxed_builds AS b
+        LEFT JOIN
+          `google.com:{3}.builds.relaxed_builds` AS r
+          ON (
+            r.board = b.board
+            AND r.milestone = b.milestone
+            AND r.build_config = b.build_config
+            AND r.platform = b.platform
+            AND r.event_type = b.event_type
+            AND r.build_end_time > TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'),
+                INTERVAL 1 DAY)
+            AND r.build_end_time < TIMESTAMP_SUB(
+                PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'),
+                INTERVAL 1 DAY)
+          )
+        WHERE
+          r.inserted_time is null
+    """
+  return """
+        WITH relaxed_builds AS
+            (
+              {0}
+              AND c.end_time > '{1}'
+              AND c.end_time < '{2}'
+            )
+        SELECT
+          b.unibuild,
+          b.stage_name,
+          b.board,
+          b.milestone,
+          b.platform,
+          b.build_config,
+        FROM
+          relaxed_builds AS b
+    """
