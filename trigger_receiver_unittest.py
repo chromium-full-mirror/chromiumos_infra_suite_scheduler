@@ -5,6 +5,7 @@
 """Module for trigger_receiver unittests."""
 # pylint: disable=g-missing-super-call
 
+import constants
 import datetime
 import os
 import unittest
@@ -86,6 +87,17 @@ def _should_schedule_new_build_task(last_now, now):
     return True
 
   return False
+
+
+def _get_current_min(now):
+  """A helper to truncate the given time to minute."""
+  return datetime.datetime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+      tzinfo=time_converter.UTC_TZ)
 
 
 class FakeBuildClient(object):
@@ -810,6 +822,29 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
       tasks[keyword] = new_event.task_list
 
     return tasks
+
+  def testEventShouldScanNewBuildFromSinceDateToTargetDate(self):
+    """Test the event should scan new builds from last_exec to target_exec."""
+    _utc_now = datetime.datetime.now(time_converter.UTC_TZ)
+    # utc_now() should be called only 3 times for the creation of Weekly,
+    # Nightly or New_Build event.
+    self._mock_utc_now.side_effect = [_utc_now, _utc_now, _utc_now]
+    target_exec_utc = _get_current_min(_utc_now)
+    since_date = target_exec_utc - datetime.timedelta(hours=1)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time('new_build', since_date)
+    delay_minutes = datetime.timedelta(
+        minutes=constants.BaseEvent.DELAY_MINUTES)
+    with mock.patch(
+        'build_lib.get_cros_builds',
+        return_value=({}, {})) as mock_get_cros_builds:
+      suite_trigger = trigger_receiver.TriggerReceiver()
+      suite_trigger.cron()
+      # The new CrOS builds we fetched should be created within
+      # the specified time span.
+      mock_get_cros_builds.assert_called_once_with(
+          mock.ANY, mock.ANY, since_date - delay_minutes,
+          target_exec_utc - delay_minutes, 'new_build')
 
   def testCronWithoutLastExec(self):
     """Test the first round of cron can be successfully executed."""
