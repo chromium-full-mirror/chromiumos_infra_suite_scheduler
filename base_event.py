@@ -94,7 +94,7 @@ class BaseEvent(object):
     return build_lib.get_cros_builds(build_client,
                                      lab_config.get_cros_board_list(),
                                      self.since_date - delay_minutes,
-                                     time_converter.utc_now() - delay_minutes,
+                                     self.target_exec_utc - delay_minutes,
                                      self.keyword)
 
   def get_launch_control_builds(self, lab_config, android_client):
