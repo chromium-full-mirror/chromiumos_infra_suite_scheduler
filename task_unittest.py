@@ -582,6 +582,13 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
           json.dumps(self.mock_bq_client.rows[0]['json']),
           analytics_pb2.ScheduleJobSection())
     jobs = job_sec.schedule_jobs
+    # 'nasher' is excluded, hence there should be two jobs for the rest models
+    # 'robo', 'lava'.
+    self.assertEqual(2, len(jobs))
+    # The first job should be scheduled with empty model, as any_model is True.
+    self.assertEqual(jobs[0].build_target.name, 'coral')
+    self.assertEqual(jobs[0].model.value, '')
+    # The second job should be skipped and the justification is recorded.
     self.assertEqual(jobs[1].build_target.name, 'coral')
     self.assertEqual(jobs[1].model.value, 'lava')
     self.assertIn('Skip model lava as any_model enabled', jobs[1].justification)
