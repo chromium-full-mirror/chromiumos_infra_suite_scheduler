@@ -59,11 +59,23 @@ class TotMilestoneManagerTestCase(unittest.TestCase):
     fake_tot_manager = tot_manager.TotMilestoneManager()
     self.assertEqual(fake_tot_manager.convert_tot_spec('tot-2'), 'R54')
 
-  def testConvertToTMinusMore(self):
-    """Test convert_tot_spec when given tot_spec is 'tot-3'."""
+  def testConvertToTMinus9(self):
+    """Test convert_tot_spec when given tot_spec is 'tot-9'."""
     self._mock_tot.return_value = FakeTotMilestoneManager(False)
     fake_tot_manager = tot_manager.TotMilestoneManager()
-    self.assertEqual(fake_tot_manager.convert_tot_spec('tot-3'), 'R56')
+    self.assertEqual(fake_tot_manager.convert_tot_spec('tot-9'), 'R47')
+
+  def testConvertToTMinus10(self):
+    """Test convert_tot_spec when given invalid tot_spec 'tot-10'."""
+    self._mock_tot.return_value = FakeTotMilestoneManager(False)
+    fake_tot_manager = tot_manager.TotMilestoneManager()
+    self.assertRaises(ValueError, fake_tot_manager.convert_tot_spec, 'tot-10')
+
+  def testConvertToTMinus0(self):
+    """Test convert_tot_spec when given invalid tot_spec 'tot-0'."""
+    self._mock_tot.return_value = FakeTotMilestoneManager(False)
+    fake_tot_manager = tot_manager.TotMilestoneManager()
+    self.assertRaises(ValueError, fake_tot_manager.convert_tot_spec, 'tot-0')
 
   def testConvertToTBadSpec(self):
     """Test convert_tot_spec when given tot_spec is unrecognized."""
