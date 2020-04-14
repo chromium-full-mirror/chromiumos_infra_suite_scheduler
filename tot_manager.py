@@ -69,11 +69,12 @@ class TotMilestoneManager(object):
         False.
     """
     self.is_sanity = is_sanity
-    self.storage_client = rest_client.StorageRestClient(
-        rest_client.BaseRestClient(
-            constants.RestClient.STORAGE_CLIENT.scopes,
-            constants.RestClient.STORAGE_CLIENT.service_name,
-            constants.RestClient.STORAGE_CLIENT.service_version))
+    if not self.is_sanity:
+      self.storage_client = rest_client.StorageRestClient(
+          rest_client.BaseRestClient(
+              constants.RestClient.STORAGE_CLIENT.scopes,
+              constants.RestClient.STORAGE_CLIENT.service_name,
+              constants.RestClient.STORAGE_CLIENT.service_version))
     self.tot = self._tot_milestone()
 
   def convert_tot_spec(self, tot_spec):
