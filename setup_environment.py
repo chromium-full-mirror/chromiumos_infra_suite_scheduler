@@ -61,21 +61,13 @@ def _install_third_party_lib(input_args):
                              '-r', 'requirements.txt'])
 
 
-def _install_infra_libs(skip_install_infra_libs):
+def _install_infra_libs():
   """Install useful libs from Chromium infra and Chromite.
 
   infra_libs consists of prpc client from luci and necessary proto files from
   Chromite. Suite scheduler relies on those libs to conduct prpc call to
   Buildbucket.
-
-  Args:
-    skip_install_infra_libs: A boolean variable to indicate whether to skip
-      downloading the infra libs.
   """
-
-  if skip_install_infra_libs:
-    return
-
   print('Recreate infra_libs directory if already exists...')
   if os.path.exists(file_getter.INFRA_LIBS_PATH):
     osutils.RmDir(file_getter.INFRA_LIBS_PATH)
@@ -106,38 +98,36 @@ def _install_infra_libs(skip_install_infra_libs):
                    sparse_checkout=chromite_checkout)
 
 
-def fetch_service_credentials(force_update_cred):
+def _fetch_service_credentials():
   """Fetch service credentials from GS bucket.
-
-  Args:
-    force_update_cred: A boolean variable to indicate whether to force to
-      re-download the creds.
 
   Raises:
     ValueError: if credentials cannot be fetched due to no valid gs package.
   """
   credentials_path = file_getter.CREDENTIALS_PATH
-  if force_update_cred and os.path.exists(credentials_path):
-    shutil.rmtree(credentials_path)
+  if os.path.exists(credentials_path):
+    print('The credential folder already exists: %s. '
+          'Delete it if you want to reload the service accounts.' %
+          credentials_path)
+    return
 
-  if not os.path.exists(credentials_path):
-    if gs is None:
-      raise ValueError(
-          'Chromite cannot be imported.\nPlease download the credentials '
-          'manually:\n\tgsutil cp -r %s %s' % (
-              CREDS_GS_PATH, os.path.dirname(credentials_path)))
+  if gs is None:
+    raise ValueError(
+        'Chromite cannot be imported.\nPlease download the credentials '
+        'manually:\n\tgsutil cp -r %s %s' %
+        (CREDS_GS_PATH, os.path.dirname(credentials_path)))
 
-    os.mkdir(credentials_path)
-    try:
-      ctx = gs.GSContext(init_boto=True)
-      ctx.Copy(CREDS_GS_PATH + '*', credentials_path)
-    except gs.GSCommandError as e:
-      print('The GS credentials is not configured properly. '
-            'Please contact ChromeOS Infrastructure'
-            'team for more info about it.')
-      print('Failed to get suite_scheduler service credentials: %r.'
-            'Deleting %s' % (str(e), credentials_path))
-      os.rmdir(credentials_path)
+  os.mkdir(credentials_path)
+  try:
+    ctx = gs.GSContext(init_boto=True)
+    ctx.Copy(CREDS_GS_PATH + '*', credentials_path)
+  except gs.GSCommandError as e:
+    print('The GS credentials is not configured properly. '
+          'Please contact ChromeOS Infrastructure'
+          'team for more info about it.')
+    print('Failed to get suite_scheduler service credentials: %r.'
+          'Deleting %s' % (str(e), credentials_path))
+    os.rmdir(credentials_path)
 
 
 def _verify():
@@ -155,13 +145,13 @@ def _make_parser():
       action='store_true',
       help='Force to reinstall all required third-party libraries.')
   parser.add_argument(
-      '--update_cred',
+      '--load_cred',
       action='store_true',
-      help='Force to re-copy the credentials from Google Storage.')
+      help='Load credentials from Google Storage.')
   parser.add_argument(
-      '--skip_infra_libs',
-      action='store_true',
-      help='Skip to install infra libs.')
+      '--load_infra_libs', action='store_true', help='Install infra libs.')
+  parser.add_argument(
+      '--run_unit_test', action='store_true', help='Run unit test.')
   return parser
 
 
@@ -169,6 +159,9 @@ if __name__ == '__main__':
   setup_parser = _make_parser()
   setup_args = setup_parser.parse_args()
   _install_third_party_lib(setup_args)
-  fetch_service_credentials(setup_args.update_cred)
-  _install_infra_libs(setup_args.skip_infra_libs)
-  _verify()
+  if setup_args.load_cred:
+    _fetch_service_credentials()
+  if setup_args.load_infra_libs:
+    _install_infra_libs()
+  if setup_args.run_unit_test:
+    _verify()

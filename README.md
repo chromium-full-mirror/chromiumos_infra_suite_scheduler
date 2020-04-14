@@ -14,7 +14,10 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
 
         sudo apt-get install python-pip
 
-4. Run `python setup_environment.py` to download third-party libraries and credentials.
+4. If you only modify the files in `configs/`, run `python setup_environment.py`
+   to download third-party libraries. Otherwise, load the full dependencies:
+
+        python setup_environment.py --load_infra_libs --load_cred
 
 # Known Issues
 
@@ -40,23 +43,20 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
 
 # How to test:
 
-1. Presubmit will kick off sanity test for verifying suite_scheduler.ini:
+1. Run sanity test for config changes:
 
         python runner.py --test_type sanity
 
-2. Run unittest:
+2. Run unittest and integration for any changes in production code:
 
-        python runner.py' or 'python runner.py --test_type unittest
-
-3. Run integration test:
-
+        python runner.py --test_type unittest
         python runner.py --test_type integration
 
-4. Run tests with debug mode:
+3. Run tests with debug mode:
 
         python runner.py --debug
 
-5. Run suite scheduler v2 as a local development server:
+4. Run suite scheduler v2 as a local development server:
 
    If you want to verify any APIs locally, you can run suite scheduler v2 as a
    local development server
