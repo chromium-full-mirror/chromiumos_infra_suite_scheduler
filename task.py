@@ -32,7 +32,11 @@ class Task(object):
   Task. Each instance has enough information to schedule itself.
   """
 
-  def __init__(self, task_info, board_family_config={}, tot=None):
+  def __init__(self,
+               task_info,
+               board_family_config={},
+               tot=None,
+               is_sanity=False):
     """Initialize a task instance.
 
     Args:
@@ -102,6 +106,7 @@ class Task(object):
         to its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
+      is_sanity: A boolean; true if we are running in sanity env.
     """
     # Indicate whether there're suites get pushed into taskqueue for this task.
     self.is_pushed = False
@@ -187,7 +192,9 @@ class Task(object):
     self.dimensions = task_info.dimensions
 
     self._set_spec_compare_info()
-    self.job_section = analytics.ScheduleJobSection(task_info)
+    # Sanity test does not have to upload metrics.
+    if not is_sanity:
+      self.job_section = analytics.ScheduleJobSection(task_info)
 
   def schedule(self, launch_control_builds, cros_builds_tuple,
                firmware_builds, configs):

@@ -16,7 +16,7 @@ class ConfigSanityTest(unittest.TestCase):
   def testSuiteSchedulerINI(self):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
     task_config = task_config_reader.TaskConfig(
-        config_reader.ConfigReader(suite_config_file))
+        config_reader.ConfigReader(suite_config_file), is_sanity=True)
 
     exceptions = []
     for keyword in task_config_reader.EVENT_CLASSES.keys():

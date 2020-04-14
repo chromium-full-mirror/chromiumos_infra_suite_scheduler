@@ -83,20 +83,24 @@ class TaskConfig(object):
 
   _ALLOWED_HEADER = set(COMMON_TASK_ENTRIES + ['owner', 'run_on'])
 
-  def __init__(self, config_reader):
+  def __init__(self, config_reader, is_sanity=False):
     """Initialize a TaskConfig to generate task list from config file.
 
     Args:
       config_reader: a ConfigReader object to read task config.
+      is_sanity: a boolean; true if we are running in sanity env.
     """
     self._config_reader = config_reader
-    self._tot_manager = tot_manager.TotMilestoneManager()
-    self._board_family_config = build_lib.get_board_family_mapping_from_gs(
-        rest_client.StorageRestClient(
-            rest_client.BaseRestClient(
-                constants.RestClient.STORAGE_CLIENT.scopes,
-                constants.RestClient.STORAGE_CLIENT.service_name,
-                constants.RestClient.STORAGE_CLIENT.service_version)))
+    self.is_sanity = is_sanity
+    self._tot_manager = tot_manager.TotMilestoneManager(is_sanity=is_sanity)
+    self._board_family_config = {}
+    if not is_sanity:
+      self._board_family_config = build_lib.get_board_family_mapping_from_gs(
+          rest_client.StorageRestClient(
+              rest_client.BaseRestClient(
+                  constants.RestClient.STORAGE_CLIENT.scopes,
+                  constants.RestClient.STORAGE_CLIENT.service_name,
+                  constants.RestClient.STORAGE_CLIENT.service_version)))
 
   def get_tasks_by_keyword(self, event_type):
     """Obtain tasks from config sections read from config file.
@@ -480,6 +484,8 @@ class TaskConfig(object):
     task_info = self._read_task_section(section)
     self._validate_task_section(task_info)
 
-    return task.Task(task_info,
-                     board_family_config=self._board_family_config,
-                     tot=self._tot_manager)
+    return task.Task(
+        task_info,
+        board_family_config=self._board_family_config,
+        tot=self._tot_manager,
+        is_sanity=self.is_sanity)
