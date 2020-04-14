@@ -11,6 +11,11 @@ import file_getter
 import task_config_reader
 
 
+def _priority_is_valid(t):
+  """A helper to verify the configured priority."""
+  return 50 <= t.priority <= 255
+
+
 class ConfigSanityTest(unittest.TestCase):
 
   def testSuiteSchedulerINI(self):
@@ -24,10 +29,17 @@ class ConfigSanityTest(unittest.TestCase):
       if response['exceptions']:
         exceptions.extend(response['exceptions'])
       for t in response['tasks']:
+        if not _priority_is_valid(t):
+          exceptions.append(
+              'Task %s has invalid priority %d: the valid range is [50, 255].'
+              % (t.name, t.priority))
         if t.dimensions is not None:
           for label in t.dimensions.split(','):
             if len(label.split(':')) != 2:
-              self.fail('Fail sanity check for dimensions %s.' % t.dimensions)
+              exceptions.append(
+                  'Task %s has invalid dimension %s: '
+                  'only dimensions of the form key:value are allowed' %
+                  (t.name, label))
 
     if exceptions:
       self.fail('Fail sanity check for %s:\n%s' % (
