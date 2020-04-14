@@ -591,7 +591,8 @@ class Task(object):
               firmware_ro_build=firmware_ro_build,
               test_source_build=test_source_build)
 
-          self.job_section.add_schedule_job(board, model, task_id=task_id)
+          self.job_section.add_schedule_job(
+              board, explicit_model, task_id=task_id)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
