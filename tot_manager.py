@@ -80,11 +80,14 @@ class TotMilestoneManager(object):
   def convert_tot_spec(self, tot_spec):
     """Convert a tot spec to the appropriate milestone.
 
+    The valid lag number scope is [1,9].
     Assume tot is R40:
     tot   -> R40
     tot-1 -> R39
     tot-2 -> R38
-    tot-(any other numbers) -> R40
+    ...
+    tot-9 -> R31
+    tot-(any other numbers) -> Raise a ValueError.
 
     With the last option one assumes that a malformed configuration
     that has 'tot' in it, wants at least tot.
@@ -99,7 +102,7 @@ class TotMilestoneManager(object):
       ValueError: If the tot_spec doesn't match the expected format.
     """
     tot_spec = tot_spec.lower()
-    match = re.match('(tot)[-]?(1$|2$)?', tot_spec)
+    match = re.match('(tot)[-]?([1-9]?)$', tot_spec)
     if not match:
       raise ValueError('%s is not a valid branch spec.' % tot_spec)
 
