@@ -13,6 +13,8 @@ import task_config_reader
 
 def _priority_is_valid(t):
   """A helper to verify the configured priority."""
+  if t.priority is None:
+    return True
   return 50 <= t.priority <= 255
 
 
@@ -22,7 +24,6 @@ class ConfigSanityTest(unittest.TestCase):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
     task_config = task_config_reader.TaskConfig(
         config_reader.ConfigReader(suite_config_file), is_sanity=True)
-
     exceptions = []
     for keyword in task_config_reader.EVENT_CLASSES.keys():
       response = task_config.get_tasks_by_keyword(keyword)
@@ -40,6 +41,14 @@ class ConfigSanityTest(unittest.TestCase):
                   'Task %s has invalid dimension %s: '
                   'only dimensions of the form key:value are allowed' %
                   (t.name, label))
+        if t.pool == 'suites' and t.priority:
+          exceptions.append(
+              'Task %s is in suite pool, and should not have priority, %d.' %
+              (t.name, t.priority))
+        if t.qs_account and t.priority:
+          exceptions.append(
+              'Task %s should not have both quota account and priority '
+              'configured.' % t.name)
 
     if exceptions:
       self.fail('Fail sanity check for %s:\n%s' % (

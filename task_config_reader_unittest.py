@@ -142,6 +142,13 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].priority, priority)
 
+  def testSuitePoolShouldNotSetPriority(self):
+    """Ensure priority is not set for pool suites."""
+    self.config.set(self._TASK_NAME, 'pool', 'suites')
+    task_config = task_config_reader.TaskConfig(self.config)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
+    self.assertIsNone(tasks[0].priority)
+
   def testSetTimeout(self):
     """Ensure timeout can be set by user."""
     timeout = 1000

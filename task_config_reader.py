@@ -252,7 +252,9 @@ class TaskConfig(object):
     frontdoor = not bool(self._config_reader.getboolean(section, 'not_frontdoor'))
 
     priority = self._config_reader.getint(section, 'priority')
-    if priority is None:
+    # Default priority is not needed for suites pool and other pools with
+    # qs_account attached, because they have enabled quota scheduler.
+    if priority is None and pool != 'suites' and qs_account is None:
       priority = EVENT_CLASSES[keyword].PRIORITY
 
     timeout = self._config_reader.getint(section, 'timeout')
