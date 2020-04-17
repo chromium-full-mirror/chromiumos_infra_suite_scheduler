@@ -92,6 +92,8 @@ class TestPlatformClient(object):
       try:
         params = task.extract_params()
         req = _form_test_platform_request(params)
+        if _should_skip(params):
+          continue
         req_json = json_format.MessageToJson(req)
         counter_key = params['board']
         counter_key += '' if params['model'] in [None, 'None'] else (
@@ -373,3 +375,23 @@ def _suite_bb_tag(suite):
     [bb_common_pb2.StringPair] tags to include the buildbucket request.
   """
   return [bb_common_pb2.StringPair(key='suite', value=suite)]
+
+
+def _should_skip(params):
+  """Decide whether to skip a task based on env and pool.
+
+  Suite request from staging may still have a small chance to run
+  in production. However, for unmanaged pools(e.g. wificell), which
+  usually are small, dev traffic is unacceptable.
+
+  Args:
+    params: dict containing the parameters of a task got from suite
+      queue.
+
+  Returns:
+    A boolean; true for suite targetting non-default pools from staging
+      env.
+  """
+  if constants.application_id() == constants.AppID.PROD_APP:
+    return False
+  return params['pool'] != 'suites'
