@@ -105,6 +105,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.taskqueue_stub = self.testbed.get_stub(
         testbed.TASKQUEUE_SERVICE_NAME)
     self.queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    _mock_application_id = mock.patch('constants.application_id')
+    self.mock_application_id = _mock_application_id.start()
+    self.addCleanup(_mock_application_id.stop)
+    self.mock_application_id.return_value = constants.AppID.PROD_APP
 
   def testFormTestPlatformMultiRequestSuccessfully(self):
     suite_kwargs = [_get_suite_params(board=b)
@@ -378,6 +382,16 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
     self.assertEqual(len(self.mock_bq_client.rows), 0)
+
+  def testIgnoreSuiteForUnamanagedPoolInStaging(self):
+    self.mock_application_id.return_value = 'suite-scheduler-staging'
+    suite = _get_suite_params(pool='foo')
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
+    self.fake_client.error = "cros_test_platform error"
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_not_called()
 
 
 def _struct_pb2_to_request_pb2(struct_pb2):
