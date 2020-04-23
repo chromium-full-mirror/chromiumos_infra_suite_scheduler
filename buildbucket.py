@@ -215,7 +215,7 @@ def _form_test_platform_request(task_params):
       and params.scheduling.unmanaged_pool):
     params.scheduling.qs_account = task_params.get('qs_account')
   # Quota Scheduler has no concept of priority.
-  if 'priority' in task_params and not params.scheduling.qs_account:
+  if _should_set_priority(task_params) and not params.scheduling.qs_account:
     params.scheduling.priority = int(task_params['priority'])
 
   params.software_dependencies.add().chromeos_build = build
@@ -395,3 +395,16 @@ def _should_skip(params):
   if constants.application_id() == constants.AppID.PROD_APP:
     return False
   return params['pool'] != 'suites'
+
+
+def _should_set_priority(task_params):
+  """Decide if the suite's priority should be set.
+
+  Args:
+    task_params: The parameters of a task loaded from suite queue.
+
+  Returns:
+    A boolean; true if priority is set in non-default pools.
+  """
+  return (task_params.get('priority') not in ['None', None]
+          and task_params.get('pool') != 'suites')
