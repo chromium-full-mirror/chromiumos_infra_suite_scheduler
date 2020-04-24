@@ -437,6 +437,7 @@ class Task(object):
         testbed_build = launch_control_build
 
     suite_job_parameters = {
+        'name': self.name,
         'suite': self.suite,
         'task_id': task_id,
         'board': board,

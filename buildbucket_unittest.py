@@ -299,7 +299,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
         suite='fake_suite',
         cros_build='fake_build',
     )
-    suite_kwargs['dimensions'] = 'label-wifi:foo,label-bt:hoo'
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag='fake_suite', **suite_kwargs)
 
@@ -313,8 +312,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
       'label-pool:DUT_POOL_SUITES',
       'suite:fake_suite',
       'build:fake_build',
-      'label-wifi:foo',
-      'label-bt:hoo'
     }
     want_bb = {
       'suite:fake_suite',
@@ -328,6 +325,50 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(want, req_tags)
     bb_tags = set([t for t in self._extract_tags_from_bb_client()])
     self.assertEqual(want_bb, bb_tags)
+
+  def testRequestUserDefinedDimensions(self):
+    suite_kwargs = _get_suite_params(
+        board='fake_board',
+        model='fake_model',
+        pool='DUT_POOL_SUITES',
+        suite='fake_suite',
+        cros_build='fake_build',
+    )
+    suite_kwargs['dimensions'] = 'label-wifi:foo,label-bt:hoo'
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
+    request_map = self._extract_request_map_from_bb_client()
+    request_list = [
+        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+    ]
+    self.assertEqual(len(request_list), 1)
+    req = request_list[0]
+    free_dimensions = req.params.freeform_attributes.swarming_dimensions
+    self.assertTrue(len(free_dimensions), 2)
+    self.assertTrue('label-wifi:foo' in free_dimensions)
+    self.assertTrue('label-bt:hoo' in free_dimensions)
+
+  def testRequestInvalidUserDefinedDimensions(self):
+    suite_kwargs = _get_suite_params(
+        board='fake_board',
+        model='fake_model',
+        pool='DUT_POOL_SUITES',
+        suite='fake_suite',
+        cros_build='fake_build',
+    )
+    suite_kwargs['dimensions'] = 'invalid-dimension'
+    task_executor.push(
+        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_not_called()
 
   def _get_client(self, addr):
     self.assertEqual(ADDR, addr)

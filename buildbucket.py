@@ -107,7 +107,7 @@ class TestPlatformClient(object):
         if params.get('task_id'):
           task_executions.append(analytics.ExecutionTask(params['task_id']))
       except (ValueError, BuildbucketRunError):
-        logging.debug('Failed to process task: %r', params)
+        logging.error('Failed to process task: %r', params)
     if not requests:
       return []
     try:
@@ -230,6 +230,9 @@ def _form_test_platform_request(task_params):
   for key, value in _request_tags(task_params, build, pool).iteritems():
     params.decorations.tags.append('%s:%s' % (key, value))
 
+  params.freeform_attributes.swarming_dimensions.extend(
+      _infer_user_defined_dimensions(task_params))
+
   if task_params['model'] != 'None':
     params.hardware_attributes.model = task_params['model']
 
@@ -322,6 +325,30 @@ def _infer_timeout_from_task_params(task_params):
   return datetime.timedelta(minutes=timeout_mins)
 
 
+def _infer_user_defined_dimensions(task_params):
+  """Infer the dimensions defined by users.
+
+  Args:
+    task_params: The parameters of a task loaded from suite queue.
+
+  Returns:
+    A list of strings; an empty list if no dimensions set.
+
+  Raises:
+    ValueError: if dimension is not valid.
+  """
+  result = []
+  if task_params.get('dimensions') in (None, 'None'):
+    return result
+  for d in task_params.get('dimensions').split(','):
+    if len(d.split(':')) != 2:
+      raise ValueError(
+          'Job %s has invalid dimensions: %s' %
+          (task_params.get('name'), task_params.get('dimensions')))
+    result.append(d)
+  return result
+
+
 def _request_tags(task_params, build, pool):
   """Infer tags to include in cros_test_platform request.
 
@@ -343,12 +370,6 @@ def _request_tags(task_params, build, pool):
     tags['label-model'] = task_params['model']
   if task_params.get('suite') not in (None, 'None'):
     tags['suite'] = task_params['suite']
-  # Add user configured dimensions.
-  if task_params.get('dimensions') not in (None, 'None'):
-    for label in task_params.get('dimensions').split(','):
-      key, value = _get_key_val_from_label(label)
-      if all([key, value]) and not key in tags:
-        tags[key] = value
   return tags
 
 
