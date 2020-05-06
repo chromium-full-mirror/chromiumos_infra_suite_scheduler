@@ -12,7 +12,10 @@ cron:
 - description: test push for suite_scheduler on staging instance
   url: /cron/test_push
   target: beta
-  schedule: every 4 hours
+  # This cron task is only a handy way to manually trigger the handler
+  # when testing a new app version. Since the schedule cannot be
+  # completely disabled it is set to be as infrequent as possible.
+  schedule: 1st saturday of may 2:00
 
 - description: check if suite tests can be scheduled
   url: /cron/check_jobs
