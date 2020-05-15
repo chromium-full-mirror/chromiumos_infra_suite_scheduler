@@ -4,18 +4,21 @@ Due to https://crbug.com/792690, this must be run outside the chroot.
 
 1. Install Google Cloud SDK:
 
-    1. Follow the [instructions](https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu).
-    2. Install the Python App Engine component:
-
-            sudo apt-get install google-cloud-sdk-app-engine-python
+    1. Follow the [instructions](https://cloud.google.com/sdk/docs#install_the_latest_cloud_sdk_version)
+       to install the Python App Engine component.
 
 2. Log in to gcloud: `gcloud auth login LDAP@google.com`
 3. Install `pip`:
 
         sudo apt-get install python-pip
 
-4. If you only modify the files in `configs/`, run `python setup_environment.py`
-   to download third-party libraries. Otherwise, load the full dependencies:
+4. If you only modify the files in `configs/`, run:
+
+        python setup_environment.py --load_infra_libs
+
+   to download the dependencies. Otherwise, load the credentials
+   (need permission from CrOS Test Platform team) to conduct the
+   unit and integration tests:
 
         python setup_environment.py --load_infra_libs --load_cred
 
