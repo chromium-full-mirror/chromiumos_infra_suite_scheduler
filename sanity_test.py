@@ -4,6 +4,7 @@
 
 """Module for sanity tests."""
 
+import configparser
 import unittest
 
 import build_lib
@@ -49,6 +50,25 @@ def _get_model_list(boards, model_map):
   return res
 
 
+class RawConfigReader(configparser.RawConfigParser):
+  """A RawConfigReader that returns error for duplicate section name."""
+
+  def __init__(self, filename):
+    """Initialize a config reader."""
+    configparser.RawConfigParser.__init__(self)
+    self.read(filename)
+
+  def read(self, filename):
+    """Read the file indicated by the given filename.
+
+    Args:
+      filename: string for the file name to read.
+    """
+    self.filename = filename
+    if filename is not None:
+      configparser.RawConfigParser.read(self, filename)
+
+
 class ConfigSanityTest(unittest.TestCase):
 
   def testLabConfigParse(self):
@@ -59,6 +79,14 @@ class ConfigSanityTest(unittest.TestCase):
   def testLabConfigModels(self):
     b, m = _get_lab_config()
     self.assertLessEqual(set(m.keys()), b)
+
+  def testSuiteCongigSectionName(self):
+    suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
+    try:
+      task_config_reader.TaskConfig(
+          RawConfigReader(suite_config_file), is_sanity=True)
+    except configparser.DuplicateSectionError as e:
+      self.fail('Duplicate section name: %s' % str(e))
 
   def testSuiteSchedulerINI(self):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
