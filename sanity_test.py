@@ -6,6 +6,7 @@
 
 import unittest
 
+import build_lib
 import config_reader
 import file_getter
 import task_config_reader
@@ -18,18 +19,81 @@ def _priority_is_valid(t):
   return 50 <= t.priority <= 255
 
 
+def _get_lab_config():
+  """A helper to get the boards and models from the lab_config.ini."""
+  reader = config_reader.LabConfig(
+      config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
+  boards = set(reader.get_cros_board_list())
+  model_map = reader.get_cros_model_map()
+  return (boards, model_map)
+
+
+def _get_model_list(boards, model_map):
+  """Get model list for specific boards.
+
+  Args:
+    boards: A string list of boards.
+    model_map: A dict object maps board(key) and its model list(value).
+
+  Returns:
+    A string list of models in suite scheduler pattern,
+      e.g. [kukui_krane, grunt_treeya].
+  """
+  res = []
+  for b in boards:
+    # Remove the suffix if the board has, e.g. kefka-kernelnext.
+    lab_board = build_lib.reshape_board(b)
+    for m in model_map.get(lab_board, [None]):
+      if m:
+        res.append(lab_board + '_' + m)
+  return res
+
+
 class ConfigSanityTest(unittest.TestCase):
+
+  def testLabConfigParse(self):
+    reader = config_reader.LabConfig(
+        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
+    self.assertGreater(len(reader.get_cros_model_map()), 0)
+
+  def testLabConfigModels(self):
+    b, m = _get_lab_config()
+    self.assertLessEqual(set(m.keys()), b)
 
   def testSuiteSchedulerINI(self):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
     task_config = task_config_reader.TaskConfig(
         config_reader.ConfigReader(suite_config_file), is_sanity=True)
     exceptions = []
+    lab_boards, lab_model_map = _get_lab_config()
+    lab_possible_models = _get_model_list(lab_boards, lab_model_map)
     for keyword in task_config_reader.EVENT_CLASSES.keys():
       response = task_config.get_tasks_by_keyword(keyword)
       if response['exceptions']:
         exceptions.extend(response['exceptions'])
       for t in response['tasks']:
+        possible_models = lab_possible_models
+        if t.boards:
+          for board in t.boards:
+            if board not in lab_boards:
+              exceptions.append(
+                  'Task %s has unknown board %s.' % (t.name, board))
+              continue
+          # If the task has a set of boards, only the models belonging
+          # to these boards can be added to the "models" field.
+          possible_models = _get_model_list(t.boards, lab_model_map)
+        if t.models:
+          for model in t.models:
+            if model not in lab_possible_models:
+              exceptions.append(
+                  'Task %s has unknown model %s.' % (t.name, model))
+              continue
+            if model not in possible_models:
+              exceptions.append(
+                  'Task %s has unschedulable model %s. It does not '
+                  'belongs to the boards already configured for '
+                  'this task.' % (t.name, model))
+
         if not _priority_is_valid(t):
           exceptions.append(
               'Task %s has invalid priority %d: the valid range is [50, 255].'
@@ -53,18 +117,6 @@ class ConfigSanityTest(unittest.TestCase):
     if exceptions:
       self.fail('Fail sanity check for %s:\n%s' % (
           suite_config_file, '\n'.join(exceptions)))
-
-  def testLabConfigParse(self):
-    reader = config_reader.LabConfig(
-        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
-    self.assertGreater(len(reader.get_cros_model_map()), 0)
-
-  def testLabConfigModels(self):
-    reader = config_reader.LabConfig(
-        config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
-    boards = set(reader.get_cros_board_list())
-    model_map = reader.get_cros_model_map()
-    self.assertLessEqual(set(model_map.keys()), boards)
 
 
 if __name__ == '__main__':
