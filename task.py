@@ -551,14 +551,17 @@ class Task(object):
             firmware_ro_build,
             read_only=True)
 
+      # Board above is used as build target to control the CrOS image.
+      # The following part is to assign models for lab boards, where
+      # the suffix should be removed.
       hwtest_board = build_lib.reshape_board(board)
 
-      models = models_by_board.get(board, [None])
+      models = models_by_board.get(hwtest_board, [None])
 
       for model in models:
         if ((passed_model is not None and model == passed_model) or
             passed_model is None):
-          full_model_name = '%s_%s' % (board, model)
+          full_model_name = '%s_%s' % (hwtest_board, model)
           # Respect exclude first.
           if self.exclude_models and full_model_name in self.exclude_models:
             logging.debug("Skip model %s as it's in exclude model list %s",
@@ -592,6 +595,7 @@ class Task(object):
               firmware_ro_build=firmware_ro_build,
               test_source_build=test_source_build)
 
+          # Analytics table stores the build target instead of the lab board.
           self.job_section.add_schedule_job(
               board, explicit_model, task_id=task_id)
 

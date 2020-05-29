@@ -37,7 +37,7 @@ class FakeLabConfig(object):
   """Mock class for config_reader.LabConfig."""
 
   def get_cros_model_map(self):
-    return {'coral': ['robo', 'nasher', 'lava']}
+    return {'coral': ['robo', 'nasher', 'lava'], 'hatch': ['akemi', 'kled']}
 
 
 class FakeBigqueryRestClient(object):
@@ -80,16 +80,18 @@ class TaskBaseTestCase(unittest.TestCase):
         None, project='proj', dataset='dataset', table='foo')
     mock_bq_client.return_value = self.mock_bq_client
 
-    self.task = task.Task(task_config_reader.TaskInfo(
-        name=self.NAME,
-        suite=self.SUITE,
-        branch_specs=[],
-        pool=self.POOL,
-        num=self.NUM,
-        boards=','.join([self.BOARD, self.UNIBUILD_BOARD]),
-        exclude_boards=self.EXCLUDE_BOARD,
-        priority=self.PRIORITY,
-        timeout=self.TIMEOUT))
+    self.task = task.Task(
+        task_config_reader.TaskInfo(
+            name=self.NAME,
+            suite=self.SUITE,
+            branch_specs=[],
+            pool=self.POOL,
+            num=self.NUM,
+            boards=','.join(
+                [self.BOARD, self.UNIBUILD_BOARD]),
+            exclude_boards=self.EXCLUDE_BOARD,
+            priority=self.PRIORITY,
+            timeout=self.TIMEOUT))
 
     self._empty_configs = config_reader.Configs(
         lab_config=config_reader.LabConfig(None))
@@ -112,6 +114,10 @@ class TaskTestCase(TaskBaseTestCase):
     mock_push = mock.patch('task.Task._push_suite')
     self._mock_push = mock_push.start()
     self.addCleanup(mock_push.stop)
+
+  def tearDown(self):
+    self.task.boards = ','.join([self.BOARD, self.UNIBUILD_BOARD])
+    self.task.models = None
 
   def testSetSpecCompareInfoEqual(self):
     """Test compare info setting for specs that equals to a milestone."""
@@ -243,6 +249,17 @@ class TaskTestCase(TaskBaseTestCase):
                                     self.firmware_dict,
                                     self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 2)
+
+  def testScheduleCrosSuccessfullyForBoardWithSuffix(self):
+    """Test schedule board with suffix and specific model."""
+    branch_builds = {
+        ('hatch-kernelnext', None, 'release', '56'): '0000.00.00'
+    }
+    self.task.boards = 'hatch-kernelnext'
+    self.task.models = 'hatch_akemi'
+    self.task._schedule_cros_builds(branch_builds, self.firmware_dict,
+                                    self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 1)
 
   def testScheduleCrosNonValidSpec(self):
     """Test schedule no cros builds due to non-allowed branch milestone."""
@@ -592,3 +609,24 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     self.assertEqual(jobs[1].build_target.name, 'coral')
     self.assertEqual(jobs[1].model.value, 'lava')
     self.assertIn('Skip model lava as any_model enabled', jobs[1].justification)
+
+  def testScheduleJobForBoardWithSuffix(self):
+    """Test record a schedule job with board plus suffix and model specified."""
+    branch_builds = {('hatch-kernelnext', None, 'release', '38'): '0000.00.00'}
+    new_task = task.Task(
+        task_config_reader.TaskInfo(
+            name=self.NAME,
+            suite=self.SUITE,
+            branch_specs=['>=tot-2'],
+            boards='hatch-kernelnext',
+            models='hatch_akemi',
+            os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule([], (branch_builds, []), {}, self._fake_configs)
+    job_sec = json_format.Parse(
+        json.dumps(self.mock_bq_client.rows[0]['json']),
+        analytics_pb2.ScheduleJobSection())
+    jobs = job_sec.schedule_jobs
+    # Only the specified model should appear in the scheduled jobs.
+    self.assertEqual(1, len(jobs))
+    self.assertEqual(jobs[0].build_target.name, 'hatch-kernelnext')
+    self.assertEqual(jobs[0].model.value, 'akemi')
