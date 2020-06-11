@@ -230,8 +230,8 @@ def _form_test_platform_request(task_params):
   for key, value in _request_tags(task_params, build, pool).iteritems():
     params.decorations.tags.append('%s:%s' % (key, value))
 
-  params.freeform_attributes.swarming_dimensions.extend(
-      _infer_user_defined_dimensions(task_params))
+  for d in _infer_user_defined_dimensions(task_params):
+    params.freeform_attributes.swarming_dimensions.append(d)
 
   if task_params['model'] != 'None':
     params.hardware_attributes.model = task_params['model']
