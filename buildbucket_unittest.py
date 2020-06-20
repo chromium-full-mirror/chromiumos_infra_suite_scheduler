@@ -2,7 +2,6 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Module for buildbucket unittests."""
 
 import json
@@ -21,7 +20,6 @@ from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
 from google.protobuf import json_format
 from infra_libs.buildbucket.proto import build_pb2
-
 
 ADDR = u'http://localhost:1'
 FAKE_UUID = 'c78e0bf3-4142-11ea-bc66-88e9fe4c5349'
@@ -59,7 +57,6 @@ def _get_suite_params(board='fake_board',
 
 
 class FakeTestPlatformClient(object):
-
   def __init__(self, test):
     self._test = test
     self.called_with_requests = []
@@ -73,7 +70,6 @@ class FakeTestPlatformClient(object):
 
 
 class FakeBigqueryRestClient(object):
-
   def __init__(self, rest_client, project=None, dataset=None, table=None):
     """Initialize the mock class."""
     self.table = table
@@ -85,25 +81,21 @@ class FakeBigqueryRestClient(object):
 
 
 class TestPlatformClientTestCase(unittest.TestCase):
-
   def setUp(self):
     super(TestPlatformClientTestCase, self).setUp()
     self.fake_client = FakeTestPlatformClient(self)
     patcher = mock.patch('buildbucket._get_client',
                          return_value=self._get_client(ADDR))
     patcher.start()
-    self.client = buildbucket.TestPlatformClient(ADDR,
-                                                 'foo-proj',
-                                                 'foo-bucket',
-                                                 'foo-builder')
+    self.client = buildbucket.TestPlatformClient(ADDR, 'foo-proj',
+                                                 'foo-bucket', 'foo-builder')
     self.addCleanup(patcher.stop)
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.addCleanup(self.testbed.deactivate)
     self.testbed.init_taskqueue_stub(
         root_path=os.path.join(os.path.dirname(__file__)))
-    self.taskqueue_stub = self.testbed.get_stub(
-        testbed.TASKQUEUE_SERVICE_NAME)
+    self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
     self.queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
     _mock_application_id = mock.patch('constants.application_id')
     self.mock_application_id = _mock_application_id.start()
@@ -111,54 +103,54 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.mock_application_id.return_value = constants.AppID.PROD_APP
 
   def testFormTestPlatformMultiRequestSuccessfully(self):
-    suite_kwargs = [_get_suite_params(board=b)
-                    for b in ['foo', 'goo']]
+    suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'goo']]
     for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite)
+      task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
 
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
 
     request_map = self._extract_request_map_from_bb_client()
-    request_list = [_struct_pb2_to_request_pb2(v)
-                    for v in request_map.values()]
+    request_list = [
+        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+    ]
     request_list.sort(
         key=lambda req: req.params.software_attributes.build_target.name)
     for i, req in enumerate(request_list):
       self.assertEqual(req.params.scheduling.priority, 10)
-      self.assertEqual(req.params.scheduling.managed_pool,
-                      request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
+      self.assertEqual(
+          req.params.scheduling.managed_pool,
+          request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
       # Don't check for exact max timeout to stay DRY.
       # But do check that the maximum is sane.
-      self.assertLess(req.params.time.maximum_duration.seconds, 2*24*60*60)
+      self.assertLess(req.params.time.maximum_duration.seconds,
+                      2 * 24 * 60 * 60)
       gs_url = ('gs://chromeos-image-archive/%s' %
                 suite_kwargs[i]['test_source_build'])
       self.assertEqual(req.params.metadata.test_metadata_url, gs_url)
       self.assertEqual(req.params.metadata.debug_symbols_archive_url, gs_url)
       self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
       self.assertEqual(req.params.software_attributes.build_target.name,
-                      suite_kwargs[i]['board'])
+                       suite_kwargs[i]['board'])
 
   def testPoolName(self):
-    suite_kwargs = [_get_suite_params(board=b)
-                    for b in ['foo', 'goo', 'hoo']]
+    suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'goo', 'hoo']]
     suite_kwargs[0]['pool'] = 'cts'
     suite_kwargs[1]['pool'] = 'wifi'
     for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='some_suite', **suite)
+      task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'some_suite')
     self._assert_bb_client_called()
     request_map = self._extract_request_map_from_bb_client()
-    request_list = [_struct_pb2_to_request_pb2(v)
-                    for v in request_map.values()]
+    request_list = [
+        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+    ]
     self.assertEqual(len(request_list), 3)
     request_list.sort(
         key=lambda req: req.params.software_attributes.build_target.name)
@@ -174,10 +166,11 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs[build_lib.BuildVersionKey.TESTBED_BUILD_VERSION] = None
 
     task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite_kwargs)
+                       tag='fake_suite',
+                       **suite_kwargs)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     executed = self.client.multirequest_run(tasks, 'fake_suite')
     self.assertEqual(len(executed), 0)
     self._assert_bb_client_not_called()
@@ -187,8 +180,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs['priority'] = '30'
     suite_kwargs['qs_account'] = 'qs-foo'
 
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -206,8 +200,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs = _get_suite_params(pool='DUT_POOL_SUITES')
     suite_kwargs['qs_account'] = 'qs-foo'
 
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -222,11 +217,12 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs = _get_suite_params()
     suite_kwargs['priority'] = '30'
 
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
@@ -239,8 +235,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs['priority'] = '100'
     suite_kwargs['pool'] = 'suites'
 
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -254,8 +251,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(req.params.scheduling.priority, 0)
 
   def testRequestWithInvalidTags(self):
-    suite_kwargs = [_get_suite_params(board=b)
-                    for b in ['foo', 'foo']]
+    suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'foo']]
 
     # test request having None String Tag
     suite_kwargs[0]['model'] = 'None'
@@ -264,11 +260,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs[1]['model'] = None
 
     for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE,
-                         tag='fake_suite', **suite)
+      task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     executed = self.client.multirequest_run(tasks, 'fake_suite')
     self.assertEqual(len(executed), 2)
 
@@ -276,13 +271,13 @@ class TestPlatformClientTestCase(unittest.TestCase):
     request_map = self._extract_request_map_from_bb_client()
     self.assertEqual(len(request_map), 2)
     want = {
-      'suite:fake_suite',
-      'build:fake_cros_build',
-      'label-pool:DUT_POOL_SUITES',
-      'label-board:foo',
+        'suite:fake_suite',
+        'build:fake_cros_build',
+        'label-pool:DUT_POOL_SUITES',
+        'label-board:foo',
     }
     want_bb = {
-      'suite:fake_suite',
+        'suite:fake_suite',
     }
     for req_name in ['foo', 'foo_1']:
       req = _struct_pb2_to_request_pb2(request_map[req_name])
@@ -300,25 +295,27 @@ class TestPlatformClientTestCase(unittest.TestCase):
         cros_build='fake_build',
     )
     task_executor.push(task_executor.SUITES_QUEUE,
-                       tag='fake_suite', **suite_kwargs)
+                       tag='fake_suite',
+                       **suite_kwargs)
 
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
     want = {
-      'label-board:fake_board',
-      'label-model:fake_model',
-      'label-pool:DUT_POOL_SUITES',
-      'suite:fake_suite',
-      'build:fake_build',
+        'label-board:fake_board',
+        'label-model:fake_model',
+        'label-pool:DUT_POOL_SUITES',
+        'suite:fake_suite',
+        'build:fake_build',
     }
     want_bb = {
-      'suite:fake_suite',
+        'suite:fake_suite',
     }
     request_map = self._extract_request_map_from_bb_client()
-    request_list = [_struct_pb2_to_request_pb2(v)
-                    for v in request_map.values()]
+    request_list = [
+        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+    ]
     self.assertEqual(len(request_list), 1)
     req = request_list[0]
     req_tags = set([t for t in req.params.decorations.tags])
@@ -335,8 +332,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
         cros_build='fake_build',
     )
     suite_kwargs['dimensions'] = 'label-wifi:foo,label-bt:hoo'
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -362,8 +360,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
         cros_build='fake_build',
     )
     suite_kwargs['dimensions'] = 'invalid-dimension'
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag='fake_suite', **suite_kwargs)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='fake_suite',
+                       **suite_kwargs)
 
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
@@ -384,33 +383,35 @@ class TestPlatformClientTestCase(unittest.TestCase):
     return self.fake_client.called_with_requests[0].properties['requests']
 
   def _extract_tags_from_bb_client(self):
-    return ['%s:%s' % (t.key, t.value)
-            for t  in self.fake_client.called_with_requests[0].tags]
+    return [
+        '%s:%s' % (t.key, t.value)
+        for t in self.fake_client.called_with_requests[0].tags
+    ]
 
 
 class TestTaskExecutions(TestPlatformClientTestCase):
-
   def setUp(self):
     super(TestTaskExecutions, self).setUp()
     _mock_bq_client = mock.patch('rest_client.BigqueryRestClient')
     mock_bq_client = _mock_bq_client.start()
     self.addCleanup(_mock_bq_client.stop)
-    self.mock_bq_client = FakeBigqueryRestClient(
-        None, project='proj', dataset='dataset', table='foo')
+    self.mock_bq_client = FakeBigqueryRestClient(None,
+                                                 project='proj',
+                                                 dataset='dataset',
+                                                 table='foo')
     mock_bq_client.return_value = self.mock_bq_client
 
   def testRecordSuccessfulTaskExecution(self):
     suite = _get_suite_params(board='foo')
     suite['task_id'] = FAKE_UUID
-    task_executor.push(task_executor.SUITES_QUEUE,
-                       tag='fake_suite', **suite)
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
     task_execution = json_format.Parse(
-          json.dumps(self.mock_bq_client.rows[0]['json']),
-          analytics_pb2.ExecutionTask())
+        json.dumps(self.mock_bq_client.rows[0]['json']),
+        analytics_pb2.ExecutionTask())
     self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
     self.assertEqual(task_execution.response.ctp_build_id, str(FAKE_BUILD_ID))
     self.assertEqual(task_execution.error.error_message, '')
@@ -418,27 +419,26 @@ class TestTaskExecutions(TestPlatformClientTestCase):
   def testRecordFailedTaskExecution(self):
     suite = _get_suite_params(board='foo')
     suite['task_id'] = FAKE_UUID
-    task_executor.push(task_executor.SUITES_QUEUE,
-                       tag='fake_suite', **suite)
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
     self.fake_client.error = "cros_test_platform error"
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
     task_execution = json_format.Parse(
-          json.dumps(self.mock_bq_client.rows[0]['json']),
-          analytics_pb2.ExecutionTask())
+        json.dumps(self.mock_bq_client.rows[0]['json']),
+        analytics_pb2.ExecutionTask())
     self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
     self.assertEqual(task_execution.response.ctp_build_id, '')
-    self.assertEqual(task_execution.error.error_message, self.fake_client.error)
+    self.assertEqual(task_execution.error.error_message,
+                     self.fake_client.error)
 
   def testIgnoreTaskWithoutTaskID(self):
     suite = _get_suite_params(board='foo')
-    task_executor.push(task_executor.SUITES_QUEUE,
-                       tag='fake_suite', **suite)
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
     self.fake_client.error = "cros_test_platform error"
-    tasks = self.queue.lease_tasks_by_tag(3600,
-        constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_called()
     self.assertEqual(len(self.mock_bq_client.rows), 0)

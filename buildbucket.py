@@ -1,7 +1,6 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Module for interacting with Buildbucket."""
 
 import collections
@@ -27,7 +26,6 @@ from oauth2client import service_account
 
 from google.protobuf import json_format, struct_pb2
 
-
 _enum = request_pb2.Request.Params.Scheduling
 NONSTANDARD_POOL_NAMES = {
     'cq': _enum.MANAGED_POOL_CQ,
@@ -40,9 +38,7 @@ NONSTANDARD_POOL_NAMES = {
     'quota': _enum.MANAGED_POOL_QUOTA,
 }
 
-
 GS_PREFIX = 'gs://chromeos-image-archive/'
-
 
 # The default prpc timeout(10 sec) is too short for the request_id
 # to propgate in buildbucket, and could not fully dedup the
@@ -62,7 +58,6 @@ class BuildbucketRunError(Exception):
 
 class TestPlatformClient(object):
   """prpc client for cros_test_platform, aka frontdoor."""
-
   def __init__(self, address, project, bucket, builder):
     self.client = _get_client(address)
     self.builder = build_pb2.BuilderID(project=project,
@@ -96,8 +91,8 @@ class TestPlatformClient(object):
           continue
         req_json = json_format.MessageToJson(req)
         counter_key = params['board']
-        counter_key += '' if params['model'] in [None, 'None'] else (
-            '_' + params['model'])
+        counter_key += '' if params['model'] in [None, 'None'
+                                                 ] else ('_' + params['model'])
         counter[counter_key] += 1
         req_name = counter_key
         if counter[counter_key] > 1:
@@ -112,12 +107,11 @@ class TestPlatformClient(object):
       return []
     try:
       requests_json = '{ "requests": { %s } }' % ', '.join(requests)
-      req_build = self._build_request(requests_json,
-          _suite_bb_tag(suite))
+      req_build = self._build_request(requests_json, _suite_bb_tag(suite))
       logging.debug('Raw request to buildbucket: %r', req_build)
 
-      if (self.running_env == constants.RunningEnv.ENV_STANDALONE or
-          self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
+      if (self.running_env == constants.RunningEnv.ENV_STANDALONE
+          or self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
         # If running locally, use the staging service account.
         sa_key = self._gen_service_account_key(
             file_getter.STAGING_CLIENT_SECRETS_FILE)
@@ -126,8 +120,9 @@ class TestPlatformClient(object):
       else:
         cred = prpc_client.service_account_credentials()
       #TODO(linxinan): only add the tasks returned from bb to executed_tasks.
-      resp = self.client.ScheduleBuild(
-          req_build, credentials=cred, timeout=PRPC_TIMEOUT_SEC)
+      resp = self.client.ScheduleBuild(req_build,
+                                       credentials=cred,
+                                       timeout=PRPC_TIMEOUT_SEC)
       logging.debug('Response from buildbucket: %r', resp)
       for t in task_executions:
         t.update_result(resp)
@@ -135,9 +130,9 @@ class TestPlatformClient(object):
           if not t.upload():
             logging.warning('Failed to insert row: %r', t)
         # For any exceptions from BQ, only log it.
-        except Exception as e: #pylint: disable=broad-except
-          logging.exception('Failed to insert row: %r, got error: %s',
-                            t, str(e))
+        except Exception as e:  #pylint: disable=broad-except
+          logging.exception('Failed to insert row: %r, got error: %s', t,
+                            str(e))
       return executed_tasks
     except Exception as e:
       logging.debug('Failed to process tasks: %r', tasks)
@@ -153,8 +148,9 @@ class TestPlatformClient(object):
     sa_key = self._gen_service_account_key(
         file_getter.STAGING_CLIENT_SECRETS_FILE)
     cred = prpc_client.service_account_credentials(service_account_key=sa_key)
-    return self.client.ScheduleBuild(
-        req_build, credentials=cred, timeout=PRPC_TIMEOUT_SEC)
+    return self.client.ScheduleBuild(req_build,
+                                     credentials=cred,
+                                     timeout=PRPC_TIMEOUT_SEC)
 
   def _build_request(self, reqs_json, tags):
     """Generate ScheduleBuildRequest for calling buildbucket.
@@ -184,10 +180,9 @@ class TestPlatformClient(object):
     """
     service_credentials = service_account.ServiceAccountCredentials
     key = service_credentials.from_json_keyfile_name(sa, self.scope)
-    return  auth.ServiceAccountKey(
-        client_email=key.service_account_email,
-        private_key=key._private_key_pkcs8_pem,
-        private_key_id=key._private_key_id)
+    return auth.ServiceAccountKey(client_email=key.service_account_email,
+                                  private_key=key._private_key_pkcs8_pem,
+                                  private_key_id=key._private_key_id)
 
 
 def _form_test_platform_request(task_params):
@@ -319,7 +314,7 @@ def _infer_timeout_from_task_params(task_params):
   timeout_mins = int(task_params['timeout_mins'])
   # timeout's unit is hour.
   if task_params.get('timeout'):
-    timeout_mins = max(int(task_params['timeout'])*60, timeout_mins)
+    timeout_mins = max(int(task_params['timeout']) * 60, timeout_mins)
   if timeout_mins > constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS:
     timeout_mins = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
   return datetime.timedelta(minutes=timeout_mins)
@@ -361,8 +356,8 @@ def _request_tags(task_params, build, pool):
     A dict of tags.
   """
   tags = {
-    'build': build,
-    'label-pool': pool,
+      'build': build,
+      'label-pool': pool,
   }
   if task_params.get('board') not in (None, 'None'):
     tags['label-board'] = task_params['board']
