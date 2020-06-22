@@ -1,13 +1,12 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Module for setup environemtn for local testing & Google App Engine."""
-
 
 from __future__ import print_function
 
 import argparse
+import collections
 import os
 import shutil
 import subprocess
@@ -16,20 +15,13 @@ import file_getter
 
 import local_import  # pylint: disable=unused-import
 try:
-  from chromite.lib import gs, git, osutils  # pylint: disable=g-import-not-at-top
+  from chromite.lib import gs  # pylint: disable=g-import-not-at-top
 except ImportError:
   print('Cannot import chromite')
   gs = None
-  git = None
-  osutils = None
-
 
 # The credentials folder for suite-scheduler service.
 CREDS_GS_PATH = 'gs://suite-scheduler.google.com.a.appspot.com/credentials/'
-
-# Remote repositories of luci-py and Chromite.
-LUCI_REPO = 'https://chromium.googlesource.com/infra/luci/luci-py'
-CHROMITE_REPO = 'https://chromium.googlesource.com/chromiumos/chromite'
 
 
 def _install_third_party_lib(input_args):
@@ -57,8 +49,28 @@ def _install_third_party_lib(input_args):
       # TODO(crbug.com/792690): this is a workround of fixing installing
       # third-party packages on different versions of Ubuntu/Debian.
       print("Failed to run '%s'; trying a different command." % ' '.join(cmd))
-      subprocess.check_call(['pip', 'install', '-t', 'lib', '--system',
-                             '-r', 'requirements.txt'])
+      subprocess.check_call([
+          'pip', 'install', '-t', 'lib', '--system', '-r', 'requirements.txt'
+      ])
+
+
+# _GitDep specifies a dependency in the form of a particular reference in a git
+# project.
+_GitDep = collections.namedtuple('_GitDep', 'local_name git_project git_ref')
+
+# List of all git project dependencies.
+_GIT_DEPS = [
+    _GitDep(
+        'chromite',
+        'https://chromium.googlesource.com/chromiumos/chromite',
+        'bf296fb827fe998bc174ad7e456534d4c7847ea5',
+    ),
+    _GitDep(
+        'luci',
+        'https://chromium.googlesource.com/infra/luci/luci-py',
+        '33a910c714948a5189f9c58101ce9b131f01c1fd',
+    ),
+]
 
 
 def _install_infra_libs():
@@ -68,34 +80,18 @@ def _install_infra_libs():
   Chromite. Suite scheduler relies on those libs to conduct prpc call to
   Buildbucket.
   """
+  infra_libs_path = file_getter.INFRA_LIBS_PATH
   print('Recreate infra_libs directory if already exists...')
-  if os.path.exists(file_getter.INFRA_LIBS_PATH):
-    osutils.RmDir(file_getter.INFRA_LIBS_PATH)
-  os.mkdir(file_getter.INFRA_LIBS_PATH)
-  os.mkdir(file_getter.LUCI_PATH)
-  os.mkdir(file_getter.CHROMITE_PATH)
+  if os.path.exists(infra_libs_path):
+    shutil.rmtree(infra_libs_path)
+  os.mkdir(infra_libs_path)
 
-  print('Fetching prpc client from luci-py lib...')
-  luci_checkout = [
-      '/appengine/components/components/auth/**/*.py',
-      '/appengine/components/components/datastore_utils/**/*.py',
-      '/appengine/components/components/prpc/**/*.py',
-      '/appengine/components/components/*.py',
-      '!*test.py']
-  git.ShallowFetch(file_getter.LUCI_PATH, LUCI_REPO,
-                   sparse_checkout=luci_checkout)
-
-  print('Fetching proto files from Chromite...')
-  chromite_checkout = [
-      '/api/gen/**/*.py',
-      '/api/__init__.py',
-      '/third_party/infra_libs/*',
-      '/third_party/google/*',
-      '/third_party/__init__.py',
-      '/__init__.py',
-      '!*test.py']
-  git.ShallowFetch(file_getter.CHROMITE_PATH, CHROMITE_REPO,
-                   sparse_checkout=chromite_checkout)
+  for dep in _GIT_DEPS:
+    dep_path = os.path.join(infra_libs_path, dep.local_name)
+    print('Cloning %s at %s in %s' % (dep.git_project, dep.git_ref, dep_path))
+    subprocess.check_call(['git', 'clone', dep.git_project, dep.local_name],
+                          cwd=infra_libs_path)
+    subprocess.check_call(['git', 'checkout', dep.git_ref], cwd=dep_path)
 
 
 def _fetch_service_credentials():
@@ -144,14 +140,15 @@ def _make_parser():
       '--update_lib',
       action='store_true',
       help='Force to reinstall all required third-party libraries.')
-  parser.add_argument(
-      '--load_cred',
-      action='store_true',
-      help='Load credentials from Google Storage.')
-  parser.add_argument(
-      '--load_infra_libs', action='store_true', help='Install infra libs.')
-  parser.add_argument(
-      '--run_unit_test', action='store_true', help='Run unit test.')
+  parser.add_argument('--load_cred',
+                      action='store_true',
+                      help='Load credentials from Google Storage.')
+  parser.add_argument('--load_infra_libs',
+                      action='store_true',
+                      help='Install infra libs.')
+  parser.add_argument('--run_unit_test',
+                      action='store_true',
+                      help='Run unit test.')
   return parser
 
 
