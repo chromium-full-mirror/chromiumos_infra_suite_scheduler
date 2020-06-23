@@ -206,8 +206,7 @@ def _form_test_platform_request(task_params):
   params = request.params
 
   params.scheduling.CopyFrom(_scheduling_for_pool(pool))
-  if (task_params.get('qs_account') not in ['None', None]
-      and params.scheduling.unmanaged_pool):
+  if task_params.get('qs_account') not in ['None', None]:
     params.scheduling.qs_account = task_params.get('qs_account')
   # Quota Scheduler has no concept of priority.
   if _should_set_priority(task_params) and not params.scheduling.qs_account:

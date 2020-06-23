@@ -175,7 +175,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(len(executed), 0)
     self._assert_bb_client_not_called()
 
-  def testShouldSetQsAccount(self):
+  def testShouldSetQsAccountForUnmanagedPool(self):
     suite_kwargs = _get_suite_params(pool='foo')
     suite_kwargs['priority'] = '30'
     suite_kwargs['qs_account'] = 'qs-foo'
@@ -196,7 +196,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     # defined by proto3.
     self.assertEqual(req.params.scheduling.priority, 0)
 
-  def testShouldNotSetQsAccountForManagedPool(self):
+  def testShouldSetQsAccountForManagedPool(self):
     suite_kwargs = _get_suite_params(pool='DUT_POOL_SUITES')
     suite_kwargs['qs_account'] = 'qs-foo'
 
@@ -211,7 +211,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self._assert_bb_client_called()
     self.assertEqual(len(request_map), 1)
     req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
-    self.assertEqual(req.params.scheduling.qs_account, '')
+    self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
+    # If qs_account is set, priority should be 0, the default value
+    # defined by proto3.
+    self.assertEqual(req.params.scheduling.priority, 0)
 
   def testShouldSetPriority(self):
     suite_kwargs = _get_suite_params()
