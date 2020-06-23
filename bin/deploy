@@ -1,0 +1,83 @@
+#!/bin/bash
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Deploy suite-scheduler to different environments
+set -eu
+
+readonly BIN_DIR="$(dirname "$(realpath -e "${BASH_SOURCE[0]}")")"
+readonly ROOT="$(dirname "${BIN_DIR}")"
+readonly GIT_PROJECT="https://chromium.googlesource.com/chromiumos/infra/suite_scheduler"
+
+function usage() {
+    cat >&2 <<EOT
+
+deploy [-dhip]
+
+Deploy suite-scheduler to various production environments.
+
+    -d    Debug mode. Be more verbose and leak temporary working directory.
+    -h    Print usage help and exit
+    -i    Push in-place from current checkout. Unsafe. Intended to be used to
+          develop the deploy script itself.
+    -p    Push prod instance. The default pushes the staging instance.
+EOT
+}
+
+debug=0
+in_place=0
+push_prod=0
+while getopts "dhip" opt; do
+    case $opt in
+        d)
+            debug=1
+            ;;
+        i)
+            in_place=1
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        p)
+            push_prod=1
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ ${debug} == 1 ]]; then
+    set -x
+fi
+
+if [[ ${in_place} == 1 ]]; then
+    cd "${ROOT}"
+else
+    readonly work_dir="$(mktemp -d -t ssdeployXXXX)"
+    function cleanup() {
+        rm -rf "${work_dir}"
+    }
+    function announce_leak() {
+        echo "DEBUG MODE: Leaking temporary working directory ${work_dir}!"
+    }
+    if [[ ${debug} == 1 ]]; then
+        trap announce_leak EXIT
+    else
+        trap cleanup EXIT
+    fi
+
+    cd "${work_dir}"
+    git clone "${GIT_PROJECT}" .
+    git checkout origin/master
+fi
+
+"${BIN_DIR}"/python_venv setup_environment.py --load-creds
+if [[ ${push_prod}  == 1 ]]; then
+    gcloud app deploy --project=google.com:suite-scheduler
+else
+    gcloud app deploy --project=google.com:suite-scheduler-staging
+fi
