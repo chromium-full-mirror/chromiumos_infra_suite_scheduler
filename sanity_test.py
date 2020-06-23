@@ -1,10 +1,9 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Module for sanity tests."""
 
-import configparser
+import ConfigParser
 import unittest
 
 import build_lib
@@ -50,12 +49,11 @@ def _get_model_list(boards, model_map):
   return res
 
 
-class RawConfigReader(configparser.RawConfigParser):
+class RawConfigReader(ConfigParser.RawConfigParser):
   """A RawConfigReader that returns error for duplicate section name."""
-
   def __init__(self, filename):
     """Initialize a config reader."""
-    configparser.RawConfigParser.__init__(self)
+    ConfigParser.RawConfigParser.__init__(self)
     self.read(filename)
 
   def read(self, filename):
@@ -66,11 +64,10 @@ class RawConfigReader(configparser.RawConfigParser):
     """
     self.filename = filename
     if filename is not None:
-      configparser.RawConfigParser.read(self, filename)
+      ConfigParser.RawConfigParser.read(self, filename)
 
 
 class ConfigSanityTest(unittest.TestCase):
-
   def testLabConfigParse(self):
     reader = config_reader.LabConfig(
         config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
@@ -83,9 +80,9 @@ class ConfigSanityTest(unittest.TestCase):
   def testSuiteCongigSectionName(self):
     suite_config_file = file_getter.SUITE_SCHEDULER_CONFIG_FILE
     try:
-      task_config_reader.TaskConfig(
-          RawConfigReader(suite_config_file), is_sanity=True)
-    except configparser.DuplicateSectionError as e:
+      task_config_reader.TaskConfig(RawConfigReader(suite_config_file),
+                                    is_sanity=True)
+    except ConfigParser.DuplicateSectionError as e:
       self.fail('Duplicate section name: %s' % str(e))
 
   def testSuiteSchedulerINI(self):
@@ -104,8 +101,8 @@ class ConfigSanityTest(unittest.TestCase):
         if t.boards:
           for board in t.boards:
             if board not in lab_boards:
-              exceptions.append(
-                  'Task %s has unknown board %s.' % (t.name, board))
+              exceptions.append('Task %s has unknown board %s.' %
+                                (t.name, board))
               continue
           # If the task has a set of boards, only the models belonging
           # to these boards can be added to the "models" field.
@@ -113,8 +110,8 @@ class ConfigSanityTest(unittest.TestCase):
         if t.models:
           for model in t.models:
             if model not in lab_possible_models:
-              exceptions.append(
-                  'Task %s has unknown model %s.' % (t.name, model))
+              exceptions.append('Task %s has unknown model %s.' %
+                                (t.name, model))
               continue
             if model not in possible_models:
               exceptions.append(
@@ -143,8 +140,8 @@ class ConfigSanityTest(unittest.TestCase):
               'configured.' % t.name)
 
     if exceptions:
-      self.fail('Fail sanity check for %s:\n%s' % (
-          suite_config_file, '\n'.join(exceptions)))
+      self.fail('Fail sanity check for %s:\n%s' %
+                (suite_config_file, '\n'.join(exceptions)))
 
 
 if __name__ == '__main__':
