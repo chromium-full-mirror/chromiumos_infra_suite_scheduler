@@ -1,101 +1,150 @@
-# Setup
+# Suite-Scheduler README
 
-Due to https://crbug.com/792690, this must be run outside the chroot.
+* [Developer Setup](#developer-setup)
+* [Testing your changes](#testing)
+* [Making configuration changes](#modify-config)
+* [Running an instance locally](#run-local)
+* [Releasing to production](#release)
 
-1. Install Google Cloud SDK:
 
-    1. Follow the [instructions](https://cloud.google.com/sdk/docs#install_the_latest_cloud_sdk_version)
-       to install the Python App Engine component.
+## Developer Setup {#developer-setup}
 
-2. Log in to gcloud: `gcloud auth login LDAP@google.com`
-3. Install `pip`:
+### SDK
 
-        sudo apt-get install python-pip
+suite-scheduler is an AppEngine Standard Python Environment V1 application. You
+need the Google Cloud SDK's AppEngine Python component to develop and deploy
+this application:
 
-4. If you only modify the files in `configs/`, run:
+* Install Google Cloud SDK:
+  * Follow the [instructions][install-sdk] to install the Python App Engine component.
+* Log in to gcloud: `gcloud auth login <username>@google.com`
 
-        python setup_environment.py --load_infra_libs
+[install-sdk]: https://cloud.google.com/sdk/docs#install_the_latest_cloud_sdk_version
 
-   to download the dependencies. Otherwise, load the credentials
-   (need permission from CrOS Test Platform team) to conduct the
-   unit and integration tests:
 
-        python setup_environment.py --load_infra_libs --load_cred
+### Developer environment
 
-# Known Issues
+Suite-scheduler development must be done in the standard [Chrome OS source
+checkout][cros-checkout] but entirely outside the Chrome OS chroot environment.
 
-1. [Failed to install third-packages in requirement.txt](https://crbug.com/792690):
+suite-scheduler uses [infra_virtualenv] to provide a stable environment for
+development and release.
 
-   Workround: Run `pip install -t lib -r requirements.txt` locally on your
-   workstation to verify whether it could work.
+To (re)initialize developer environment, run
+```
+  bin/setup_environment
+```
 
-2. [Failed to download credentials from 'gs://suite-scheduler.google.com.a.appspot.com/credentials/'](https://crbug.com/792690):
+For testing changes beyond to the `configs/` directory, and for deploying
+suite-scheduler, you must also obtain certain service credentials used by
+suite-scheduler.
+```
+  bin/setup_environment --load-creds
+```
 
-   Workround: Run `gsutil ls gs://suite-scheduler.google.com.a.appspot.com/credentials/`
-   locally on your workstation to verify whether you can fetch credentials with
-   gsutil.
+If you get [failures when trying to download credentials][creds-fail],
 
-   If there's any auth issue, it may be because
+* Double check you're logged into the Google Cloud SDK by running
+  `gcloud auth list`.
+* Contact Test Platform team or one of the [OWNERS] to be whitelisted.
 
-     a. You're not using your corp account to login gcloud. Please run
-        `gcloud auth list` to check what's the used account for
-        gcloud.
+[cros-checkout]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Get-the-Source
+[infra_virtualenv]: https://chromium.googlesource.com/chromiumos/infra_virtualenv/+/refs/heads/master/README.md
+[creds-fail]: https://crbug.com/792690
+[OWNERS]: https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/OWNERS
 
-     b. Your corp account is not whitelisted by suite-scheduler
-        project. Please contact @lxn to whitelist your ldap.
 
-# How to test:
+## Testing your changes {#testing}
 
-1. Run sanity test for config changes:
+Changes to `configs/*` directory can be tested via sanity tests alone:
+```
+  bin/run_sanity_tests
+  bin/run_sanity_tests --debug  # More verbose
+```
 
-        python runner.py --test_type sanity
+Other changes must be validated with the full test suite:
+```
+  bin/run_tests
+  bin/run_tests --debug  # More verbose
+```
 
-2. Run unittest and integration for any changes in production code:
+These tests include some integration tests that can take over 5 minutes to run.
 
-        python runner.py --test_type unittest
-        python runner.py --test_type integration
+**
+WARNING: suite-scheduler unittests do not currently run in presubmit. You
+MUST ensure that unit-tests pass locally for your change.
+**
 
-3. Run tests with debug mode:
 
-        python runner.py --debug
+## Making configuration changes {#modify-config}
 
-4. Run suite scheduler v2 as a local development server:
-
-   If you want to verify any APIs locally, you can run suite scheduler v2 as a
-   local development server
-   (https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
-
-      a. Finally, start dev_appserver.py in a window:
-
-          dev_appserver.py app.yaml \
-              --port=8888 \
-              --admin_port=8001 \
-              --log_level=debug
-
-      b. Test it:
-
-          curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
-
-    Please note that once a dev_appserver is started, it simulates data_store &
-    task_queue, which means:
-
-      a. The datastore doesn't contain any previous cron run's information, so
-      the first round of cron/trigger_event won't trigger any event.
-
-      b. The task queue is newly created with 0 tasks in it unless
-      cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
-      local task queue to get purged.
-
-# How to add or update your job to schedule a suite test:
-
-1. Add or update your job configuration in `configs/suite_scheduler.ini`.
-
-2. Update `configs/lab_config.ini`, if the suite test relies on new board or
-   model. Note, suite scheduler does not automatically catch the new boards or
-   models added to the lab.
-
-3. Run `python runner.py --test_type sanity` to ensure config is eligible.
-
-4. Submit the change and ping/file bug to infra team. Test platform deputy will
+* Add or update your job configuration in `configs/suite_scheduler.ini`.
+* Update `configs/lab_config.ini`, if the suite test relies on new board or
+  model. Note, suite scheduler does not automatically catch the new boards or
+  models added to the lab.
+* **[Test your changes](#testing)**.
+* Submit the change and ping/file bug to infra team. Test platform deputy will
    rollout your change to the production. Once this is done, you may find the
    scheduling status of the new suite via our [dashboard](go/ctp-).
+
+
+## Running an instance locally {#run-local}
+
+If you want to verify any APIs locally, you can run suite scheduler v2 as a
+local development server
+(https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
+
+a. Finally, start dev_appserver.py in a window:
+
+        dev_appserver.py app.yaml \
+        --port=8888 \
+        --admin_port=8001 \
+        --log_level=debug
+
+b. Test it:
+
+        curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
+
+Please note that once a dev_appserver is started, it simulates data_store &
+task_queue, which means:
+
+a. The datastore doesn't contain any previous cron run's information, so
+the first round of cron/trigger_event won't trigger any event.
+
+b. The task queue is newly created with 0 tasks in it unless
+cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
+local task queue to get purged.
+
+
+## Releasing to production {#release}
+
+There are two instances of suite-scheduler:
+
+* [Staging](https://pantheon.corp.google.com/appengine?organizationId=433637338589&project=google.com:suite-scheduler-staging&serviceId=default)
+* [Prod](https://pantheon.corp.google.com/appengine?authuser=0&project=google.com:suite-scheduler&serviceId=default)
+
+All releases must follow the following process:
+* Release to staging instance
+  ```
+    bin/deploy
+  ```
+* Go the to [cron page for the staging instance][staging-cron] and manually
+  trigger `cron/test_push`. Verify there are no obvious failures by looking at
+  service logs.
+* Note the [currently deployed prod version][current-prod-version], in case
+  you need to rollback.
+* Release to prod instance
+  ```
+    bin/deploy -p
+  ```
+
+Run `bin/deploy -h` for more usage information.
+
+If there are issues discovered in prod after release, rollback to the previous
+version.
+```
+  gcloud app versions migrate --project=google.com:suite-scheduler ${VERSION}
+```
+
+[staging-cron]: https://pantheon.corp.google.com/appengine/cronjobs?organizationId=433637338589&project=google.com:suite-scheduler-staging
+[current-prod-version]: https://pantheon.corp.google.com/appengine/versions?authuser=0&project=google.com:suite-scheduler&serviceId=default

@@ -1,22 +1,9 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Module for fetching files used by suite scheduler."""
 
 import os
-
-# The path for third-party libraries.
-THIRD_PARTY_LIB_PATH = os.path.join(os.path.dirname(__file__), 'lib')
-
-# The path for infra libraries, containing luci and Chromite.
-INFRA_LIBS_PATH = os.path.join(os.path.dirname(__file__), 'infra_libs')
-
-# The path for luci libraries.
-LUCI_PATH = os.path.join(INFRA_LIBS_PATH, 'luci')
-
-# The path for Chromite libraries.
-CHROMITE_PATH = os.path.join(INFRA_LIBS_PATH, 'chromite')
 
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
@@ -25,8 +12,7 @@ CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'configs')
 
 # Suite scheduler event config file
-SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH,
-                                           'suite_scheduler.ini')
+SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH, 'suite_scheduler.ini')
 
 # The suite scheduler config file for testing.
 TEST_SUITE_SCHEDULER_CONFIG_FILE = SUITE_SCHEDULER_CONFIG_FILE
@@ -41,5 +27,4 @@ STAGING_CLIENT_SECRETS_FILE = os.path.join(
 
 # Service account secret json file used for prod project.
 PROD_CLIENT_SECRETS_FILE = os.path.join(
-    CREDENTIALS_PATH,
-    'suite-scheduler_client_secret_service_account.json')
+    CREDENTIALS_PATH, 'suite-scheduler_client_secret_service_account.json')
