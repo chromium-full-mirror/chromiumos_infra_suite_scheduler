@@ -59,7 +59,7 @@ def _make_parser():
   parser.add_argument(
       '--sdk_path',
       help='The path of Google App Engine SDK and Google Cloud SDK.',
-      default=gae_import.GOOGLE_CLOUD_SDK_PATH)
+      default=None)
   parser.add_argument(
       '--test_path',
       help='The path to look for tests, defaults to the current directory.',
@@ -91,12 +91,17 @@ if __name__ == '__main__':
   else:
     logging.getLogger().setLevel(logging.CRITICAL)
 
+  if args.sdk_path == None:
+    sdk_path = gae_import.GOOGLE_CLOUD_SDK_PATH
+  else:
+    # Normalize to full path in case user input path is in abbreviated form.
+    sdk_path = os.path.abspath(os.path.expanduser(args.sdk_path))
   try:
-    gae_import.import_sdk_path(args.sdk_path)
+    gae_import.import_sdk_path(sdk_path)
   except ImportError:
-    args.sdk_path = raw_input('Cannot find google SDK in %s. Please specify '
-                              'your Google Cloud SDK path: ' %
-                              gae_import.GOOGLE_CLOUD_SDK_PATH)
+    print('Cannot find google SDK in %s. Please specify a correct Google '
+          'Cloud SDK path through --sdk_path flag.' % sdk_path)
+    sys.exit(1)
 
   result = main(args)
 
