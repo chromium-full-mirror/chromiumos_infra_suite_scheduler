@@ -91,12 +91,15 @@ if __name__ == '__main__':
   else:
     logging.getLogger().setLevel(logging.CRITICAL)
 
+  # Normalize to full path in case user input path is in abbreviated form.
+  args.sdk_path = os.path.abspath(os.path.expanduser(args.sdk_path))
+
   try:
     gae_import.import_sdk_path(args.sdk_path)
   except ImportError:
-    args.sdk_path = raw_input('Cannot find google SDK in %s. Please specify '
-                              'your Google Cloud SDK path: ' %
-                              gae_import.GOOGLE_CLOUD_SDK_PATH)
+    print('Cannot find google SDK in %s. Please specify a correct Google '
+          'Cloud SDK path through --sdk_path flag.' % args.sdk_path)
+    sys.exit(1)
 
   result = main(args)
 
