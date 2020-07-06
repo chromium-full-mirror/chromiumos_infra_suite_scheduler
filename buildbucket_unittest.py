@@ -29,7 +29,7 @@ FAKE_BUILD_ID = 8890493019851395280
 def _get_suite_params(board='fake_board',
                       model='fake_model',
                       suite='fake_suite',
-                      pool='DUT_POOL_SUITES',
+                      pool='MANAGED_POOL_QUOTA',
                       cros_build='fake_cros_build'):
   return {
       'suite': suite,
@@ -123,7 +123,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.params.scheduling.priority, 10)
       self.assertEqual(
           req.params.scheduling.managed_pool,
-          request_pb2.Request.Params.Scheduling.MANAGED_POOL_SUITES)
+          request_pb2.Request.Params.Scheduling.MANAGED_POOL_QUOTA)
       # Don't check for exact max timeout to stay DRY.
       # But do check that the maximum is sane.
       self.assertLess(req.params.time.maximum_duration.seconds,
@@ -138,7 +138,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
   def testPoolName(self):
     suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'goo', 'hoo']]
-    suite_kwargs[0]['pool'] = 'cts'
+    suite_kwargs[0]['pool'] = 'MANAGED_POOL_CTS'
     suite_kwargs[1]['pool'] = 'wifi'
     for suite in suite_kwargs:
       task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
@@ -197,7 +197,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(req.params.scheduling.priority, 0)
 
   def testShouldSetQsAccountForManagedPool(self):
-    suite_kwargs = _get_suite_params(pool='DUT_POOL_SUITES')
+    suite_kwargs = _get_suite_params(pool='MANAGED_POOL_QUOTA')
     suite_kwargs['qs_account'] = 'qs-foo'
 
     task_executor.push(task_executor.SUITES_QUEUE,
@@ -276,7 +276,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     want = {
         'suite:fake_suite',
         'build:fake_cros_build',
-        'label-pool:DUT_POOL_SUITES',
+        'label-pool:MANAGED_POOL_QUOTA',
         'label-board:foo',
     }
     want_bb = {
@@ -293,7 +293,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs = _get_suite_params(
         board='fake_board',
         model='fake_model',
-        pool='DUT_POOL_SUITES',
+        pool='DUT_POOL_QUOTA',
         suite='fake_suite',
         cros_build='fake_build',
     )
@@ -308,7 +308,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     want = {
         'label-board:fake_board',
         'label-model:fake_model',
-        'label-pool:DUT_POOL_SUITES',
+        'label-pool:DUT_POOL_QUOTA',
         'suite:fake_suite',
         'build:fake_build',
     }
@@ -330,7 +330,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs = _get_suite_params(
         board='fake_board',
         model='fake_model',
-        pool='DUT_POOL_SUITES',
+        pool='MANAGED_POOL_QUOTA',
         suite='fake_suite',
         cros_build='fake_build',
     )
@@ -358,7 +358,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     suite_kwargs = _get_suite_params(
         board='fake_board',
         model='fake_model',
-        pool='DUT_POOL_SUITES',
+        pool='MANAGED_POOL_QUOTA',
         suite='fake_suite',
         cros_build='fake_build',
     )

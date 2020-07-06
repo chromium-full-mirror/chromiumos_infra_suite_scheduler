@@ -26,17 +26,6 @@ from oauth2client import service_account
 
 from google.protobuf import json_format, struct_pb2
 
-_enum = request_pb2.Request.Params.Scheduling
-NONSTANDARD_POOL_NAMES = {
-    'cq': _enum.MANAGED_POOL_CQ,
-    'bvt': _enum.MANAGED_POOL_BVT,
-    'suites': _enum.MANAGED_POOL_SUITES,
-    'cts': _enum.MANAGED_POOL_CTS,
-    'cts-perbuild': _enum.MANAGED_POOL_CTS_PERBUILD,
-    'continuous': _enum.MANAGED_POOL_CONTINUOUS,
-    'arc-presubmit': _enum.MANAGED_POOL_ARC_PRESUBMIT,
-    'quota': _enum.MANAGED_POOL_QUOTA,
-}
 
 GS_PREFIX = 'gs://chromeos-image-archive/'
 
@@ -252,7 +241,7 @@ def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
 
   Args:
-    pool: string pool name (e.g. 'bvt', 'quota').
+    pool: string pool name (e.g. 'MANAGED_POOL_QUOTA', 'wificell').
 
   Returns:
     scheduling: A request_pb2.Request.Params.Scheduling instance.
@@ -260,14 +249,6 @@ def _scheduling_for_pool(pool):
   mp = request_pb2.Request.Params.Scheduling.ManagedPool
   if mp.DESCRIPTOR.values_by_name.get(pool) is not None:
     return request_pb2.Request.Params.Scheduling(managed_pool=mp.Value(pool))
-
-  DUT_POOL_PREFIX = r'DUT_POOL_(?P<munged_pool>.+)'
-  match = re.match(DUT_POOL_PREFIX, pool)
-  if match:
-    pool = string.lower(match.group('munged_pool'))
-  if NONSTANDARD_POOL_NAMES.get(pool):
-    return request_pb2.Request.Params.Scheduling(
-        managed_pool=NONSTANDARD_POOL_NAMES.get(pool))
   return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
 
 
