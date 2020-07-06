@@ -21,6 +21,9 @@ this application:
 
 [install-sdk]: https://cloud.google.com/sdk/docs#install_the_latest_cloud_sdk_version
 
+* Install App Engine Python extensions
+  * `gcloud components install app-engine-python`
+  * `gcloud components install app-engine-python-extra`
 
 ### Developer environment
 
