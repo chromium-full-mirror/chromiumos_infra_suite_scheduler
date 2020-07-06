@@ -33,7 +33,11 @@ checkout][cros-checkout] but entirely outside the Chrome OS chroot environment.
 suite-scheduler uses [infra_virtualenv] to provide a stable environment for
 development and release.
 
-To (re)initialize developer environment, run
+First, make sure you
+[install](https://virtualenv.pypa.io/en/latest/installation.html) `virtualenv`
+with version at least 20.0.
+
+Then, to (re)initialize developer environment, run
 ```
   bin/setup_environment
 ```
