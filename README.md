@@ -23,7 +23,7 @@ this application:
 
 * Install App Engine Python extensions
   * `gcloud components install app-engine-python`
-  * `gcloud components install app-engine-python-extra`
+  * `gcloud components install app-engine-python-extras`
 
 ### Developer environment
 
