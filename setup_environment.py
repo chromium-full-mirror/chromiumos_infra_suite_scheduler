@@ -108,7 +108,8 @@ def _install_infra_libs():
         cwd=_INFRA_LIBS_PATH)
     subprocess.check_call(['git', 'sparse-checkout', 'init'], cwd=dep_path)
     _set_sparse_checkout_paths(dep_path, dep.sparse_checkout_paths)
-    subprocess.check_call(['git', 'checkout', dep.git_ref], cwd=dep_path)
+    subprocess.check_call(
+        ['git', 'checkout', dep.git_ref, '-b', 'deploy', '-f'], cwd=dep_path)
 
 
 def _set_sparse_checkout_paths(checkout_dir, sparse_checkout_paths):
