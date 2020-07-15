@@ -144,6 +144,13 @@ All releases must follow the following process:
   ```
     bin/deploy -p
   ```
+* Send out an email to g/chromeos-infra-releases. Include in the email:
+  * The version of the newly deployed app-engine service.
+  * The version of the old app-engine service (required for rollback)
+  * The changelist, generated with
+    ```
+    git log --pretty=format:'%h %s (%cr) <%an>'
+    ```
 
 Run `bin/deploy -h` for more usage information.
 
