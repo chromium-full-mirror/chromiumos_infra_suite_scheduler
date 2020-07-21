@@ -281,6 +281,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     }
     want_bb = {
         'suite:fake_suite',
+        'user_agent:suite_scheduler',
     }
     for req_name in ['foo', 'foo_1']:
       req = _struct_pb2_to_request_pb2(request_map[req_name])
@@ -314,6 +315,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     }
     want_bb = {
         'suite:fake_suite',
+        'user_agent:suite_scheduler',
     }
     request_map = self._extract_request_map_from_bb_client()
     request_list = [

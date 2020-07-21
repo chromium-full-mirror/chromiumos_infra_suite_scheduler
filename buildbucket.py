@@ -96,7 +96,7 @@ class TestPlatformClient(object):
       return []
     try:
       requests_json = '{ "requests": { %s } }' % ', '.join(requests)
-      req_build = self._build_request(requests_json, _suite_bb_tag(suite))
+      req_build = self._build_request(requests_json, _bb_tags(suite))
       logging.debug('Raw request to buildbucket: %r', req_build)
 
       if (self.running_env == constants.RunningEnv.ENV_STANDALONE
@@ -361,16 +361,18 @@ def _get_key_val_from_label(label):
   logging.warning('Failed to parse the label, %s', label)
 
 
-def _suite_bb_tag(suite):
-  """Convert suite name to a buildbucket tag.
+def _bb_tags(suite):
+  """Get all the tags required for Buildbucket.
 
   Args:
-    request: A request_pb2.Request.
+    suite: A string of suite name being scheduled.
 
   Returns:
     [bb_common_pb2.StringPair] tags to include the buildbucket request.
   """
-  return [bb_common_pb2.StringPair(key='suite', value=suite)]
+  return [bb_common_pb2.StringPair(key='suite', value=suite),
+          bb_common_pb2.StringPair(key='user_agent',
+                                   value='suite_scheduler')]
 
 
 def _should_skip(params):
