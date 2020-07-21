@@ -392,7 +392,7 @@ def _should_skip(params):
   """
   if constants.application_id() == constants.AppID.PROD_APP:
     return False
-  return params['pool'] != 'suites'
+  return params['pool'] != 'MANAGED_POOL_QUOTA'
 
 
 def _should_set_priority(task_params):
