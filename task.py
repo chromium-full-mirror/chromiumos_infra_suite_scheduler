@@ -497,6 +497,12 @@ class Task(object):
                       board, self.boards)
         continue
 
+      hwtest_board = build_lib.reshape_board(board)
+      if hwtest_board != board and not self.boards:
+        # Board is a variant and wasn't explicitly specified in board list.
+        logging.debug('%s variant is skipped as board list is empty.', board)
+        continue
+
       # Check the fitness of the build's branch for task
       branch_build_spec = _pick_branch(build_type, milestone)
       if not self._fits_spec(branch_build_spec):
@@ -554,8 +560,6 @@ class Task(object):
       # Board above is used as build target to control the CrOS image.
       # The following part is to assign models for lab boards, where
       # the suffix should be removed.
-      hwtest_board = build_lib.reshape_board(board)
-
       models = models_by_board.get(hwtest_board, [None])
 
       for model in models:
