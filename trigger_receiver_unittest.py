@@ -890,12 +890,13 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     suite_trigger = trigger_receiver.TriggerReceiver()
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
 
-  def testCronForWeeks(self):
-    """Ensure cron job can be successfully scheduled for several weeks."""
+  def testCronForADay(self):
+    """Ensure cron job can be successfully scheduled for a day."""
     all_tasks = self._get_ground_truth_task_list_from_config()
     last_now = None
 
-    for now in now_generator(datetime.datetime.now(time_converter.UTC_TZ)):
+    for now in now_generator(datetime.datetime.now(time_converter.UTC_TZ),
+                             last_days=1):
       self._mock_utc_now.return_value = now
       suite_trigger = trigger_receiver.TriggerReceiver()
       with mock.patch('task.Task.schedule', return_value=True):
