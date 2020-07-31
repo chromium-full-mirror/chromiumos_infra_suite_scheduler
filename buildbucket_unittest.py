@@ -14,7 +14,7 @@ import build_lib
 import buildbucket
 import task_executor
 
-from chromite.api.gen.test_platform import request_pb2
+from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
@@ -232,26 +232,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(len(request_map), 1)
     req = _struct_pb2_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.priority, 30)
-
-  def testIgnorePriorityInPoolSuites(self):
-    suite_kwargs = _get_suite_params()
-    suite_kwargs['priority'] = '100'
-    suite_kwargs['pool'] = 'suites'
-
-    task_executor.push(task_executor.SUITES_QUEUE,
-                       tag='fake_suite',
-                       **suite_kwargs)
-
-    tasks = self.queue.lease_tasks_by_tag(
-        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
-    self.client.multirequest_run(tasks, 'fake_suite')
-    request_map = self._extract_request_map_from_bb_client()
-    self._assert_bb_client_called()
-    self.assertEqual(len(request_map), 1)
-    req = _struct_pb2_to_ctp_request(request_map['fake_board_fake_model'])
-    # In pool "suites", the priority should be empty or zero, the default value
-    # defined by proto3.
-    self.assertEqual(req.params.scheduling.priority, 0)
 
   def testRequestWithInvalidTags(self):
     suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'foo']]
