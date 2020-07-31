@@ -56,7 +56,7 @@ class TestPlatformClient(object):
     self.running_env = constants.environment()
 
   def multirequest_run(self, tasks, suite):
-    """Call TestPlatform Builder to schedule a batch of tests.
+    """Call cros_test_platform Builder to schedule a batch of suite tests.
 
     Args:
       tasks: The suite tasks to run.
@@ -108,7 +108,6 @@ class TestPlatformClient(object):
             service_account_key=sa_key)
       else:
         cred = prpc_client.service_account_credentials()
-      #TODO(linxinan): only add the tasks returned from bb to executed_tasks.
       resp = self.client.ScheduleBuild(req_build,
                                        credentials=cred,
                                        timeout=PRPC_TIMEOUT_SEC)

@@ -53,7 +53,7 @@ class ExecutionTask(AnalyticsBase):
   """Track the execution for the queued tasks."""
 
   def __init__(self, task_id):
-    """Initialize an ExcutionTask.
+    """Initialize an ExecutionTask.
 
     Args:
       task_id: string of uuid, assigned by the event which created this task.
