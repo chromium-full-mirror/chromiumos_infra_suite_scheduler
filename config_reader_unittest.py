@@ -16,7 +16,6 @@ class LabReaderTestCase(unittest.TestCase):
     self.config = config_reader.ConfigReader(None)
     self.config.add_section(config_reader.ANDROID_SETTINGS)
     self.config.add_section(config_reader.CROS_SETTINGS)
-    self.config.add_section(config_reader.RELEASED_RO_BUILDS)
 
   def testGetAndroidBoardList(self):
     """Ensure android board list can be correctly fetched."""
@@ -47,19 +46,6 @@ class LabReaderTestCase(unittest.TestCase):
     lab_config = config_reader.LabConfig(self.config)
     self.assertEqual(lab_config.get_cros_board_list(),
                      set(['link']))
-
-  def testGetFirmwareROBuildList(self):
-    """Ensure firmware ro build can be successfully found."""
-    self.config.set(config_reader.RELEASED_RO_BUILDS, 'link', 'firmware')
-    lab_config = config_reader.LabConfig(self.config)
-    self.assertEqual(lab_config.get_firmware_ro_build_list('link'),
-                     'firmware')
-
-  def testGetEmptyFirmwareROBuildList(self):
-    """Ensure ValueError is raised if no firmware ro build is found."""
-    lab_config = config_reader.LabConfig(self.config)
-    self.assertRaises(ValueError,
-                      lab_config.get_firmware_ro_build_list, 'link')
 
   def testGetCrOSModelMap(self):
     """Ensure cros_model_map can be correctly fetched."""

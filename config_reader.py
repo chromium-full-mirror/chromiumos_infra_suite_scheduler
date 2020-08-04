@@ -26,9 +26,6 @@ ANDROID_SETTINGS = 'ANDROID'
 # The entries of CrOS settings in lab config file.
 CROS_SETTINGS = 'CROS'
 
-# The entry of release ro builds in lab config file.
-RELEASED_RO_BUILDS = 'RELEASED_RO_BUILDS'
-
 
 def forgive_config_error(func):
   """A decorator making ConfigParser get*() functions return None on fail."""
@@ -153,26 +150,6 @@ class LabConfig(object):
         result[board_name] = [model_name]
 
     return result
-
-  def get_firmware_ro_build_list(self, release_board):
-    """Get firmware ro build list from config file.
-
-    Args:
-      release_board: The format like RELEASED_RO_BUILDS_[board].
-
-    Returns:
-      a string contains released_ro_builds split by comma.
-
-    Raises:
-      ValueError: if no firmware_ro_build found.
-    """
-    board_list = self._config_reader.getstring(
-        RELEASED_RO_BUILDS, release_board)
-    if board_list is None:
-      raise ValueError('No firmware ro build list found for %s' %
-                       release_board)
-
-    return board_list
 
 
 def config_dump(res):

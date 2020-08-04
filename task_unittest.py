@@ -170,28 +170,6 @@ class TaskTestCase(TaskBaseTestCase):
     self.assertTrue(self.task._fits_spec('38'))
     self.assertFalse(self.task._fits_spec('37'))
 
-  def testGetFirmwareFromLabConfig(self):
-    """Test get firmware from lab config successfully."""
-    with mock.patch('config_reader.LabConfig.get_firmware_ro_build_list',
-                    return_value='build1,build2'):
-      firmware = self.task._get_firmware_build(
-          'released_ro_2', self.BOARD, self.firmware_dict,
-          config_reader.LabConfig(None))
-      self.assertEqual(firmware, 'build2')
-
-  def testGetFirmwareFromLabConfigOutofIndex(self):
-    """Test get firmware from lab config when firmware index is invalid."""
-    with mock.patch('config_reader.LabConfig.get_firmware_ro_build_list',
-                    return_value='build1,build2'):
-      self.assertRaises(ValueError,
-                        self.task._get_latest_firmware_build_from_lab_config,
-                        'released_ro_3',
-                        self.BOARD,
-                        config_reader.LabConfig(None))
-      self.assertIsNone(self.task._get_firmware_build(
-          'released_ro_3', self.BOARD, self.firmware_dict,
-          config_reader.LabConfig(None)))
-
   def testGetFirmwareSuccessfully(self):
     """Test get firmware from firmware_dict successfully."""
 

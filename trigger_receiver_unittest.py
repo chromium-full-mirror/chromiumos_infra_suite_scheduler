@@ -177,11 +177,6 @@ class FakeLabConfig(object):
     return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext',
             'coral', 'reef', 'nami')
 
-  def get_firmware_ro_build_list(self, release_board):
-    """Mock config_reader.LabConfig.get_firmware_ro_build_list."""
-    del release_board  # unused
-    return 'firmware1,firmware2'
-
   def get_cros_model_map(self):
     """Mock config_reader.LabConfig.get_cros_model_map."""
     return {

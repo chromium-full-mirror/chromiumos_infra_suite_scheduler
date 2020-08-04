@@ -17,9 +17,6 @@ import tot_manager
 # The max lifetime of a suite scheduled by suite scheduler
 _JOB_MAX_RUNTIME_MINS_DEFAULT = 72 * 60
 
-# One kind of formats for RO firmware spec.
-_RELEASE_RO_FIRMWARE_SPEC = 'released_ro_'
-
 
 class SchedulingError(Exception):
   """Raised to indicate a failure in scheduling a task."""
@@ -326,32 +323,6 @@ class Task(object):
     else:
       return False
 
-  def _get_latest_firmware_build_from_lab_config(self, spec, board,
-                                                 lab_config):
-    """Get latest firmware from lab config file.
-
-    Args:
-      spec: a string build spec for RO or RW firmware, eg. firmware,
-        cros. For RO firmware, the value can also be released_ro_X.
-      board: a string board against which this task will run suite job.
-      lab_config: a config.LabConfig object, to read lab config file.
-
-    Returns:
-      A string latest firmware build.
-
-    Raises:
-      ValueError: if no firmware build list is found in lab config file.
-    """
-    index = int(spec[len(_RELEASE_RO_FIRMWARE_SPEC):])
-    released_ro_builds = lab_config.get_firmware_ro_build_list(
-        'RELEASED_RO_BUILDS_%s' % board).split(',')
-    if len(released_ro_builds) < index:
-      raise ValueError('No %dth ro_builds in the lab_config firmware '
-                       'list %r' % (index, released_ro_builds))
-
-    logging.debug('Get ro_build: %s', released_ro_builds[index - 1])
-    return released_ro_builds[index - 1]
-
   def _get_firmware_build(self, spec, board, firmware_build_dict, lab_config):
     """Get the firmware build name to test with ChromeOS build.
 
@@ -375,16 +346,7 @@ class Task(object):
       return None
 
     try:
-      if spec.startswith(_RELEASE_RO_FIRMWARE_SPEC):
-        # For RO firmware whose value is released_ro_X, where X is the index of
-        # the list defined in lab config file:
-        #     CROS/RELEASED_RO_BUILDS_[board].
-        # For example, for spec 'released_ro_2', and lab config file
-        # CROS/RELEASED_RO_BUILDS_veyron_jerry: build1,build2,
-        # return firmware RO build should be 'build2'.
-        return self._get_latest_firmware_build_from_lab_config(
-            spec, board, lab_config)
-      elif firmware_build_dict:
+      if firmware_build_dict:
         return firmware_build_dict.get((spec, board), None)
       else:
         return None
