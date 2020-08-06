@@ -52,14 +52,17 @@ class AnalyticsBase(object):
 class ExecutionTask(AnalyticsBase):
   """Track the execution for the queued tasks."""
 
-  def __init__(self, task_id):
+  def __init__(self, task_id, request_tag):
     """Initialize an ExecutionTask.
 
     Args:
       task_id: string of uuid, assigned by the event which created this task.
+      request_tag: string of request tag to indentify single ScheduleJob in a CTP
+        build.
     """
     self.task = analytics_pb2.ExecutionTask(
         queued_task_id=task_id,
+        request_tag=request_tag,
         request_sent=timestamp_pb2.Timestamp())
     self.task.request_sent.GetCurrentTime()
     super(ExecutionTask, self).__init__(constants.Metrics.EXECUTION_TASK_TABLE,

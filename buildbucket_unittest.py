@@ -387,7 +387,7 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     mock_bq_client.return_value = self.mock_bq_client
 
   def testRecordSuccessfulTaskExecution(self):
-    suite = _get_suite_params(board='foo')
+    suite = _get_suite_params(board='fake_build', model='fake_model')
     suite['task_id'] = FAKE_UUID
     task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
     tasks = self.queue.lease_tasks_by_tag(
@@ -398,11 +398,12 @@ class TestTaskExecutions(TestPlatformClientTestCase):
         json.dumps(self.mock_bq_client.rows[0]['json']),
         analytics_pb2.ExecutionTask())
     self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
+    self.assertEqual(task_execution.request_tag, 'fake_build_fake_model')
     self.assertEqual(task_execution.response.ctp_build_id, str(FAKE_BUILD_ID))
     self.assertEqual(task_execution.error.error_message, '')
 
   def testRecordFailedTaskExecution(self):
-    suite = _get_suite_params(board='foo')
+    suite = _get_suite_params(board='fake_build', model='fake_model')
     suite['task_id'] = FAKE_UUID
     task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
     self.fake_client.error = "cros_test_platform error"
@@ -414,6 +415,7 @@ class TestTaskExecutions(TestPlatformClientTestCase):
         json.dumps(self.mock_bq_client.rows[0]['json']),
         analytics_pb2.ExecutionTask())
     self.assertEqual(task_execution.queued_task_id, FAKE_UUID)
+    self.assertEqual(task_execution.request_tag, 'fake_build_fake_model')
     self.assertEqual(task_execution.response.ctp_build_id, '')
     self.assertEqual(task_execution.error.error_message,
                      self.fake_client.error)

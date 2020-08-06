@@ -37,23 +37,24 @@ class TestExecutionTask(unittest.TestCase):
 
   def testTaskID(self):
     tid = str(uuid.uuid1())
-    execution = analytics.ExecutionTask(tid)
+    execution = analytics.ExecutionTask(tid, 'fake_req_tag')
     self.assertEqual(execution.task.queued_task_id, tid)
+    self.assertEqual(execution.task.request_tag, 'fake_req_tag')
 
   def testUpdateResultBuildID(self):
-    execution = analytics.ExecutionTask(str(uuid.uuid1()))
+    execution = analytics.ExecutionTask(str(uuid.uuid1()), '')
     bid = 8890493019851395280
     execution.update_result(build_pb2.Build(id=bid))
     self.assertEqual(execution.task.response.ctp_build_id, str(bid))
 
   def testUpdateResultInvalidBuildID(self):
-    execution = analytics.ExecutionTask(str(uuid.uuid1()))
+    execution = analytics.ExecutionTask(str(uuid.uuid1()), '')
     execution.update_result(build_pb2.Build(status=common_pb2.INFRA_FAILURE))
     self.assertIn('status: INFRA_FAILURE',
                   execution.task.error.error_message)
 
   def testUpdateResultErrorMsg(self):
-    execution = analytics.ExecutionTask(str(uuid.uuid1()))
+    execution = analytics.ExecutionTask(str(uuid.uuid1()), '')
     msg = 'some error'
     execution.update_result(msg)
     self.assertEqual(execution.task.error.error_message, msg)
