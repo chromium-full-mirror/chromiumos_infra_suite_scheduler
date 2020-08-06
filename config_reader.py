@@ -100,13 +100,7 @@ class LabConfig(object):
     Raises:
       ValueError: no android board list is found.
     """
-    board_list = self._config_reader.getstring(
-        ANDROID_SETTINGS, 'board_list')
-    if board_list is None:
-      raise ValueError('Cannot find Android board_list in lab config file.')
-
-    return set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
-                for board in board_list.split(',')])
+    return set()
 
   def get_cros_board_list(self):
     """Get the CrOS board list from lab config file.
