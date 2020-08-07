@@ -11,6 +11,7 @@ import config_reader
 import file_getter
 import task_config_reader
 
+from chromite.api.gen.test_platform import request_pb2 as ctp_request
 
 def _priority_is_valid(t):
   """A helper to verify the configured priority."""
@@ -68,6 +69,14 @@ class RawConfigReader(ConfigParser.RawConfigParser):
 
 
 class ConfigSanityTest(unittest.TestCase):
+
+  def _is_valid_migration(self, name):
+    if not hasattr(self, "_migration_names"):
+      # Get a list of permissible migration names, as strings
+      descriptor = ctp_request.Request.Params.Migrations.DESCRIPTOR
+      self._migration_names = set(descriptor.fields_by_name.keys())
+    return name in self._migration_names
+
   def testLabConfigParse(self):
     reader = config_reader.LabConfig(
         config_reader.ConfigReader(file_getter.LAB_CONFIG_FILE))
@@ -138,6 +147,11 @@ class ConfigSanityTest(unittest.TestCase):
           exceptions.append(
               'Task %s should not have both quota account and priority '
               'configured.' % t.name)
+        if t.migrations:
+          for m in t.migrations:
+            if not self._is_valid_migration(m):
+              exceptions.append('Task %s has invalid migration %s enabled' %
+                                (t.name, m))
 
     if exceptions:
       self.fail('Fail sanity check for %s:\n%s' %

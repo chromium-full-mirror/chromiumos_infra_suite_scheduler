@@ -99,6 +99,11 @@ class Task(object):
           testbed_dut_count, number of duts to test when using a testbed.
           qs_account, quota account for the unmanaged pool which has enabled
             Quota Scheduler.
+          migrations, list of migration flags (strings) to set. Must be booleans
+            flags, sets to True.
+          pubsub_topic, Long-form topic string, will receive Swarming's native
+            pubsub messages. Format is "projects/<proj>/topics/<topic>"
+
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
@@ -117,6 +122,7 @@ class Task(object):
     self.frontdoor = task_info.frontdoor
     self.hour = task_info.hour
     self.job_retry = task_info.job_retry
+    self.migrations = task_info.migrations
     self.name = task_info.name
     self.no_delay = task_info.no_delay
     self.num = task_info.num
@@ -124,6 +130,7 @@ class Task(object):
     self.os_type = task_info.os_type
     self.pool = task_info.pool
     self.priority = task_info.priority
+    self.pubsub_topic = task_info.pubsub_topic
     self.qs_account = task_info.qs_account
     self.suite = task_info.suite
     self.test_source = task_info.test_source

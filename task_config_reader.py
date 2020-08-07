@@ -52,6 +52,7 @@ COMMON_TASK_ENTRIES = [
     'job_retry',
     'lc_branches',
     'lc_targets',
+    'migrations',
     'models',
     'no_delay',
     'num',
@@ -59,6 +60,7 @@ COMMON_TASK_ENTRIES = [
     'os_type',
     'pool',
     'priority',
+    'pubsub_topic',
     'qs_account',
     'suite',
     'test_source',
@@ -231,12 +233,15 @@ class TaskConfig(object):
     lc_targets = self._config_reader.getstring(section, 'lc_targets')
     models = self._config_reader.getstring(section, 'models')
     pool = self._config_reader.getstring(section, 'pool')
+    pubsub_topic = self._config_reader.getstring(section, 'pubsub_topic')
     qs_account = self._config_reader.getstring(section, 'qs_account')
     suite = self._config_reader.getstring(section, 'suite')
     test_source = self._config_reader.getstring(section, 'test_source')
 
     _b_s = self._config_reader.getstring(section, 'branch_specs')
     branch_specs = [] if _b_s is None else re.split(r'\s*,\s*', _b_s)
+    migrations = self._config_reader.getstring(section, 'migrations')
+    migrations = [] if migrations is None else re.split(r'\s*,\s*', migrations)
     os_type = self._config_reader.getstring(section, 'os_type')
     os_type = build_lib.OS_TYPE_CROS if os_type is None else os_type
     timeout = self._config_reader.getint(section, 'timeout')
@@ -315,6 +320,7 @@ class TaskConfig(object):
         keyword=keyword,
         lc_branches=lc_branches,
         lc_targets=lc_targets,
+        migrations=migrations,
         models=models,
         name=section,
         no_delay=no_delay,
@@ -323,6 +329,7 @@ class TaskConfig(object):
         os_type=os_type,
         pool=pool,
         priority=priority,
+        pubsub_topic=pubsub_topic,
         qs_account=qs_account,
         suite=suite,
         test_source=test_source,
