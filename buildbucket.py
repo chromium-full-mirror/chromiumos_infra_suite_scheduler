@@ -8,6 +8,7 @@ import datetime
 import logging
 import re
 import string
+import types
 import uuid
 
 import analytics
@@ -208,6 +209,15 @@ def _form_test_platform_request(task_params):
   params.metadata.test_metadata_url = gs_url
   params.metadata.debug_symbols_archive_url = gs_url
 
+  migration, nonempty = _set_migrations(task_params.get('migrations', []))
+  if nonempty:
+    params.migrations.CopyFrom(migration)
+
+  topic = task_params.get('pubsub_topic')
+  # Default value of the task_params fields is "None" rather than None
+  if topic not in [None, 'None']:
+    params.notification.pubsub_topic = topic
+
   params.time.maximum_duration.FromTimedelta(timeout)
 
   for key, value in _request_tags(task_params, build, pool).iteritems():
@@ -236,6 +246,40 @@ def _form_test_platform_request(task_params):
   request.test_plan.suite.add().name = task_params['suite']
   return request
 
+def _set_migrations(migrations_list, migrations_pb=None):
+  """Translate list of migration names to a Migrations proto.
+
+  Args:
+    migrations_list: list of strings, each naming a migration to set.
+    migrations_pb: ctp_request.Request.Params.Migrations proto or None
+  Returns:
+    (migration, nonempty); tuple whose first element is a
+      ctp_request.Request.Params.Migrations proto object
+      and whose second element is whether that object has non-default attributes
+  Raises:
+    ValueError if a named migration is not in the Migrations proto
+    TypeError if a named migration cannot be set to True
+  """
+  errs= []
+  # Task flattens all fields so one-element lists are cast to single strings
+  if migrations_pb is None:
+    migrations_pb = ctp_request.Request.Params.Migrations()
+  if migrations_list == "None" or not migrations_list:
+    return (migrations_pb, False)
+  if isinstance(migrations_list, types.StringTypes):
+    migrations_list = [migrations_list]
+  nonempty = False
+  for name in migrations_list:
+    try:
+      # setattr on a protobuf is much safer than normal; trying to set an
+      # undefined field, or even one which is differently typed, is an error
+      setattr(migrations_pb, name, True)
+      nonempty = True
+    except (AttributeError, TypeError) as e:
+      errs.append(str(e))
+  if len(errs) > 0:
+    raise AttributeError('invalid fields: '+', '.join(errs))
+  return (migrations_pb, nonempty)
 
 def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
