@@ -115,7 +115,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
     request_map = self._extract_request_map_from_bb_client()
     request_list = [
-        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+        _struct_to_ctp_request(v) for v in request_map.values()
     ]
     request_list.sort(
         key=lambda req: req.params.software_attributes.build_target.name)
@@ -123,7 +123,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.params.scheduling.priority, 10)
       self.assertEqual(
           req.params.scheduling.managed_pool,
-          request_pb2.Request.Params.Scheduling.MANAGED_POOL_QUOTA)
+          ctp_request.Request.Params.Scheduling.MANAGED_POOL_QUOTA)
       # Don't check for exact max timeout to stay DRY.
       # But do check that the maximum is sane.
       self.assertLess(req.params.time.maximum_duration.seconds,
@@ -149,13 +149,13 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self._assert_bb_client_called()
     request_map = self._extract_request_map_from_bb_client()
     request_list = [
-        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+        _struct_to_ctp_request(v) for v in request_map.values()
     ]
     self.assertEqual(len(request_list), 3)
     request_list.sort(
         key=lambda req: req.params.software_attributes.build_target.name)
     self.assertEqual(request_list[0].params.scheduling.managed_pool,
-                     request_pb2.Request.Params.Scheduling.MANAGED_POOL_CTS)
+                     ctp_request.Request.Params.Scheduling.MANAGED_POOL_CTS)
     self.assertEqual(request_list[1].params.scheduling.unmanaged_pool,
                      suite_kwargs[1]['pool'])
 
@@ -190,7 +190,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
     self.assertEqual(len(request_map), 1)
-    req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
+    req = _struct_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
     # If qs_account is set, priority should be 0, the default value
     # defined by proto3.
@@ -210,7 +210,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
     self.assertEqual(len(request_map), 1)
-    req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
+    req = _struct_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
     # If qs_account is set, priority should be 0, the default value
     # defined by proto3.
@@ -230,7 +230,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
     self.assertEqual(len(request_map), 1)
-    req = _struct_pb2_to_request_pb2(request_map['fake_board_fake_model'])
+    req = _struct_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.priority, 30)
 
   def testRequestWithInvalidTags(self):
@@ -264,7 +264,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
         'user_agent:suite_scheduler',
     }
     for req_name in ['foo', 'foo_1']:
-      req = _struct_pb2_to_request_pb2(request_map[req_name])
+      req = _struct_to_ctp_request(request_map[req_name])
       req_tags = set([t for t in req.params.decorations.tags])
       self.assertEqual(want, req_tags)
       bb_tags = set([t for t in self._extract_tags_from_bb_client()])
@@ -299,7 +299,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     }
     request_map = self._extract_request_map_from_bb_client()
     request_list = [
-        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+        _struct_to_ctp_request(v) for v in request_map.values()
     ]
     self.assertEqual(len(request_list), 1)
     req = request_list[0]
@@ -327,7 +327,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self._assert_bb_client_called()
     request_map = self._extract_request_map_from_bb_client()
     request_list = [
-        _struct_pb2_to_request_pb2(v) for v in request_map.values()
+        _struct_to_ctp_request(v) for v in request_map.values()
     ]
     self.assertEqual(len(request_list), 1)
     req = request_list[0]
@@ -428,7 +428,7 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self._assert_bb_client_called()
     self.assertEqual(len(self.mock_bq_client.rows), 0)
 
-  def testIgnoreSuiteForUnamanagedPoolInStaging(self):
+  def testIgnoreSuiteForUnmanagedPoolInStaging(self):
     self.mock_application_id.return_value = 'suite-scheduler-staging'
     suite = _get_suite_params(pool='foo')
     task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
@@ -439,14 +439,14 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self._assert_bb_client_not_called()
 
 
-def _struct_pb2_to_request_pb2(struct_pb2):
+def _struct_to_ctp_request(struct_pb2):
   """Transform google struct proto to test_platform_request.
 
   Args:
     struct_pb2: A struct_pb2 instance.
 
   Returns:
-    A request_pb2 instance.
+    A ctp_request instance.
   """
   json = json_format.MessageToJson(struct_pb2)
-  return json_format.Parse(json, request_pb2.Request())
+  return json_format.Parse(json, ctp_request.Request())

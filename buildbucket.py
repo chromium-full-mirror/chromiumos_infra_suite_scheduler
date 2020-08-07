@@ -15,7 +15,7 @@ import build_lib
 import constants
 import file_getter
 
-from chromite.api.gen.test_platform import request_pb2
+from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from components import auth
 from components.prpc import client as prpc_client
 from infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
@@ -174,14 +174,13 @@ class TestPlatformClient(object):
 
 
 def _form_test_platform_request(task_params):
-  """Generate ScheduleBuildRequest for calling buildbucket.
+  """Generates test_platform.Request proto to send to buildbucket.
 
   Args:
-    task_params: dict containing the parameters of a task got from suite
-        queue.
+    task_params: dict containing the parameters of a task from the suite queue.
 
   Returns:
-    A request_pb2 instance.
+    A ctp_request.Request instance.
   """
   build = _infer_build_from_task_params(task_params)
   if build == 'None':
@@ -190,7 +189,7 @@ def _form_test_platform_request(task_params):
   pool = _infer_pool_from_task_params(task_params)
   timeout = _infer_timeout_from_task_params(task_params)
 
-  request = request_pb2.Request()
+  request = ctp_request.Request()
   params = request.params
 
   params.scheduling.CopyFrom(_scheduling_for_pool(pool))
@@ -244,12 +243,12 @@ def _scheduling_for_pool(pool):
     pool: string pool name (e.g. 'MANAGED_POOL_QUOTA', 'wificell').
 
   Returns:
-    scheduling: A request_pb2.Request.Params.Scheduling instance.
+    scheduling: A ctp_request.Request.Params.Scheduling instance.
   """
-  mp = request_pb2.Request.Params.Scheduling.ManagedPool
+  mp = ctp_request.Request.Params.Scheduling.ManagedPool
   if mp.DESCRIPTOR.values_by_name.get(pool) is not None:
-    return request_pb2.Request.Params.Scheduling(managed_pool=mp.Value(pool))
-  return request_pb2.Request.Params.Scheduling(unmanaged_pool=pool)
+    return ctp_request.Request.Params.Scheduling(managed_pool=mp.Value(pool))
+  return ctp_request.Request.Params.Scheduling(unmanaged_pool=pool)
 
 
 # Also see: A copy of this function in swarming_lib.py.
