@@ -354,6 +354,51 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_not_called()
 
+  def testValidMigration(self):
+    suite = _get_suite_params(board='foobar')
+    suite['migrations'] = ['enable_synchronous_offload']
+    task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'some_suite')
+    request_map = self._extract_request_map_from_bb_client()
+    self.assertTrue(all([
+        _struct_to_ctp_request(v).params.migrations.enable_synchronous_offload
+        for v in request_map.values()
+    ]))
+
+  def testMultipleInvalidMigrations(self):
+    suite = _get_suite_params(board='foobar')
+    suite['migrations'] = ["give_me_free_money", "root_access_in_corp"]
+    task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    with self.assertRaises(AttributeError):
+      self.client.multirequest_run(tasks, 'some_suite')
+
+  def testSingleInvalidMigration(self):
+    suite = _get_suite_params(board='foobar')
+    suite['migrations'] = ['give_me_free_money']
+    task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    with self.assertRaises(AttributeError):
+      self.client.multirequest_run(tasks, 'some_suite')
+
+  def testPubsubTopic(self):
+    suite = _get_suite_params(board='foobar')
+    topic = 'projects/dummy-project/topics/test-topic'
+    suite['pubsub_topic'] = topic
+    task_executor.push(task_executor.SUITES_QUEUE, tag='some_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'some_suite')
+    request_map = self._extract_request_map_from_bb_client()
+    self.assertTrue(all([
+        _struct_to_ctp_request(v).params.notification.pubsub_topic == topic for v in
+        request_map.values()
+    ]))
+
   def _get_client(self, addr):
     self.assertEqual(ADDR, addr)
     return self.fake_client

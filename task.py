@@ -99,8 +99,8 @@ class Task(object):
           testbed_dut_count, number of duts to test when using a testbed.
           qs_account, quota account for the unmanaged pool which has enabled
             Quota Scheduler.
-          migrations, list of migration flags (strings) to set. Must be booleans
-            flags, sets to True.
+          migrations, list of migration flags (strings) to set. Must name
+            boolean fields, which will be set to True.
           pubsub_topic, Long-form topic string, will receive Swarming's native
             pubsub messages. Format is "projects/<proj>/topics/<topic>"
 
@@ -416,6 +416,7 @@ class Task(object):
         'force': self.force,
         'job_retry': self.job_retry,
         'max_runtime_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
+        'migrations': self.migrations,
         'model': model,
         'name': self.name,
         'no_delay': self.no_delay,
@@ -423,6 +424,7 @@ class Task(object):
         'num': self.num,
         'pool': self.pool,
         'priority': self.priority,
+        'pubsub_topic': self.pubsub_topic,
         'qs_account': self.qs_account,
         'run_prod_code': run_prod_code,
         'suite': self.suite,
