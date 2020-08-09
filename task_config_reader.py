@@ -33,35 +33,37 @@ EventSettings = collections.namedtuple(
     ])
 
 # Common task entries
-COMMON_TASK_ENTRIES = ['any_model',
-                       'boards',
-                       'board_families',
-                       'models',
-                       'branch_specs',
-                       'cros_build_spec',
-                       'day',
-                       'exclude_boards',
-                       'exclude_board_families',
-                       'exclude_models',
-                       'firmware_ro_build_spec',
-                       'firmware_rw_build_spec',
-                       'force',
-                       'frontdoor',
-                       'hour',
-                       'job_retry',
-                       'lc_branches',
-                       'lc_targets',
-                       'no_delay',
-                       'num',
-                       'os_type',
-                       'pool',
-                       'priority',
-                       'only_hwtest_sanity_required',
-                       'suite',
-                       'test_source',
-                       'timeout',
-                       'qs_account',
-                       'dimensions']
+COMMON_TASK_ENTRIES = [
+    'any_model',
+    'board_families',
+    'boards',
+    'branch_specs',
+    'cros_build_spec',
+    'day',
+    'dimensions',
+    'exclude_board_families',
+    'exclude_boards',
+    'exclude_models',
+    'firmware_ro_build_spec',
+    'firmware_rw_build_spec',
+    'force',
+    'frontdoor',
+    'hour',
+    'job_retry',
+    'lc_branches',
+    'lc_targets',
+    'models',
+    'no_delay',
+    'num',
+    'only_hwtest_sanity_required',
+    'os_type',
+    'pool',
+    'priority',
+    'qs_account',
+    'suite',
+    'test_source',
+    'timeout',
+]
 
 # Namedtuple for storing task info.
 TaskInfo = collections.namedtuple(
@@ -212,54 +214,44 @@ class TaskConfig(object):
     Raises:
       MalformedConfigEntryError: if a config entry is invalid.
     """
-    keyword = self._config_reader.getstring(section, 'run_on')
-    suite = self._config_reader.getstring(section, 'suite')
-    pool = self._config_reader.getstring(section, 'pool')
-    qs_account = self._config_reader.getstring(section, 'qs_account')
-    boards = self._config_reader.getstring(section, 'boards')
-    exclude_boards = self._config_reader.getstring(section,
-                                                   'exclude_boards')
-    board_families = self._config_reader.getstring(section, 'board_families')
-    exclude_board_families = self._config_reader.getstring(
-        section, 'exclude_board_families')
-    models = self._config_reader.getstring(section, 'models')
-    exclude_models = self._config_reader.getstring(section, 'exclude_models')
     any_model = self._config_reader.getboolean(section, 'any_model')
-    cros_build_spec = self._config_reader.getstring(
-        section, 'cros_build_spec')
-    firmware_rw_build_spec = self._config_reader.getstring(
-        section, 'firmware_rw_build_spec')
+    board_families = self._config_reader.getstring(section, 'board_families')
+    boards = self._config_reader.getstring(section, 'boards')
+    cros_build_spec = self._config_reader.getstring(section, 'cros_build_spec')
+    exclude_board_families = self._config_reader.getstring(
+            section, 'exclude_board_families')
+    exclude_boards = self._config_reader.getstring(section, 'exclude_boards')
+    exclude_models = self._config_reader.getstring(section, 'exclude_models')
     firmware_ro_build_spec = self._config_reader.getstring(
-        section, 'firmware_ro_build_spec')
-    test_source = self._config_reader.getstring(section, 'test_source')
+            section, 'firmware_ro_build_spec')
+    firmware_rw_build_spec = self._config_reader.getstring(
+            section, 'firmware_rw_build_spec')
+    keyword = self._config_reader.getstring(section, 'run_on')
     lc_branches = self._config_reader.getstring(section, 'lc_branches')
     lc_targets = self._config_reader.getstring(section, 'lc_targets')
-    branch_specs = self._config_reader.getstring(section, 'branch_specs')
-    if branch_specs is not None:
-      branch_specs = re.split(r'\s*,\s*', branch_specs)
-    else:
-      branch_specs = []
+    models = self._config_reader.getstring(section, 'models')
+    pool = self._config_reader.getstring(section, 'pool')
+    qs_account = self._config_reader.getstring(section, 'qs_account')
+    suite = self._config_reader.getstring(section, 'suite')
+    test_source = self._config_reader.getstring(section, 'test_source')
 
+    _b_s = self._config_reader.getstring(section, 'branch_specs')
+    branch_specs = [] if _b_s is None else re.split(r'\s*,\s*', _b_s)
     os_type = self._config_reader.getstring(section, 'os_type')
     os_type = build_lib.OS_TYPE_CROS if os_type is None else os_type
-
-    job_retry = bool(self._config_reader.getboolean(section, 'job_retry'))
-
-    no_delay = bool(self._config_reader.getboolean(section, 'no_delay'))
+    timeout = self._config_reader.getint(section, 'timeout')
+    timeout = EVENT_CLASSES[keyword].TIMEOUT if timeout is None else timeout
 
     force = bool(self._config_reader.getboolean(section, 'force'))
-
     frontdoor = not bool(self._config_reader.getboolean(section, 'not_frontdoor'))
+    job_retry = bool(self._config_reader.getboolean(section, 'job_retry'))
+    no_delay = bool(self._config_reader.getboolean(section, 'no_delay'))
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
     # qs_account attached, because they have enabled quota scheduler.
     if priority is None and pool != 'suites' and qs_account is None:
       priority = EVENT_CLASSES[keyword].PRIORITY
-
-    timeout = self._config_reader.getint(section, 'timeout')
-    if timeout is None:
-      timeout = EVENT_CLASSES[keyword].TIMEOUT
 
     only_hwtest_sanity_required = self._config_reader.getstring(
         section, 'only_hwtest_sanity_required')
@@ -303,38 +295,40 @@ class TaskConfig(object):
 
     dimensions = self._config_reader.getstring(section, 'dimensions')
 
-    return TaskInfo(name=section,
-                    keyword=keyword,
-                    suite=suite,
-                    pool=pool,
-                    boards=boards,
-                    exclude_boards=exclude_boards,
-                    board_families=board_families,
-                    exclude_board_families=exclude_board_families,
-                    models=models,
-                    exclude_models=exclude_models,
-                    any_model=any_model,
-                    priority=priority,
-                    timeout=timeout,
-                    job_retry=job_retry,
-                    no_delay=no_delay,
-                    force=force,
-                    frontdoor=frontdoor,
-                    num=num,
-                    hour=hour,
-                    day=day,
-                    branch_specs=branch_specs,
-                    cros_build_spec=cros_build_spec,
-                    firmware_ro_build_spec=firmware_ro_build_spec,
-                    firmware_rw_build_spec=firmware_rw_build_spec,
-                    test_source=test_source,
-                    lc_branches=lc_branches,
-                    lc_targets=lc_targets,
-                    os_type=os_type,
-                    testbed_dut_count=testbed_dut_count,
-                    only_hwtest_sanity_required=only_hwtest_sanity_required,
-                    qs_account=qs_account,
-                    dimensions=dimensions)
+    return TaskInfo(
+        any_model=any_model,
+        board_families=board_families,
+        boards=boards,
+        branch_specs=branch_specs,
+        cros_build_spec=cros_build_spec,
+        day=day,
+        dimensions=dimensions,
+        exclude_board_families=exclude_board_families,
+        exclude_boards=exclude_boards,
+        exclude_models=exclude_models,
+        firmware_ro_build_spec=firmware_ro_build_spec,
+        firmware_rw_build_spec=firmware_rw_build_spec,
+        force=force,
+        frontdoor=frontdoor,
+        hour=hour,
+        job_retry=job_retry,
+        keyword=keyword,
+        lc_branches=lc_branches,
+        lc_targets=lc_targets,
+        models=models,
+        name=section,
+        no_delay=no_delay,
+        num=num,
+        only_hwtest_sanity_required=only_hwtest_sanity_required,
+        os_type=os_type,
+        pool=pool,
+        priority=priority,
+        qs_account=qs_account,
+        suite=suite,
+        test_source=test_source,
+        testbed_dut_count=testbed_dut_count,
+        timeout=timeout,
+    )
 
   def _validate_task_section(self, task_info):
     """Validate a task section.

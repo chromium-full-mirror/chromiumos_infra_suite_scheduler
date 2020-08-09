@@ -108,27 +108,27 @@ class Task(object):
     # Indicate whether there're suites get pushed into taskqueue for this task.
     self.is_pushed = False
 
-    self.name = task_info.name
-    self.suite = task_info.suite
     self.branch_specs = task_info.branch_specs
-    self.pool = task_info.pool
-    self.num = task_info.num
-    self.priority = task_info.priority
-    self.timeout = task_info.timeout
     self.cros_build_spec = task_info.cros_build_spec
-    self.firmware_rw_build_spec = task_info.firmware_rw_build_spec
-    self.firmware_ro_build_spec = task_info.firmware_ro_build_spec
-    self.test_source = task_info.test_source
-    self.job_retry = task_info.job_retry
-    self.no_delay = task_info.no_delay
-    self.force = task_info.force
-    self.os_type = task_info.os_type
-    self.frontdoor = task_info.frontdoor
-    self.testbed_dut_count = task_info.testbed_dut_count
-    self.hour = task_info.hour
     self.day = task_info.day
+    self.firmware_ro_build_spec = task_info.firmware_ro_build_spec
+    self.firmware_rw_build_spec = task_info.firmware_rw_build_spec
+    self.force = task_info.force
+    self.frontdoor = task_info.frontdoor
+    self.hour = task_info.hour
+    self.job_retry = task_info.job_retry
+    self.name = task_info.name
+    self.no_delay = task_info.no_delay
+    self.num = task_info.num
     self.only_hwtest_sanity_required = task_info.only_hwtest_sanity_required
+    self.os_type = task_info.os_type
+    self.pool = task_info.pool
+    self.priority = task_info.priority
     self.qs_account = task_info.qs_account
+    self.suite = task_info.suite
+    self.test_source = task_info.test_source
+    self.testbed_dut_count = task_info.testbed_dut_count
+    self.timeout = task_info.timeout
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -399,30 +399,30 @@ class Task(object):
         testbed_build = launch_control_build
 
     suite_job_parameters = {
-        'name': self.name,
-        'suite': self.suite,
-        'task_id': task_id,
-        'board': board,
-        'model': model,
-        build_lib.BuildVersionKey.CROS_VERSION: cros_build,
-        build_lib.BuildVersionKey.FW_RW_VERSION: firmware_rw_build,
-        build_lib.BuildVersionKey.FW_RO_VERSION: firmware_ro_build,
         build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: android_build,
+        build_lib.BuildVersionKey.CROS_VERSION: cros_build,
+        build_lib.BuildVersionKey.FW_RO_VERSION: firmware_ro_build,
+        build_lib.BuildVersionKey.FW_RW_VERSION: firmware_rw_build,
         build_lib.BuildVersionKey.TESTBED_BUILD_VERSION: testbed_build,
+        'board': board,
+        'dimensions': self.dimensions,
+        'force': self.force,
+        'job_retry': self.job_retry,
+        'max_runtime_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
+        'model': model,
+        'name': self.name,
+        'no_delay': self.no_delay,
+        'no_wait_for_results': not self.job_retry,
         'num': self.num,
         'pool': self.pool,
         'priority': self.priority,
+        'qs_account': self.qs_account,
+        'run_prod_code': run_prod_code,
+        'suite': self.suite,
+        'task_id': task_id,
+        'test_source_build': test_source_build,
         'timeout': self.timeout,
         'timeout_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
-        'max_runtime_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
-        'no_wait_for_results': not self.job_retry,
-        'test_source_build': test_source_build,
-        'job_retry': self.job_retry,
-        'no_delay': self.no_delay,
-        'force': self.force,
-        'dimensions': self.dimensions,
-        'run_prod_code': run_prod_code,
-        'qs_account': self.qs_account,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
