@@ -8,7 +8,6 @@ import datetime
 import logging
 import re
 import string
-import types
 import uuid
 
 import analytics
@@ -209,9 +208,6 @@ def _form_test_platform_request(task_params):
   params.metadata.test_metadata_url = gs_url
   params.metadata.debug_symbols_archive_url = gs_url
 
-  params.migrations.CopyFrom(_set_migrations(task_params.get('migrations', [])))
-  params.notification.pubsub_topic = task_params.get('pubsub_topic') or ''
-
   params.time.maximum_duration.FromTimedelta(timeout)
 
   for key, value in _request_tags(task_params, build, pool).iteritems():
@@ -240,36 +236,6 @@ def _form_test_platform_request(task_params):
   request.test_plan.suite.add().name = task_params['suite']
   return request
 
-def _set_migrations(migrations_list, migrations_pb=None):
-  """Translate list of migration names to a Migrations proto.
-
-  Args:
-    migrations_list: list of strings, each naming a migration to set.
-    migrations_pb: ctp_request.Request.Params.Migrations proto or None
-  Returns:
-    ctp_request.Request.Params.Migrations proto object
-  Raises:
-    ValueError if a named migration is not in the Migrations proto
-    TypeError if a named migration cannot be set to True
-  """
-  errs= []
-  # Task flattens all fields so one-element lists are cast to single strings
-  if isinstance(migrations_list, types.StringTypes):
-    migrations_list = [migrations_list]
-  if migrations_pb is None:
-    migrations_pb = ctp_request.Request.Params.Migrations()
-  if migrations_list is None:
-    return migrations_pb
-  for name in migrations_list:
-    try:
-      # setattr on a protobuf is much safer than normal; trying to set an
-      # undefined field, or even one which is differently typed, is an error
-      setattr(migrations_pb, name, True)
-    except (AttributeError, TypeError) as e:
-      errs.append(str(e))
-  if len(errs) > 0:
-    raise AttributeError('invalid fields: '+', '.join(errs))
-  return migrations_pb
 
 def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
