@@ -187,8 +187,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
-    request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
+    request_map = self._extract_request_map_from_bb_client()
     self.assertEqual(len(request_map), 1)
     req = _struct_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
@@ -207,8 +207,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
-    request_map = self._extract_request_map_from_bb_client()
     self._assert_bb_client_called()
+    request_map = self._extract_request_map_from_bb_client()
     self.assertEqual(len(request_map), 1)
     req = _struct_to_ctp_request(request_map['fake_board_fake_model'])
     self.assertEqual(req.params.scheduling.qs_account, 'qs-foo')
@@ -248,9 +248,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
     tasks = self.queue.lease_tasks_by_tag(
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     executed = self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
     self.assertEqual(len(executed), 2)
 
-    self._assert_bb_client_called()
     request_map = self._extract_request_map_from_bb_client()
     self.assertEqual(len(request_map), 2)
     want = {
@@ -358,11 +358,15 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(ADDR, addr)
     return self.fake_client
 
-  def _assert_bb_client_called(self):
-    self.assertEqual(len(self.fake_client.called_with_requests), 1)
+  def _assert_bb_client_called(self, times=1):
+    actual = len(self.fake_client.called_with_requests)
+    self.assertEqual(actual, times,
+                     "BB client called %s times, expected %s" % (actual, times))
 
   def _assert_bb_client_not_called(self):
-    self.assertEqual(len(self.fake_client.called_with_requests), 0)
+    actual = len(self.fake_client.called_with_requests)
+    self.assertEqual(actual, 0,
+                     "BB client called %s times, expected 0"% actual)
 
   def _extract_request_map_from_bb_client(self):
     return self.fake_client.called_with_requests[0].properties['requests']

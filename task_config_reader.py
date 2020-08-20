@@ -241,7 +241,7 @@ class TaskConfig(object):
     _b_s = self._config_reader.getstring(section, 'branch_specs')
     branch_specs = [] if _b_s is None else re.split(r'\s*,\s*', _b_s)
     migrations = self._config_reader.getstring(section, 'migrations')
-    migrations = [] if migrations is None else re.split(r'\s*,\s*', migrations)
+    migrations = [] if migrations is None else re.split(r'\s*,\s*|$', migrations)
     os_type = self._config_reader.getstring(section, 'os_type')
     os_type = build_lib.OS_TYPE_CROS if os_type is None else os_type
     timeout = self._config_reader.getint(section, 'timeout')

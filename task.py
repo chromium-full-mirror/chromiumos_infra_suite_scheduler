@@ -99,8 +99,8 @@ class Task(object):
           testbed_dut_count, number of duts to test when using a testbed.
           qs_account, quota account for the unmanaged pool which has enabled
             Quota Scheduler.
-          migrations, list of migration flags (strings) to set. Must be booleans
-            flags, sets to True.
+          migrations, list of migration flags (strings) to set. Must name
+            boolean fields, which will be set to True.
           pubsub_topic, Long-form topic string, will receive Swarming's native
             pubsub messages. Format is "projects/<proj>/topics/<topic>"
 
