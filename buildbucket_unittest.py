@@ -394,10 +394,10 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.client.multirequest_run(tasks, 'some_suite')
     self._assert_bb_client_called()
     request_map = self._extract_request_map_from_bb_client()
-    self.assertTrue(all([
-        _struct_to_ctp_request(v).params.migrations is None
-        for v in request_map.values()
-    ]))
+    for v in request_map.values():
+      req = _struct_to_ctp_request(v)
+      self.assertFalse(req.HasField('params') and
+                       req.params.HasField('migrations'))
 
   def testPubsubTopic(self):
     suite = _get_suite_params(board='foobar')
