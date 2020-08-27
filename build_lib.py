@@ -53,16 +53,16 @@ CrOSBuildConfigInfo = collections.namedtuple(
 _DEFAULT_BUILD_SUFFIX = '-release'
 
 # The default setting of board for fetching latest build.
-_DEFAULT_MASTER = 'master'
+_DEFAULT_HEAD = 'master'
 
 # The path for storing the latest build.
-_GS_LATEST_MASTER_PATTERN = '%(board)s%(suffix)s/%(name)s'
+_GS_LATEST_HEAD_PATTERN = '%(board)s%(suffix)s/%(name)s'
 
 # The gs bucket to fetch the latest build.
 _GS_BUCKET = 'chromeos-image-archive'
 
 # The file in Google Storage to fetch the latest build.
-_LATEST_MASTER = 'LATEST-master'
+_LATEST_HEAD = 'LATEST-master'
 
 # The bucket for ChromeOS build release boards. Maintained by GoldenEye.
 _GE_RELEASE_BUILD_BUCKET = 'chromeos-build-release-console'
@@ -147,12 +147,12 @@ def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
   Raises:
     HttpError if error happens in interacting with Google Storage.
   """
-  board = board if board is not None else _DEFAULT_MASTER
+  board = board if board is not None else _DEFAULT_HEAD
   suffix = suffix if suffix is not None else _DEFAULT_BUILD_SUFFIX
-  file_to_check = _GS_LATEST_MASTER_PATTERN % {
+  file_to_check = _GS_LATEST_HEAD_PATTERN % {
       'board': board,
       'suffix': suffix,
-      'name': _LATEST_MASTER}
+      'name': _LATEST_HEAD}
 
   try:
     return storage_client.read_object(_GS_BUCKET, file_to_check)

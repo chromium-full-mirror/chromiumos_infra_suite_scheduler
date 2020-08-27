@@ -172,14 +172,14 @@ def _parse_model_list(models):
 
 
 def _parse_pool_list(l):
-  r"""Parse whitelist/blacklist for a suite in migration config file.
+  r"""Parse allowlist/denylist for a suite in migration config file.
 
   Args:
     l: A string, read from migration config file entry
-       whitelist or blacklist. e.g. '\ncq:reef,\nbvt:peppy...'
+       allowlist or denylist. e.g. '\ncq:reef,\nbvt:peppy...'
 
   Returns:
-    A list of whitelist/blacklist <pool:model> string.
+    A list of allowlist/denylist <pool:model> string.
     e.g. ['cq:reef', 'bvt:peppy', ...]
   """
   if l is None or not l:

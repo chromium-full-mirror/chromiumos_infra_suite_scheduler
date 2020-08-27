@@ -53,7 +53,7 @@ If you get [failures when trying to download credentials][creds-fail],
 
 * Double check you're logged into the Google Cloud SDK by running
   `gcloud auth list`.
-* Contact Test Platform team or one of the [OWNERS] to be whitelisted.
+* Contact Test Platform team or one of the [OWNERS] to be allowlisted.
 
 [cros-checkout]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Get-the-Source
 [infra_virtualenv]: https://chromium.googlesource.com/chromiumos/infra_virtualenv/+/refs/heads/master/README.md
