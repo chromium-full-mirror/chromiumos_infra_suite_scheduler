@@ -1,4 +1,3 @@
 google-api-python-client
-google-endpoints
 httplib2
 protobuf
