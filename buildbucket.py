@@ -338,7 +338,7 @@ def _infer_timeout_from_task_params(task_params):
   timeout_mins = int(task_params['timeout_mins'])
   # timeout's unit is hour.
   if task_params.get('timeout'):
-    timeout_mins = max(int(task_params['timeout']) * 60, timeout_mins)
+    timeout_mins = min(int(task_params['timeout']) * 60, timeout_mins)
   if timeout_mins > constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS:
     timeout_mins = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
   return datetime.timedelta(minutes=timeout_mins)
