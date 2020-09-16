@@ -15,7 +15,7 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'configs')
 SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH, 'suite_scheduler.ini')
 
 # The suite scheduler config file for testing.
-TEST_SUITE_SCHEDULER_CONFIG_FILE = SUITE_SCHEDULER_CONFIG_FILE
+TEST_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH, 'fake_suite_scheduler.ini')
 
 # Lab config file
 LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
