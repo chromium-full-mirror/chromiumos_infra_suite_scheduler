@@ -28,7 +28,6 @@ from google.appengine.ext import testbed
 _SUITE_CONFIG_READER = config_reader.ConfigReader(
     file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE)
 
-
 def now_generator(start_time, interval_min=30, last_days=7):
   """A datetime.datetime.now generator.
 
@@ -287,7 +286,7 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
         'nightly', utc_now - datetime.timedelta(hours=1))
     self._mock_utc_now.return_value = utc_now
 
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
     self.assertTrue(suite_trigger.events['nightly'].should_handle)
     self.assertEqual(len(suite_trigger.event_results['nightly']), 1)
@@ -310,7 +309,7 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
         'weekly', utc_now - datetime.timedelta(days=1))
     self._mock_utc_now.return_value = utc_now
 
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
     self.assertTrue(suite_trigger.events['weekly'].should_handle)
     self.assertEqual(len(suite_trigger.event_results['weekly']), 1)
@@ -333,7 +332,7 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
         'weekly', utc_now - datetime.timedelta(days=1))
     self._mock_utc_now.return_value = utc_now
 
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
     self.assertTrue(suite_trigger.events['weekly'].should_handle)
     self.assertEqual(len(suite_trigger.event_results['weekly']), 1)
@@ -351,7 +350,8 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._prepare()
 
   def _prepare(self):
-    self.fake_config = config_reader.ConfigReader(None)
+    self.reader = config_reader.ConfigReader(None)
+    self.fake_config = self.reader
     mock_config_reader = mock.patch('config_reader.ConfigReader')
     self._mock_config_reader = mock_config_reader.start()
     self.addCleanup(mock_config_reader.stop)
@@ -381,7 +381,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     # Validate that the expected tests got kicked off.
@@ -417,7 +417,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -437,7 +437,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(link_suite, 'boards', 'asuka, paine, banon')
     self._mock_config_reader.return_value = self.fake_config
 
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -457,7 +457,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -474,7 +474,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -494,7 +494,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -516,7 +516,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
         'asuka, paine, banon, coral, reef, nami, samus-kernelnext')
     self._mock_config_reader.return_value = self.fake_config
 
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -540,7 +540,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -558,7 +558,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -580,7 +580,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -604,7 +604,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -628,7 +628,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -654,7 +654,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -679,7 +679,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertEqual(len(suite_trigger.event_results), 1)
@@ -701,7 +701,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertIn('new_build', suite_trigger.event_results)
@@ -722,7 +722,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     self.assertIn('new_build', suite_trigger.event_results)
@@ -742,7 +742,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
@@ -762,7 +762,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     some_event = suite_trigger.events['new_build']
     suite_trigger.cron()
 
@@ -784,7 +784,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
 
     # The firmware query was not called.
@@ -833,7 +833,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     with mock.patch(
         'build_lib.get_cros_builds',
         return_value=({}, {})) as mock_get_cros_builds:
-      suite_trigger = trigger_receiver.TriggerReceiver()
+      suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
       suite_trigger.cron()
       # The new CrOS builds we fetched should be created within
       # the specified time span.
@@ -845,7 +845,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     """Test the first round of cron can be successfully executed."""
     self._mock_utc_now.return_value = datetime.datetime.now(
         time_converter.UTC_TZ)
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     suite_trigger.cron()
     self.assertFalse(suite_trigger.events['nightly'].should_handle)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
@@ -860,7 +860,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     last_exec_client.set_last_execute_time(
         'nightly', utc_now - datetime.timedelta(hours=1))
     self._mock_utc_now.return_value = utc_now
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     self.assertTrue(suite_trigger.events['nightly'].should_handle)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
     self.assertFalse(suite_trigger.events['new_build'].should_handle)
@@ -872,7 +872,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     last_exec_client.set_last_execute_time(
         'nightly', utc_now - datetime.timedelta(days=3))
     self._mock_utc_now.return_value = utc_now
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     self.assertFalse(suite_trigger.events['nightly'].should_handle)
 
   def testCronTriggerWeeklyOutdated(self):
@@ -882,7 +882,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     last_exec_client.set_last_execute_time(
         'weekly', utc_now - datetime.timedelta(days=8))
     self._mock_utc_now.return_value = utc_now
-    suite_trigger = trigger_receiver.TriggerReceiver()
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
 
   def testCronForADay(self):
@@ -893,7 +893,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     for now in now_generator(datetime.datetime.now(time_converter.UTC_TZ),
                              last_days=1):
       self._mock_utc_now.return_value = now
-      suite_trigger = trigger_receiver.TriggerReceiver()
+      suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
       with mock.patch('task.Task.schedule', return_value=True):
         suite_trigger.cron()
 

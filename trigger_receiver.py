@@ -17,7 +17,7 @@ import task_config_reader
 class TriggerReceiver(object):
   """The class for receiving event triggers."""
 
-  def __init__(self):
+  def __init__(self, fake=False):
     """Initialize a trigger receiver.
 
     Its job is to fetch triggers from config files and trigger them.
@@ -33,13 +33,21 @@ class TriggerReceiver(object):
             constants.RestClient.ANDROID_BUILD_CLIENT.scopes,
             constants.RestClient.ANDROID_BUILD_CLIENT.service_name,
             constants.RestClient.ANDROID_BUILD_CLIENT.service_version))
-
-    self._task_config = task_config_reader.TaskConfig(
-        config_reader.ConfigReader(file_getter.SUITE_SCHEDULER_CONFIG_FILE))
-
-    lab_config_reader = config_reader.ConfigReader(
-        file_getter.LAB_CONFIG_FILE)
-    self._lab_config = config_reader.LabConfig(lab_config_reader)
+    if fake:
+      self._task_config = task_config_reader.TaskConfig(
+          config_reader.ConfigReader(
+              file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE))
+      fake_lab_config_reader = config_reader.ConfigReader(
+          file_getter.LAB_CONFIG_FILE)
+      self._lab_config = config_reader.LabConfig(fake_lab_config_reader)
+    else:
+      file_getter.clone_config()
+      self._task_config = task_config_reader.TaskConfig(
+          config_reader.ConfigReader(
+              file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE))
+      lab_config_reader = config_reader.ConfigReader(
+          file_getter.NEW_LAB_CONFIG_FILE)
+      self._lab_config = config_reader.LabConfig(lab_config_reader)
 
     # Initialize events
     self.events = {}
