@@ -11,12 +11,11 @@ import uuid
 
 import analytics
 import build_lib
-import constants
 import task_executor
 import tot_manager
 
 # The max lifetime of a suite scheduled by suite scheduler
-_JOB_MAX_RUNTIME_MINS_DEFAULT = constants.Buildbucket.MAX_BUILDBUCKET_TIMEOUT_MINS
+_JOB_MAX_RUNTIME_MINS_DEFAULT = 72 * 60
 
 
 class SchedulingError(Exception):
