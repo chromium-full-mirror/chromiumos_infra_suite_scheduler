@@ -120,13 +120,10 @@ class TaskConfig(object):
     tasks = []
     exceptions = []
     for section in self._config_reader.sections():
-      logging.info('Entering %s section.', section)
       try:
         if event_type == self._get_keyword(section):
           new_task = self._create_task_from_config_section(section)
           tasks.append(new_task)
-        else:
-            logging.info('Section %s is not of type %s.', section, event_type)
       except MalformedConfigEntryError as e:
         exceptions.append(str(e))
         logging.exception(str(e))
