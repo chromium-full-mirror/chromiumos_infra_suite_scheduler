@@ -8,6 +8,7 @@
 import collections
 import ConfigParser
 import json
+import logging
 import re
 
 import build_utils
@@ -116,6 +117,7 @@ class LabConfig(object):
     # Filter board like xxxx_1 to xxxx.
     cros_board_list = set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
                            for board in board_list.split(',')])
+    logging.info('Found CROS boards in lab_config.ini: %s', str(cros_board_list))
     return cros_board_list - android_board_list
 
   def get_cros_model_map(self):

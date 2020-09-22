@@ -129,6 +129,7 @@ class TaskConfig(object):
         logging.exception(str(e))
         continue
 
+    logging.info('Found %d tasks for %s.', len(tasks), event_type)
     return {'tasks': tasks, 'exceptions': exceptions}
 
   def get_event_setting(self, section_name):
