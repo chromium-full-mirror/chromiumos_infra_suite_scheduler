@@ -48,6 +48,10 @@ def clone_config():
                                                      'suite_scheduler.ini')
       NEW_LAB_CONFIG_FILE = os.path.join(suite_scheduler_path,
                                          'lab_config.ini')
+      if not os.exists(NEW_SUITE_SCHEDULER_CONFIG_FILE):
+        logging.error('suite_scheduler.ini does not exist.')
+      if not os.exists(NEW_LAB_CONFIG_FILE):
+        logging.error('lab_config.ini does not exist.')
     except Exception as e:
       logging.error(str(e))
 

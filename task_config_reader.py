@@ -95,6 +95,8 @@ class TaskConfig(object):
       is_sanity: a boolean; true if we are running in sanity env.
     """
     self._config_reader = config_reader
+    logging.info('Config contains %d entries.',
+                 len(self._config_reader.sections()))
     self.is_sanity = is_sanity
     self._tot_manager = tot_manager.TotMilestoneManager(is_sanity=is_sanity)
     self._board_family_config = {}
