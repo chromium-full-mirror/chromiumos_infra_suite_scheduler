@@ -5,6 +5,7 @@
 
 import logging
 import os
+import subprocess
 import tempfile
 
 # The path to save credentials.
@@ -41,7 +42,8 @@ def clone_config():
   logging.info('Cloning internal config repo.')
   if (NEW_SUITE_SCHEDULER_CONFIG_FILE is None or NEW_LAB_CONFIG_FILE is None):
     try:
-      os.system(cmd)
+      stdout = subprocess.check_output([cmd], shell=True)
+      logging.info(stdout)
       suite_scheduler_path = os.path.join(temp_dir, 'test', 'suite_scheduler',
                                           'generated')
       NEW_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(suite_scheduler_path,
