@@ -33,6 +33,8 @@ NEW_LAB_CONFIG_FILE = None
 
 def clone_config():
   """Function to clone the config for suite scheduler from the config-internal repo."""
+  global NEW_SUITE_SCHEDULER_CONFIG_FILE
+  global NEW_LAB_CONFIG_FILE
   temp_dir = tempfile.mkdtemp()
   cmd = 'git clone --depth 1 https://chrome-internal.googlesource.com/chromeos/config-internal {}'.format(
       temp_dir)
