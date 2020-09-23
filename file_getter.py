@@ -36,9 +36,11 @@ def clone_config():
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
   temp_dir = '/tmp/config-internal'
-  cmd = 'git clone --depth 1 https://chrome-internal.googlesource.com/chromeos/config-internal {}'.format(
+  cmd = '/usr/bin/git clone --depth 1 https://chrome-internal.googlesource.com/chromeos/config-internal {}'.format(
       temp_dir)
   logging.info('Cloning internal config repo.')
+  logging.info('temp dir exists: {}'.format(os.path.exists(temp_dir)))
+  logging.info('git exists: {}'.format(os.path.exists('/usr/bin/git')))
   if (NEW_SUITE_SCHEDULER_CONFIG_FILE is None or NEW_LAB_CONFIG_FILE is None):
     try:
       stdout = subprocess.check_output([cmd], shell=True)
