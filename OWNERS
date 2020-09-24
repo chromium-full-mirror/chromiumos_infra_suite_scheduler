@@ -8,3 +8,6 @@ pwang@chromium.org
 shapiroc@chromium.org
 shijinabraham@chromium.org
 xixuan@chromium.org
+
+# Service accounts
+chromeos-ci-prod@chromeos-bot.iam.gserviceaccount.com
