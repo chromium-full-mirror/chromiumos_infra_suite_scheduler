@@ -11,6 +11,7 @@ import constants
 import datastore_client
 import file_getter
 import rest_client
+import StringIO
 import task_config_reader
 
 
@@ -42,11 +43,12 @@ class TriggerReceiver(object):
       self._lab_config = config_reader.LabConfig(fake_lab_config_reader)
     else:
       file_getter.clone_config()
+      task_buff = StringIO.StringIO(
+          file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE)
       self._task_config = task_config_reader.TaskConfig(
-          config_reader.ConfigReader(
-              file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE))
-      lab_config_reader = config_reader.ConfigReader(
-          file_getter.NEW_LAB_CONFIG_FILE)
+          config_reader.ConfigReader(task_buff))
+      lab_buff = StringIO.StringIO(file_getter.NEW_LAB_CONFIG_FILE)
+      lab_config_reader = config_reader.ConfigReader(lab_buff)
       self._lab_config = config_reader.LabConfig(lab_config_reader)
 
     # Initialize events

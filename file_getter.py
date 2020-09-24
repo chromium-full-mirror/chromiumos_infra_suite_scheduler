@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 """Module for fetching files used by suite scheduler."""
 
+import base64
 import logging
 import os
 import subprocess
+import urllib2
 
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
@@ -32,29 +34,22 @@ NEW_LAB_CONFIG_FILE = None
 
 
 def clone_config():
-  """Function to clone the config for suite scheduler from the config-internal repo."""
+  """Function to clone the config for suite scheduler from the current head."""
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
-  temp_dir = '/tmp/config-internal'
-  cmd = '/usr/bin/git clone --depth 1 https://chrome-internal.googlesource.com/chromeos/config-internal {}'.format(
-      temp_dir)
-  logging.info('Cloning internal config repo.')
-  logging.info('temp dir exists: {}'.format(os.path.exists(temp_dir)))
-  logging.info('git exists: {}'.format(os.path.exists('/usr/bin/git')))
+  logging.info('Fetching config from suite scheduler repo.')
   if (NEW_SUITE_SCHEDULER_CONFIG_FILE is None or NEW_LAB_CONFIG_FILE is None):
     try:
-      stdout = subprocess.check_output([cmd], shell=True)
-      logging.info(stdout)
-      suite_scheduler_path = os.path.join(temp_dir, 'test', 'suite_scheduler',
-                                          'generated')
-      NEW_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(suite_scheduler_path,
-                                                     'suite_scheduler.ini')
-      NEW_LAB_CONFIG_FILE = os.path.join(suite_scheduler_path,
-                                         'lab_config.ini')
-      if not os.path.exists(NEW_SUITE_SCHEDULER_CONFIG_FILE):
-        logging.error('suite_scheduler.ini does not exist.')
-      if not os.path.exists(NEW_LAB_CONFIG_FILE):
-        logging.error('lab_config.ini does not exist.')
+      suite_scheduler_response = urllib2.urlopen(
+          'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/suite_scheduler.ini?format=text'
+      )
+      suite_scheduler_html = suite_scheduler_response.read()
+      NEW_SUITE_SCHEDULER_CONFIG_FILE = base64.b64decode(suite_scheduler_html)
+      lab_config_response = urllib2.urlopen(
+          'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/lab_config.ini?format=text'
+      )
+      lab_config_html = lab_config_response.read()
+      NEW_LAB_CONFIG_FILE = base64.b64decode(lab_config_html)
     except Exception as e:
       logging.error(str(e))
 
