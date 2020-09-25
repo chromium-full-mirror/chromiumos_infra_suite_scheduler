@@ -36,7 +36,7 @@ def _write_config(config_name):
   tot_response = urllib2.urlopen(
       'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/{}?format=text'.format(config_name)
   ).read()
-  config_text = base64.b64decode(suite_scheduler_html)
+  config_text = base64.b64decode(tot_response)
   logging.info('Writing %s as: %s', config_name, config_text)
   print(config_text)
   filename = '/tmp/{}'.format(config_name)
