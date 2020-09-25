@@ -38,7 +38,6 @@ def _write_config(config_name):
   ).read()
   config_text = base64.b64decode(tot_response)
   logging.info('Writing %s as: %s', config_name, config_text)
-  print(config_text)
   filename = '/tmp/{}'.format(config_name)
   with open(filename, 'w') as f:
     f.write(config_text)
