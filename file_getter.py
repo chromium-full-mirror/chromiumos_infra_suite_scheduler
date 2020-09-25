@@ -32,6 +32,17 @@ TEST_LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'fake_lab_config.ini')
 NEW_SUITE_SCHEDULER_CONFIG_FILE = None
 NEW_LAB_CONFIG_FILE = None
 
+def _write_config(config_name):
+  tot_response = urllib2.urlopen(
+      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/{}?format=text'.format(config_name)
+  ).read()
+  config_text = base64.b64decode(suite_scheduler_html)
+  logging.info('Writing %s as: %s', config_name, config_text)
+  print(config_text)
+  filename = '/tmp/{}'.format(config_name)
+  with open(filename, 'w') as f:
+    f.write(config_text)
+  return filename
 
 def clone_config():
   """Function to clone the config for suite scheduler from the current head."""
@@ -40,16 +51,8 @@ def clone_config():
   logging.info('Fetching config from suite scheduler repo.')
   if (NEW_SUITE_SCHEDULER_CONFIG_FILE is None or NEW_LAB_CONFIG_FILE is None):
     try:
-      suite_scheduler_response = urllib2.urlopen(
-          'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/suite_scheduler.ini?format=text'
-      )
-      suite_scheduler_html = suite_scheduler_response.read()
-      NEW_SUITE_SCHEDULER_CONFIG_FILE = base64.b64decode(suite_scheduler_html)
-      lab_config_response = urllib2.urlopen(
-          'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/lab_config.ini?format=text'
-      )
-      lab_config_html = lab_config_response.read()
-      NEW_LAB_CONFIG_FILE = base64.b64decode(lab_config_html)
+      NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
+      NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
     except Exception as e:
       logging.error(str(e))
 
