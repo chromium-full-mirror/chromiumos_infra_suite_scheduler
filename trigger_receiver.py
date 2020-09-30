@@ -39,7 +39,7 @@ class TriggerReceiver(object):
           config_reader.ConfigReader(
               file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE))
       fake_lab_config_reader = config_reader.ConfigReader(
-          file_getter.LAB_CONFIG_FILE)
+          file_getter.TEST_LAB_CONFIG_FILE)
       self._lab_config = config_reader.LabConfig(fake_lab_config_reader)
     else:
       file_getter.clone_config()

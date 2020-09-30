@@ -15,15 +15,9 @@ CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 # The path to save configs.
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'configs')
 
-# Suite scheduler event config file
-SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH, 'suite_scheduler.ini')
-
 # The suite scheduler config file for testing.
 TEST_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH,
                                                 'fake_suite_scheduler.ini')
-
-# Lab config file
-LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'lab_config.ini')
 
 # Test lab config file
 TEST_LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'fake_lab_config.ini')
