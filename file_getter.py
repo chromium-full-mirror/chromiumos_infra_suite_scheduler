@@ -42,12 +42,11 @@ def clone_config():
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
   logging.info('Fetching config from suite scheduler repo.')
-  if (NEW_SUITE_SCHEDULER_CONFIG_FILE is None or NEW_LAB_CONFIG_FILE is None):
-    try:
-      NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
-      NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
-    except Exception as e:
-      logging.error(str(e))
+  try:
+    NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
+    NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
+  except Exception as e:
+    logging.error(str(e))
 
 # Service account secret json file used for staging project.
 STAGING_CLIENT_SECRETS_FILE = os.path.join(
