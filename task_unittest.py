@@ -94,7 +94,7 @@ class TaskBaseTestCase(unittest.TestCase):
             timeout=self.TIMEOUT))
 
     self._empty_configs = config_reader.Configs(
-        lab_config=config_reader.LabConfig(None))
+      lab_config=config_reader.LabConfig(None))
     self._fake_configs = config_reader.Configs(
         lab_config=FakeLabConfig())
 
@@ -526,6 +526,7 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
         branch_specs=['>=tot-2'],
         boards='coral',
         firmware_ro_build_spec='firmware',
+        firmware_ro_version=None,
         os_type=build_lib.OS_TYPE_CROS))
     new_task.schedule(
             [], (branch_builds, []), {}, self._fake_configs)

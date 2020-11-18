@@ -46,6 +46,8 @@ COMMON_TASK_ENTRIES = [
     'exclude_models',
     'firmware_ro_build_spec',
     'firmware_rw_build_spec',
+    'firmware_ro_version',
+    'firmware_rw_version',
     'force',
     'frontdoor',
     'hour',
@@ -229,6 +231,8 @@ class TaskConfig(object):
             section, 'firmware_ro_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
             section, 'firmware_rw_build_spec')
+    firmware_ro_version = self._config_reader.getstring(section, 'firmware_ro_version')
+    firmware_rw_version = self._config_reader.getstring(section, 'firmware_rw_version')
     keyword = self._config_reader.getstring(section, 'run_on')
     lc_branches = self._config_reader.getstring(section, 'lc_branches')
     lc_targets = self._config_reader.getstring(section, 'lc_targets')
@@ -311,6 +315,8 @@ class TaskConfig(object):
         exclude_models=exclude_models,
         firmware_ro_build_spec=firmware_ro_build_spec,
         firmware_rw_build_spec=firmware_rw_build_spec,
+        firmware_ro_version=firmware_ro_version,
+        firmware_rw_version=firmware_rw_version,
         force=force,
         frontdoor=frontdoor,
         hour=hour,

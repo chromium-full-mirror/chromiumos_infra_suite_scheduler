@@ -226,10 +226,20 @@ def _form_test_platform_request(task_params):
 
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
   fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
+
+  if task_params.has_key('firmware_ro_version'):
+    build = params.software_dependencies.add()
+    build.ro_firmware_build = task_params['firmware_ro_version']
+
   # Skip firmware field if None(unspecified) or 'None'(no such build).
   if fw_ro_build not in (None, 'None'):
     build = params.software_dependencies.add()
     build.ro_firmware_build = fw_ro_build
+
+  if task_params.has_key('firmware_rw_version'):
+    build = params.software_dependencies.add()
+    build.rw_firmware_build = task_params['firmware_rw_version']
+
   if fw_rw_build not in (None, 'None'):
     build = params.software_dependencies.add()
     build.rw_firmware_build = fw_rw_build

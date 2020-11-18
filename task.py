@@ -77,6 +77,8 @@ class Task(object):
             test with a ChromeOS build.
           firmware_ro_build_spec, spec used to determine the firmware RO build
             test with a ChromeOS build.
+          firmware_ro_version, pinned firmware RO version.
+          firmware_rw_version, pinned firmware RW version.
           test_source, the source of test code when firmware will be updated in
             the test. The value can be 'firmware_rw', 'firmware_ro' or 'cros'.
           job_retry, set to True to enable job-level retry. Default is False.
@@ -114,6 +116,8 @@ class Task(object):
     self.day = task_info.day
     self.firmware_ro_build_spec = task_info.firmware_ro_build_spec
     self.firmware_rw_build_spec = task_info.firmware_rw_build_spec
+    self.firmware_ro_version = task_info.firmware_ro_version
+    self.firmware_rw_version = task_info.firmware_rw_version
     self.force = task_info.force
     self.frontdoor = task_info.frontdoor
     self.hour = task_info.hour
@@ -480,6 +484,12 @@ class Task(object):
 
       firmware_rw_build = None
       firmware_ro_build = None
+      if self.firmware_ro_version:
+        firmware_ro_build = self.firmware_ro_version
+
+      if self.firmware_rw_version:
+        firmware_rw_build = self.firmware_rw_version
+
       if self.firmware_rw_build_spec or self.firmware_ro_build_spec:
         firmware_rw_build = self._get_firmware_build(
             self.firmware_rw_build_spec, board, firmware_build_dict, lab_config)
