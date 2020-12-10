@@ -466,5 +466,15 @@ def reshape_board(board):
   # The hack derives from build info structure saved in CIDB/buildbucket:
   # *-kernelnext/*-arcnext etc are saved as board name, but not the real board
   # for DUT.
-  board = re.sub('-(kernelnext|arcvm|arc-r|arc-r-userdebug)$', '', board)
+  suffixes = [
+    '-arc-r',
+    '-arc-r-userdebug',
+    '-arcvm',
+    '-kernelnext',
+    '-libcamera',
+
+  ]
+  for s in suffixes:
+    if board.endswith(s):
+      board = board[:-len(s)]
   return board
