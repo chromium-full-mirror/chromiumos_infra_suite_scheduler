@@ -20,6 +20,7 @@ from infra_libs.buildbucket.proto import common_pb2
 def _get_task_info():
   return task_config_reader.TaskInfo(
             name='FakeSuiteTestPerBuild',
+            analytics_name='FakeSuiteTestPerBuild',
             suite='fake_suite',
             pool='fake_pool',
             num=1,

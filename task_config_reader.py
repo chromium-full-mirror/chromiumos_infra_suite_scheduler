@@ -34,6 +34,7 @@ EventSettings = collections.namedtuple(
 
 # Common task entries
 COMMON_TASK_ENTRIES = [
+    'analytics_name',
     'any_model',
     'board_families',
     'boards',
@@ -219,6 +220,7 @@ class TaskConfig(object):
     Raises:
       MalformedConfigEntryError: if a config entry is invalid.
     """
+    analytics_name = self._config_reader.getstring(section, 'analytics_name')
     any_model = self._config_reader.getboolean(section, 'any_model')
     board_families = self._config_reader.getstring(section, 'board_families')
     boards = self._config_reader.getstring(section, 'boards')
@@ -303,6 +305,7 @@ class TaskConfig(object):
     dimensions = self._config_reader.getstring(section, 'dimensions')
 
     return TaskInfo(
+        analytics_name=analytics_name,
         any_model=any_model,
         board_families=board_families,
         boards=boards,

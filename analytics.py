@@ -271,7 +271,10 @@ def _job_section(task_info):
     job_section: a analytics_pb2.ScheduleJobSection object.
   """
   job_section = analytics_pb2.ScheduleJobSection(
-      job_name=task_info.name, pool=task_info.pool, suite=task_info.suite)
+      job_name=task_info.analytics_name,
+      pool=task_info.pool,
+      suite=task_info.suite,
+      )
   if task_info.hour:
     job_section.schedule_job_trigger.nightly.hour = task_info.hour
   elif task_info.day:

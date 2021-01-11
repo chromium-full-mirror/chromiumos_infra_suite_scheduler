@@ -58,6 +58,7 @@ class TaskBaseTestCase(unittest.TestCase):
   UNIBUILD_BOARD = 'coral'
   EXCLUDE_BOARD = 'exclude_fake_board'
   NAME = 'fake_name'
+  ANALYTICS_NAME='fake_name'
   SUITE = 'fake_suite'
   POOL = 'fake_pool'
   PLATFORM = '6182.0.0-rc2'
@@ -85,6 +86,7 @@ class TaskBaseTestCase(unittest.TestCase):
             name=self.NAME,
             suite=self.SUITE,
             branch_specs=[],
+            analytics_name=self.ANALYTICS_NAME,
             pool=self.POOL,
             num=self.NUM,
             boards=','.join(
