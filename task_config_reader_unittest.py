@@ -71,12 +71,11 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
                       'non-existent section')
 
   def testCreateTaskFromConfigNotAllowedHeader(self):
-    """Ensure a Task CANNOT be built without suite, and raise error."""
+    """Ensure a Task can be built with unknown config headers."""
     self.config.set(self._TASK_NAME, 'non-valid-header', 'test')
     task_config = task_config_reader.TaskConfig(self.config)
-    self.assertRaises(task_config_reader.MalformedConfigEntryError,
-                      task_config._create_task_from_config_section,
-                      self._TASK_NAME)
+    response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
+    self.assertEqual(len(response), 1)
 
   def testGetTaskByKeyword(self):
     """Ensure a Task can be built from a correct config."""

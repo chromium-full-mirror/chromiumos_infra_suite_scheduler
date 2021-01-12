@@ -445,6 +445,10 @@ class TaskConfig(object):
           'testbed_dut_count is only applicable to testbed to run '
           'test with launch control builds.')
 
+  def _filter_to_known_keys(self, keys, known_keys):
+    """Remove all keys that are not in the known_keys"""
+    return [x for x in keys if x in known_keys]
+
   def _create_task_from_config_section(self, section):
     """Create a Task from a section of a config file.
 
@@ -486,7 +490,8 @@ class TaskConfig(object):
         dict(self._config_reader.items(section)).keys())
     extra_keys = section_headers.difference(self._ALLOWED_HEADER)
     if self._ALLOWED_HEADER != section_headers:
-      raise MalformedConfigEntryError(
+      section_headers = self._filter_to_known_keys(section_headers, self._ALLOWED_HEADER)
+      logging.warning(
           '%s: unknown entries: %s' % (section, ', '.join(extra_keys)))
 
     task_info = self._read_task_section(section)
