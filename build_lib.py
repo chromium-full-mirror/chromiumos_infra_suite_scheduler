@@ -466,15 +466,22 @@ def reshape_board(board):
   # The hack derives from build info structure saved in CIDB/buildbucket:
   # *-kernelnext/*-arcnext etc are saved as board name, but not the real board
   # for DUT.
-  suffixes = [
-    '-arc-r',
-    '-arc-r-userdebug',
-    '-arcvm',
-    '-kernelnext',
-    '-libcamera',
-
+  # NOTE: please try to keep this list in sync with the corresponding list in
+  # chromite/lib/config_lib.py
+  special_suffixes = [
+    '-arc-r', #
+    '-arc-r-userdebug', #
+    '-arcnext', #
+    '-arcvm', #
+    '-blueznext', #
+    '-borealis', #
+    '-campfire', #
+    '-cfm', #
+    '-kernelnext', #
+    '-kvm', #
+    '-ndktranslation', #
   ]
-  for s in suffixes:
+  for s in special_suffixes:
     if board.endswith(s):
       board = board[:-len(s)]
   return board
