@@ -480,6 +480,7 @@ def reshape_board(board):
     '-kernelnext', #
     '-kvm', #
     '-ndktranslation', #
+    '-userdebug', #
   ]
   for s in special_suffixes:
     if board.endswith(s):
