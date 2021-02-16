@@ -45,6 +45,7 @@ class Task(object):
           pool, the pool of machines to schedule tasks. Default is None.
           num, the number of devices to shard the test suite. It could
             be an Integer or None. By default it's None.
+          analytics_name, the build rule name
           board_families, a common separated list of board family to run this
             task on. Boards belong to one of the board family in this list
             would be added to task_info.boards.
@@ -111,6 +112,7 @@ class Task(object):
     # Indicate whether there're suites get pushed into taskqueue for this task.
     self.is_pushed = False
 
+    self.analytics_name = task_info.analytics_name
     self.branch_specs = task_info.branch_specs
     self.cros_build_spec = task_info.cros_build_spec
     self.day = task_info.day
@@ -409,6 +411,7 @@ class Task(object):
         build_lib.BuildVersionKey.FW_RO_VERSION: firmware_ro_build,
         build_lib.BuildVersionKey.FW_RW_VERSION: firmware_rw_build,
         build_lib.BuildVersionKey.TESTBED_BUILD_VERSION: testbed_build,
+        'analytics_name': self.analytics_name,
         'board': board,
         'dimensions': self.dimensions,
         'force': self.force,
