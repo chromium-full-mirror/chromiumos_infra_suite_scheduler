@@ -72,7 +72,7 @@ else
 
     cd "${work_dir}"
     git clone "${GIT_PROJECT}" .
-    git checkout origin/master
+    git checkout origin/main
 fi
 
 "${BIN_DIR}"/python_venv setup_environment.py --load-creds
