@@ -28,7 +28,7 @@ NEW_LAB_CONFIG_FILE = None
 
 def _write_config(config_name):
   tot_response = urllib2.urlopen(
-      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/generated_configs/{}?format=text'.format(config_name)
+      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'.format(config_name)
   ).read()
   config_text = base64.b64decode(tot_response)
   logging.info('Writing %s as: %s', config_name, config_text)
