@@ -348,6 +348,7 @@ def _request_tags(task_params, build, pool):
   tags = {
       'build': build,
       'label-pool': pool,
+      'ctp-fwd-task-name': task_params.get('name')
   }
   if task_params.get('board') not in (None, 'None'):
     tags['label-board'] = task_params['board']
@@ -355,6 +356,8 @@ def _request_tags(task_params, build, pool):
     tags['label-model'] = task_params['model']
   if task_params.get('suite') not in (None, 'None'):
     tags['suite'] = task_params['suite']
+  if task_params.get('analytics_name') not in (None, 'None'):
+    tags['analytics_name'] = task_params['analytics_name']
   return tags
 
 

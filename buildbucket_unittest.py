@@ -30,7 +30,8 @@ def _get_suite_params(board='fake_board',
                       model='fake_model',
                       suite='fake_suite',
                       pool='MANAGED_POOL_QUOTA',
-                      cros_build='fake_cros_build'):
+                      cros_build='fake_cros_build',
+                      analytics_name=None):
   return {
       'suite': suite,
       'board': board,
@@ -54,6 +55,7 @@ def _get_suite_params(board='fake_board',
       'force': False,
       'run_prod_code': True,
       'is_skylab': False,
+      'analytics_name': analytics_name,
   }
 
 
@@ -259,6 +261,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
         'build:fake_cros_build',
         'label-pool:MANAGED_POOL_QUOTA',
         'label-board:foo',
+        'ctp-fwd-task-name:None',
     }
     want_bb = {
         'suite:fake_suite',
@@ -278,6 +281,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
         pool='DUT_POOL_QUOTA',
         suite='fake_suite',
         cros_build='fake_build',
+        analytics_name='fake_analytics_name',
     )
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag='fake_suite',
@@ -293,6 +297,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
         'label-pool:DUT_POOL_QUOTA',
         'suite:fake_suite',
         'build:fake_build',
+        'analytics_name:fake_analytics_name',
+        'ctp-fwd-task-name:None',
     }
     want_bb = {
         'suite:fake_suite',
