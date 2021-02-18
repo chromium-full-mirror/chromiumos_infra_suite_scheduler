@@ -45,7 +45,10 @@ class Task(object):
           pool, the pool of machines to schedule tasks. Default is None.
           num, the number of devices to shard the test suite. It could
             be an Integer or None. By default it's None.
-          analytics_name, the build rule name
+          analytics_name, the build rule name. Initially build rule or test rule
+            name was used in suite scheduler's dashboard for analytics. Later it
+            was expanded to the entire pipeline and we want to tag all requests
+            from Suite Scheduler with the rule name.
           board_families, a common separated list of board family to run this
             task on. Boards belong to one of the board family in this list
             would be added to task_info.boards.
