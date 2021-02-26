@@ -479,6 +479,7 @@ def reshape_board(board):
     '-cfm', #
     '-kernelnext', #
     '-kvm', #
+    '-libcamera', #
     '-ndktranslation', #
     '-userdebug', #
   ]
