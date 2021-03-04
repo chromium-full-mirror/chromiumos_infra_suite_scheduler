@@ -323,7 +323,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
         suite='fake_suite',
         cros_build='fake_build',
     )
-    suite_kwargs['dimensions'] = 'label-wifi:foo,label-bt:hoo'
+    suite_kwargs['dimensions'] = 'label-wifi:foo, label-bt:hoo'
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag='fake_suite',
                        **suite_kwargs)

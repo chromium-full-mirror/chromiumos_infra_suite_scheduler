@@ -325,7 +325,8 @@ def _infer_user_defined_dimensions(task_params):
   result = []
   if task_params.get('dimensions') in (None, 'None'):
     return result
-  for d in task_params.get('dimensions').split(','):
+  dims = [d.lstrip() for d in task_params.get('dimensions').split(',')]
+  for d in dims:
     if len(d.split(':')) != 2:
       raise ValueError(
           'Job %s has invalid dimensions: %s' %
