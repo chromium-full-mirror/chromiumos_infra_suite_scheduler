@@ -18,6 +18,7 @@ class BuildLibTestCase(unittest.TestCase):
     self.assertEqual(build_lib.reshape_board('hatch-arc-r-userdebug'), 'hatch')
     self.assertEqual(build_lib.reshape_board('kevin-userdebug'), 'kevin')
     self.assertEqual(build_lib.reshape_board('octopus'), 'octopus')
+    self.assertEqual(build_lib.reshape_board('hana-arc64'), 'hana')
 
 if __name__ == '__main__':
   unittest.main()

@@ -469,6 +469,7 @@ def reshape_board(board):
   # NOTE: please try to keep this list in sync with the corresponding list in
   # chromite/lib/config_lib.py
   special_suffixes = [
+    '-arc64', #
     '-arc-r', #
     '-arc-r-userdebug', #
     '-arcnext', #
