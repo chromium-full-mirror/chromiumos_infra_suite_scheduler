@@ -3,7 +3,6 @@
 * [Developer Setup](#developer-setup)
 * [Testing your changes](#testing)
 * [Making configuration changes](#modify-config)
-* [Running an instance locally](#run-local)
 * [Releasing to production](#release)
 
 
@@ -63,13 +62,7 @@ If you get [failures when trying to download credentials][creds-fail],
 
 ## Testing your changes {#testing}
 
-Changes to `configs/*` directory can be tested via sanity tests alone:
-```
-  bin/run_sanity_tests
-  bin/run_sanity_tests --debug  # More verbose
-```
-
-Other changes must be validated with the full test suite:
+Changes must be validated with the full test suite:
 ```
   bin/run_tests
   bin/run_tests --debug  # More verbose
@@ -85,42 +78,7 @@ MUST ensure that unit-tests pass locally for your change.
 
 ## Making configuration changes {#modify-config}
 
-* Add or update your job configuration in `configs/suite_scheduler.ini`.
-* Update `configs/lab_config.ini`, if the suite test relies on new board or
-  model. Note, suite scheduler does not automatically catch the new boards or
-  models added to the lab.
-* **[Test your changes](#testing)**.
-* Submit the change and ping/file bug to infra team. Test platform deputy will
-   rollout your change to the production. Once this is done, you may find the
-   scheduling status of the new suite via our [dashboard](go/ctp-).
-
-
-## Running an instance locally {#run-local}
-
-If you want to verify any APIs locally, you can run suite scheduler v2 as a
-local development server
-(https://cloud.google.com/appengine/docs/standard/python/tools/using-local-server):
-
-a. Finally, start dev_appserver.py in a window:
-
-        dev_appserver.py app.yaml \
-        --port=8888 \
-        --admin_port=8001 \
-        --log_level=debug
-
-b. Test it:
-
-        curl 'http://localhost:8888/cron/trigger_event', or open it in chrome.
-
-Please note that once a dev_appserver is started, it simulates data_store &
-task_queue, which means:
-
-a. The datastore doesn't contain any previous cron run's information, so
-the first round of cron/trigger_event won't trigger any event.
-
-b. The task queue is newly created with 0 tasks in it unless
-cron/trigger_event adds tasks in it. Dev_appserver restart will cause the
-local task queue to get purged.
+Changes to suite-scheduler configs are made in config-internal, as of 2020. Detailed instructions on adding/editing config files can be found at [go/ss-configs](go/ss-configs).
 
 
 ## Releasing to production {#release}
@@ -130,35 +88,4 @@ There are two instances of suite-scheduler:
 * [Staging](https://pantheon.corp.google.com/appengine?organizationId=433637338589&project=google.com:suite-scheduler-staging&serviceId=default)
 * [Prod](https://pantheon.corp.google.com/appengine?authuser=0&project=google.com:suite-scheduler&serviceId=default)
 
-All releases must follow the following process:
-* Release to staging instance
-  ```
-    bin/deploy
-  ```
-* Go the to [cron page for the staging instance][staging-cron] and manually
-  trigger `cron/test_push`. Verify there are no obvious failures by looking at
-  service logs.
-* Note the [currently deployed prod version][current-prod-version], in case
-  you need to rollback.
-* Release to prod instance
-  ```
-    bin/deploy -p
-  ```
-* Send out an email to g/chromeos-infra-releases. Include in the email:
-  * The version of the newly deployed app-engine service.
-  * The version of the old app-engine service (required for rollback)
-  * The changelist, generated with
-    ```
-    git log --pretty=format:'%h %s (%cr) <%an>'
-    ```
-
-Run `bin/deploy -h` for more usage information.
-
-If there are issues discovered in prod after release, rollback to the previous
-version.
-```
-  gcloud app versions migrate --project=google.com:suite-scheduler ${VERSION}
-```
-
-[staging-cron]: https://pantheon.corp.google.com/appengine/cronjobs?organizationId=433637338589&project=google.com:suite-scheduler-staging
-[current-prod-version]: https://pantheon.corp.google.com/appengine/versions?authuser=0&project=google.com:suite-scheduler&serviceId=default
+Detailed deployment instructions can be found at [go/suite-scheduler#deployment](go/suite-scheduler#deployment).
