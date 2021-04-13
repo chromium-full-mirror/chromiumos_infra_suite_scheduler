@@ -62,7 +62,7 @@ _GS_LATEST_HEAD_PATTERN = '%(board)s%(suffix)s/%(name)s'
 _GS_BUCKET = 'chromeos-image-archive'
 
 # The file in Google Storage to fetch the latest build.
-_LATEST_HEAD = 'LATEST-master'
+_LATEST_HEAD = 'LATEST-main'
 
 # The bucket for ChromeOS build release boards. Maintained by GoldenEye.
 _GE_RELEASE_BUILD_BUCKET = 'chromeos-build-release-console'
