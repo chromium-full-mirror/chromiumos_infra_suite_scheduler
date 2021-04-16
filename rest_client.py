@@ -412,11 +412,19 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                     FROM
                       (
                         SELECT
-                          JSON_EXTRACT_SCALAR(
-                            output.properties, '$.artifact_link'
-                          ) as artifact,
-                          JSON_EXTRACT_SCALAR(
-                            output.properties, '$.cbb_config'
+                          COALESCE(
+                            JSON_EXTRACT_SCALAR(
+                              output.properties, '$.artifact_link'
+                            ),
+                            FORMAT('gs://%s/%s',
+                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_bucket'),
+                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_path'))
+                          )  as artifact,
+                          COALESCE(
+                            JSON_EXTRACT_SCALAR(
+                              output.properties, '$.cbb_config'
+                            ),
+                            builder.builder
                           ) as build_config,
                           end_time
                         FROM `cr-buildbucket.chromeos.completed_builds_BETA`
