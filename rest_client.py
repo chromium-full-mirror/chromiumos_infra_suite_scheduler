@@ -481,6 +481,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         WHERE
           status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+          AND JSON_EXTRACT_SCALAR(output.properties, '$.board') IS NOT NULL
     """
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
@@ -529,7 +530,6 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
     build_infos = []
     for board, milestone, platform, build_config in res:
-      board = _parse_board(build_config, board)
       build_infos.append(
           build_lib.BuildInfo(board, None, milestone, platform, build_config))
 
@@ -570,6 +570,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           AND s.name like 'SkylabHWTest%%'
           AND s.status = 'SUCCESS'
           AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
+          AND JSON_EXTRACT_SCALAR(output.properties, '$.board') IS NOT NULL
     """
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
@@ -619,7 +620,6 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
     build_infos = []
     for unibuild, stage_name, board, milestone, platform, build_config in res:
-      board = _parse_board(build_config, board)
       if ast.literal_eval(unibuild):
         model = _parse_model(stage_name)
       else:
@@ -703,30 +703,6 @@ def _parse_model(build_stage_name):
   except IndexError:
     logging.error('Cannot parse build stage name: %s', build_stage_name)
     return None
-
-
-def _parse_board(build_config, board):
-  """Parse board from build_config if needed.
-
-  Board could be None for old release. See crbug.com/944981#c16.
-  This function can be removed once all release are newer than R74.
-
-  Args:
-    build_config: A string build config, e.g. reef-release.
-    board: A string board, e.g. reef.
-
-  Returns:
-    A string board if exist, or None.
-  """
-  if board is None:
-    match = re.match(r'(.+)-release', build_config)
-    if not match:
-      logging.debug('Cannot parse board from %s', build_config)
-      return None
-
-    return match.groups()[0]
-
-  return board
 
 
 def _passed_build_query_temptlate(event_type):
