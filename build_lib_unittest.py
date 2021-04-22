@@ -16,6 +16,7 @@ class BuildLibTestCase(unittest.TestCase):
     self.assertEqual(build_lib.reshape_board('eve-arcvm'), 'eve')
     self.assertEqual(build_lib.reshape_board('kukui-arc-r'), 'kukui')
     self.assertEqual(build_lib.reshape_board('hatch-arc-r-userdebug'), 'hatch')
+    self.assertEqual(build_lib.reshape_board('hatch-arc-s'), 'hatch'),
     self.assertEqual(build_lib.reshape_board('kevin-userdebug'), 'kevin')
     self.assertEqual(build_lib.reshape_board('octopus'), 'octopus')
     self.assertEqual(build_lib.reshape_board('hana-arc64'), 'hana')
