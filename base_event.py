@@ -130,6 +130,7 @@ class BaseEvent(object):
     firmware_build_dict = {}
     ARTIFACT_PATTERN = r'gs://chromeos-image-archive/(?P<firmware_build>.+)'
     for spec, board, artifact in firmware_builds:
+      artifact = artifact or ''
       match = re.match(ARTIFACT_PATTERN, artifact)
       if not match:
         logging.debug('Artifact path of firmware is not valid: %s, %s, %s',
