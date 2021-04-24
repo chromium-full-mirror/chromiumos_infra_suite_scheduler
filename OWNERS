@@ -1,6 +1,6 @@
 # Primary owners of Suite Scheduler are brigitr and the testplatform team.
 # Please send CLs here.
-include chromiumos/chromite:/OWNERS.testplatform
+include chromiumos/chromite:/OWNERS.ci
 
 # Legacy owners of config that was formerly saved in this repo.
 harpreet@chromium.org
