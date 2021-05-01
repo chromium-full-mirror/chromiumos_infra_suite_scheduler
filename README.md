@@ -78,7 +78,7 @@ MUST ensure that unit-tests pass locally for your change.
 
 ## Making configuration changes {#modify-config}
 
-Changes to suite-scheduler configs are made in config-internal, as of 2020. Detailed instructions on adding/editing config files can be found at [go/ss-configs](go/ss-configs).
+Changes to suite-scheduler configs are made in config-internal, as of 2020. Detailed instructions on adding/editing config files can be found at [go/ss-configs](http://go/ss-configs).
 
 
 ## Releasing to production {#release}
