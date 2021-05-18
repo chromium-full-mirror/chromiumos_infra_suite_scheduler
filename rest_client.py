@@ -412,11 +412,19 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                     FROM
                       (
                         SELECT
-                          JSON_EXTRACT_SCALAR(
-                            output.properties, '$.artifact_link'
+                          COALESCE(
+                            JSON_EXTRACT_SCALAR(
+                              output.properties, '$.artifact_link'
+                            ),
+                            FORMAT('gs://%s/%s',
+                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_bucket'),
+                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_path'))
                           ) as artifact,
-                          JSON_EXTRACT_SCALAR(
-                            output.properties, '$.cbb_config'
+                          COALESCE(
+                            JSON_EXTRACT_SCALAR(
+                              output.properties, '$.cbb_config'
+                            ),
+                            builder.builder
                           ) as build_config,
                           end_time
                         FROM `cr-buildbucket.chromeos.completed_builds_BETA`
@@ -467,21 +475,40 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       A list of build_lib.BuildInfo objects.
     """
     base_query_template = """
-        SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.board') AS board,
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version') AS milestone,
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version') AS platform,
-          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') AS build_config,
-          -- Time info
-          end_time as build_end_time,
-          CURRENT_TIMESTAMP() as inserted_time,
-          '{0}' as event_type
-        FROM
-          `cr-buildbucket.chromeos.builds`
-        WHERE
-          status = 'SUCCESS'
-          AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
-          AND JSON_EXTRACT_SCALAR(output.properties, '$.board') IS NOT NULL
+    WITH builds AS
+        (SELECT
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+                JSON_EXTRACT_SCALAR(output.properties, '$.build_targets[0].name')
+            ) AS board,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+                REPLACE(
+                    SPLIT(JSON_EXTRACT_SCALAR(output.properties, '$.full_version'), '-')[OFFSET(0)], 'R', '')
+            ) AS milestone,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
+                SPLIT(JSON_EXTRACT_SCALAR(output.properties, '$.full_version'), '-')[OFFSET(1)]
+            ) AS platform,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config'),
+                builder.builder
+            ) AS build_config,
+
+            -- Time info
+            end_time as build_end_time,
+            CURRENT_TIMESTAMP() as inserted_time,
+    FROM `cr-buildbucket.chromeos.builds`
+    WHERE
+        status = 'SUCCESS'
+        AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True')
+
+    SELECT
+        *,
+        '{0}' as event_type
+    FROM builds
+    WHERE
+        board IS NOT NULL
     """
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
@@ -516,7 +543,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                                       earliest_end_time_str,
                                       latest_end_time_str))
 
-    query_template = _passed_build_query_temptlate(event_type)
+    query_template = _passed_build_query_template(event_type)
     query_str = query_template.format(base_query_str, earliest_end_time_str,
                                       latest_end_time_str, project_id)
     if global_config.GAE_TESTING:
@@ -537,7 +564,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
   def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time,
                                 event_type):
-    """Get builds with successful "HWTest [sanity]" stages between a given span.
+    """Get builds with successful SkylabHWTest stages between a given span.
 
     Same as get_passed_builds, we run the query twice to ensure we
     fetched all builds from BQ for new_build event.
@@ -551,27 +578,47 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       A list of build_lib.BuildInfo objects.
     """
     base_query_template = """
-        SELECT
-          JSON_EXTRACT_SCALAR(output.properties, '$.unibuild') as unibuild,
-          s.name as stage_name,
-          JSON_EXTRACT_SCALAR(output.properties, '$.board') as board,
-          JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version') as milestone,
-          JSON_EXTRACT_SCALAR(output.properties, '$.platform_version') as platform,
-          JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config') as build_config,
-          -- Time info
-          c.end_time as build_end_time,
-          CURRENT_TIMESTAMP() as inserted_time,
-          '{0}' as event_type
-        FROM
-          `cr-buildbucket.chromeos.builds` as c,
-          UNNEST(c.steps) AS s
-        WHERE
-          c.status != 'SUCCESS'
-          AND s.name like 'SkylabHWTest%%'
-          AND s.status = 'SUCCESS'
-          AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True'
-          AND JSON_EXTRACT_SCALAR(output.properties, '$.board') IS NOT NULL
+    WITH builds AS
+        (SELECT
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.board'),
+                JSON_EXTRACT_SCALAR(output.properties, '$.build_targets[0].name')
+            ) AS board,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.milestone_version'),
+                REPLACE(
+                    SPLIT(JSON_EXTRACT_SCALAR(output.properties, '$.full_version'), '-')[OFFSET(0)], 'R', '')
+            ) AS milestone,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.platform_version'),
+                SPLIT(JSON_EXTRACT_SCALAR(output.properties, '$.full_version'), '-')[OFFSET(1)]
+            ) AS platform,
+            COALESCE(
+                JSON_EXTRACT_SCALAR(output.properties, '$.cbb_config'),
+                builder.builder
+            ) AS build_config,
+
+            step.name AS stage_name,
+
+            -- Time info
+            build.end_time as build_end_time,
+            CURRENT_TIMESTAMP() as inserted_time,
+    FROM `cr-buildbucket.chromeos.builds` build,
+        UNNEST(build.steps) AS step
+    WHERE
+            build.status != 'SUCCESS'
+        AND step.name like 'SkylabHWTest%%'
+        AND step.status = 'SUCCESS'
+        AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True')
+
+    SELECT
+        *,
+        '{0}' AS event_type
+    FROM
+        builds
+    WHERE board IS NOT NULL
     """
+
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
         time_converter.TIME_FORMAT)
@@ -584,7 +631,6 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       insert_relaxed_builds = """
           INSERT
             `google.com:{0}.builds.relaxed_builds`(
-              unibuild,
               stage_name,
               board,
               milestone,
@@ -606,7 +652,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                                        earliest_end_time_str,
                                        latest_end_time_str))
 
-    query_template = _relaxed_build_query_temptlate(event_type)
+    query_template = _relaxed_build_query_template(event_type)
     query_str = query_template.format(base_query_str, earliest_end_time_str,
                                       latest_end_time_str, project_id)
     if global_config.GAE_TESTING:
@@ -619,12 +665,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       return []
 
     build_infos = []
-    for unibuild, stage_name, board, milestone, platform, build_config in res:
-      if ast.literal_eval(unibuild):
-        model = _parse_model(stage_name)
-      else:
-        model = None
-
+    for stage_name, board, milestone, platform, build_config in res:
+      model = _try_parse_model(stage_name)
       build_infos.append(
           build_lib.BuildInfo(board, model, milestone, platform, build_config))
 
@@ -678,34 +720,30 @@ def _parse_bq_job_query(json_input):
   return res
 
 
-def _parse_model(build_stage_name):
-  """Parse model name from the build stage name.
+def _try_parse_model(build_stage_name):
+  """Try to parse model name from the SkylabHWTest stage name.
 
-  It's only used for HWTest Sanity stage. An example build_stage_name will
-  be 'HWTest [sanity] [whitetip]'.
+  An example build_stage_name is 'HWTest [bvt-isntaller] [whitetip]'.  So we'll
+  regexp match on this to get the board name out of the second bracket.
+
   Args:
     build_stage_name: The stage name of a HWTest sanity stage, e.g.
-      "HWTest [sanity] [whitetip]".
+      "SkylabHWTest [bvt-installer] [whitetip]".
 
   Returns:
-    A model name, e.g. "whitetip" or None.
+    A model name, e.g. "whitetip" or None if not found.
   """
-  if 'HWTest [sanity]' not in build_stage_name:
-    return None
 
-  try:
-    model = build_stage_name.strip().split()[-1][1:-1]
-    if not model:
-      logging.warning('Cannot parse build stage name: %s', build_stage_name)
-      return None
+  match = re.search(
+    "SkylabHWTest \[[a-z0-9-]+\] \[([a-z0-9-]+)\]",
+    build_stage_name,
+  )
 
-    return model
-  except IndexError:
-    logging.error('Cannot parse build stage name: %s', build_stage_name)
-    return None
+  if match:
+    return match[1]
+  return None
 
-
-def _passed_build_query_temptlate(event_type):
+def _passed_build_query_template(event_type):
   """Wrapper to create the query template for passed builds."""
   if event_type == 'new_build':
     return """
@@ -762,7 +800,7 @@ def _passed_build_query_temptlate(event_type):
     """
 
 
-def _relaxed_build_query_temptlate(event_type):
+def _relaxed_build_query_template(event_type):
   """Wrapper to create the query template for relaxed builds."""
   if event_type == 'new_build':
     return """
@@ -778,7 +816,6 @@ def _relaxed_build_query_temptlate(event_type):
               )
             )
         SELECT
-          b.unibuild,
           b.stage_name,
           b.board,
           b.milestone,
@@ -812,7 +849,6 @@ def _relaxed_build_query_temptlate(event_type):
               AND c.end_time < '{2}'
             )
         SELECT
-          b.unibuild,
           b.stage_name,
           b.board,
           b.milestone,
