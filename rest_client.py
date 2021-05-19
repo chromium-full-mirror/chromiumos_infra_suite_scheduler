@@ -530,14 +530,16 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
               inserted_time,
               event_type
           ) {1}
-          AND end_time > '{2}'
-          AND end_time < '{3}'
+          AND build_end_time > '{2}'
+          AND build_end_time < '{3}'
       """
+
       # Insert the currently visible builds to BQ.
       logging.info(
           'Insert the visible passed builds '
           'between %s and %s to BQ.', earliest_end_time_str,
           latest_end_time_str)
+
       self.query(
           insert_passed_builds.format(project_id, base_query_str,
                                       earliest_end_time_str,
@@ -640,13 +642,14 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
               inserted_time,
               event_type
           ) {1}
-          AND c.end_time > '{2}'
-          AND c.end_time < '{3}'
+          AND build_end_time > '{2}'
+          AND build_end_time < '{3}'
       """
       logging.info(
           'Insert the visible relaxed builds '
           'between %s and %s to BQ.', earliest_end_time_str,
           latest_end_time_str)
+
       self.query(
           insert_relaxed_builds.format(project_id, base_query_str,
                                        earliest_end_time_str,
