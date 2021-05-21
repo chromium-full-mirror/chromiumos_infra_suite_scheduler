@@ -754,11 +754,11 @@ def _passed_build_query_template(event_type):
           (
             {0}
             AND (
-              (end_time > TIMESTAMP_SUB(
+              (build_end_time > TIMESTAMP_SUB(
                   PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'), INTERVAL 1 DAY)
-              AND end_time < TIMESTAMP_SUB(
+              AND build_end_time < TIMESTAMP_SUB(
                   PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY))
-              OR (end_time > '{1}' AND end_time < '{2}')
+              OR (build_end_time > '{1}' AND build_end_time < '{2}')
             )
           )
         SELECT
@@ -790,8 +790,8 @@ def _passed_build_query_template(event_type):
           WITH passed_builds AS
           (
             {0}
-            AND end_time > '{1}'
-            AND end_time < '{2}'
+            AND build_end_time > '{1}'
+            AND build_end_time < '{2}'
           )
         SELECT
           b.board,
@@ -811,11 +811,11 @@ def _relaxed_build_query_template(event_type):
             (
               {0}
               AND (
-                (c.end_time > TIMESTAMP_SUB(
+                (build_end_time > TIMESTAMP_SUB(
                     PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{1}'), INTERVAL 1 DAY)
-                AND c.end_time < TIMESTAMP_SUB(
+                AND build_end_time < TIMESTAMP_SUB(
                     PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{2}'), INTERVAL 1 DAY))
-                OR (c.end_time > '{1}' AND c.end_time < '{2}')
+                OR (build_end_time > '{1}' AND build_end_time < '{2}')
               )
             )
         SELECT
@@ -848,8 +848,8 @@ def _relaxed_build_query_template(event_type):
         WITH relaxed_builds AS
             (
               {0}
-              AND c.end_time > '{1}'
-              AND c.end_time < '{2}'
+              AND build_end_time > '{1}'
+              AND build_end_time < '{2}'
             )
         SELECT
           b.stage_name,
