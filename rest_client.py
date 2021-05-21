@@ -743,7 +743,7 @@ def _try_parse_model(build_stage_name):
   )
 
   if match:
-    return match[1]
+    return match.group(1)
   return None
 
 def _passed_build_query_template(event_type):
