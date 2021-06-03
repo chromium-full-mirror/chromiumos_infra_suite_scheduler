@@ -488,25 +488,55 @@ class Task(object):
         self.job_section.add_matched_build(
             board, build_type, milestone, manifest)
 
-      firmware_rw_build = None
+      # check that we only got one spec for ro firmware
+      if all([self.firmware_ro_version, self.firmware_ro_build_spec]):
+        logging.error(
+          "Exactly one of firmware_ro_version or firmware_ro_build_spec " \
+          "allowed, got: %s and %s" % (
+            self.firmware_ro_version,
+            self.firmware_ro_build_spec,
+          ),
+        )
+        continue
+
+      # check that we only got one spec for rw firmware
+      if all([self.firmware_rw_version, self.firmware_rw_build_spec]):
+        logging.error(
+          "Exactly one of firmware_rw_version or firmware_rw_build_spec " \
+          "allowed, got: %s and %s" % (
+            self.firmware_rw_version,
+            self.firmware_rw_build_spec,
+          ),
+        )
+        continue
+
+      # resolve ro firmware version to provision
       firmware_ro_build = None
       if self.firmware_ro_version:
         firmware_ro_build = self.firmware_ro_version
+      elif self.firmware_ro_build_spec:
+        firmware_ro_build = self._get_firmware_build(
+          self.firmware_ro_build_spec, board, firmware_build_dict, lab_config)
 
+        if not firmware_ro_build:
+          msg = 'No RO firmware build to run, skip running'
+          logging.debug(msg)
+          self.job_section.add_schedule_job(board, passed_model, msg=msg)
+          continue
+
+      # resolve rw firmware version to provision
+      firmware_rw_build = None
       if self.firmware_rw_version:
         firmware_rw_build = self.firmware_rw_version
-
-      if self.firmware_rw_build_spec or self.firmware_ro_build_spec:
+      elif self.firmware_rw_build_spec:
         firmware_rw_build = self._get_firmware_build(
-            self.firmware_rw_build_spec, board, firmware_build_dict, lab_config)
-        firmware_ro_build = self._get_firmware_build(
-            self.firmware_ro_build_spec, board, firmware_build_dict, lab_config)
+          self.firmware_rw_build_spec, board, firmware_build_dict, lab_config)
 
-      if not firmware_ro_build and self.firmware_ro_build_spec:
-        msg = 'No RO firmware ro build to run, skip running'
-        logging.debug(msg)
-        self.job_section.add_schedule_job(board, passed_model, msg=msg)
-        continue
+        if not firmware_rw_build:
+          msg = 'No RW firmware build to run, skip running'
+          logging.debug(msg)
+          self.job_section.add_schedule_job(board, passed_model, msg=msg)
+          continue
 
       if self.test_source == build_lib.BuildType.FIRMWARE_RW:
         test_source_build = firmware_rw_build
