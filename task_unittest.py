@@ -539,7 +539,30 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     job = job_sec.schedule_jobs[0]
     self.assertEqual(job.build_target.name, 'coral')
     self.assertEqual(job.model.value, 'lava')
-    self.assertIn('No RO firmware ro build to run', job.justification)
+    self.assertIn('No RO firmware build to run', job.justification)
+
+  def testScheduleJobFailedforFirmwareRW(self):
+    """Test the dropped job due to firmware absence is recorded."""
+    branch_builds = {('coral', 'lava', 'release', '40'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='coral',
+        firmware_rw_build_spec='firmware',
+        firmware_rw_version=None,
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), {}, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.schedule_jobs), 1)
+    job = job_sec.schedule_jobs[0]
+    self.assertEqual(job.build_target.name, 'coral')
+    self.assertEqual(job.model.value, 'lava')
+    self.assertIn('No RW firmware build to run', job.justification)
 
   def testScheduleJobFailedforBranchNotMaching(self):
     """Test the dropped job due to branch spec is recorded."""
