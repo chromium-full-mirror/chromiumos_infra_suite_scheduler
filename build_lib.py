@@ -485,7 +485,13 @@ def reshape_board(board):
     '-ndktranslation', #
     '-userdebug', #
   ]
+  # ARM64 userspace boards use 64 suffix but can't put that in list above
+  # because of collisions with boards like kevin-arc64.
+  ARM64_BOARDS = ['kevin64', 'trogdor64']
   for s in special_suffixes:
     if board.endswith(s):
       board = board[:-len(s)]
+  if board in ARM64_BOARDS:
+    # Remove '64' suffix from the board name.
+    board = board[:-2]
   return board
