@@ -10,6 +10,7 @@ import ast
 import httplib2
 import logging
 import re
+import time
 
 import apiclient
 import build_lib
@@ -20,6 +21,8 @@ import time_converter
 
 from oauth2client import service_account
 from oauth2client.contrib import appengine
+
+RETRY_LIMIT = 3
 
 
 class RestClientError(Exception):
@@ -292,10 +295,24 @@ class BigqueryRestClient(object):
         'query': query_str,
         'useLegacySql': False,
     }
-    return self._rest_client.service.jobs().query(
-        projectId=self.PROJECT_TO_RUN_BIGQUERY_JOB,
-        fields='rows',
-        body=query_data).execute()
+
+    for cnt in range(RETRY_LIMIT+1):
+      try:
+        return self._rest_client.service.jobs().query(
+          projectId=self.PROJECT_TO_RUN_BIGQUERY_JOB,
+          fields='rows',
+          body=query_data).execute()
+      except apiclient.errors.HttpError as ex:
+        status = ex.resp.status
+        if status in [500, 502, 503, 504]:
+          if cnt < RETRY_LIMIT:
+            logging.warning("Got response status %d, retrying" % status)
+            time.sleep(5)
+          else:
+            logging.error(
+              "Retry limit of %d hit communicating with BigQuery" % RETRY_LIMIT)
+            raise
+
 
   def insert(self, rows):
     """Insert rows to specified Bigquery table.
