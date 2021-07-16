@@ -19,7 +19,7 @@ import tot_manager
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
 from chromite.api.gen.chromiumos import branch_pb2
 
-from google.protobuf import json_format
+from chromite.third_party.google.protobuf import json_format
 
 FAKE_UUID = 'c78e0bf3-4142-11ea-bc66-88e9fe4c5349'
 
