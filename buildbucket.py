@@ -18,7 +18,7 @@ import file_getter
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_pb2
+from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_pb2, build_pb2
 from chromite.third_party.infra_libs.buildbucket.proto.builds_service_prpc_pb2 import BuildsServiceDescription
 
 from components import auth
