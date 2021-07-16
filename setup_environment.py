@@ -60,41 +60,19 @@ def _install_third_party_lib():
 #     Thus, we checkout only required sub-packages. This list is passed in to
 #     (and interpreted by) `git sparse-checkout`.
 _GitDep = collections.namedtuple(
-    '_GitDep',
-    'local_name git_project git_ref sparse_checkout_paths post_process')
-
-
-def create_file(fname):
-  """Create an empty file by opening it for writing and closing."""
-  open(fname, 'w').close()
-
-
-def fixup_chromite_init_files():
-  """Fixup/overwrite __init__.py files for chromite.
-
-  Chromite has moved to python3 which causes import errors.  We don't need
-  the logging setup, just the ability to import, so we'll create our own.
-
-  Similarly, python3 supports implicit namespaces and python2 doesn't, so
-  add __init__.py files needed to work around that.
-  """
-  create_file('infra_libs/chromite/__init__.py')
-  create_file('infra_libs/chromite/third_party/__init__.py')
-  create_file('infra_libs/chromite/third_party/google/api/__init__.py')
+    '_GitDep', 'local_name git_project git_ref sparse_checkout_paths')
 
 # List of all git project dependencies.
 _GIT_DEPS = [
     _GitDep(
         'chromite',
         'https://chromium.googlesource.com/chromiumos/chromite',
-        'b81fbbf389c289a35aecfdc52a50ae53fb624db0',
+        '608e9e33b66a054e93de034881974c0b9dc5d1dd',
         [
             '/api/gen/**/*.py', '/api/__init__.py',
             '/third_party/infra_libs/*', '/third_party/google/*',
-            '/third_party/six/*',
-            '!*test.py'
+            '/third_party/__init__.py', '/__init__.py', '!*test.py'
         ],
-        fixup_chromite_init_files
     ),
     _GitDep(
         'luci',
@@ -106,7 +84,6 @@ _GIT_DEPS = [
             '/appengine/components/components/prpc/**/*.py',
             '/appengine/components/components/*.py', '!*test.py'
         ],
-        None
     ),
 ]
 
@@ -133,9 +110,6 @@ def _install_infra_libs():
     _set_sparse_checkout_paths(dep_path, dep.sparse_checkout_paths)
     subprocess.check_call(
         ['git', 'checkout', dep.git_ref, '-b', 'deploy', '-f'], cwd=dep_path)
-
-    if dep.post_process is not None:
-      dep.post_process()
 
 
 def _set_sparse_checkout_paths(checkout_dir, sparse_checkout_paths):

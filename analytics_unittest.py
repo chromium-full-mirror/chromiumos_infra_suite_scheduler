@@ -13,8 +13,8 @@ import task_config_reader
 
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
 from chromite.api.gen.chromiumos import branch_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import build_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import common_pb2
+from infra_libs.buildbucket.proto import build_pb2
+from infra_libs.buildbucket.proto import common_pb2
 
 
 def _get_task_info():

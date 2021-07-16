@@ -16,8 +16,8 @@ from chromite.api.gen.chromite.api import artifacts_pb2
 from chromite.api.gen.chromiumos import branch_pb2
 from chromite.api.gen.chromiumos import common_pb2
 
-from chromite.third_party.google.protobuf import timestamp_pb2
-from chromite.third_party.google.protobuf import json_format
+from google.protobuf import timestamp_pb2
+from google.protobuf import json_format
 
 
 class AnalyticsError(Exception):

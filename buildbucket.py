@@ -17,16 +17,15 @@ import constants
 import file_getter
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
-from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_pb2
-from chromite.third_party.infra_libs.buildbucket.proto.builds_service_prpc_pb2 import BuildsServiceDescription
-
 from components import auth
 from components.prpc import client as prpc_client
+from infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
+from infra_libs.buildbucket.proto import rpc_pb2, build_pb2
+from infra_libs.buildbucket.proto.rpc_prpc_pb2 import BuildsServiceDescription
 
 from oauth2client import service_account
 
-from chromite.third_party.google.protobuf import json_format, struct_pb2
+from google.protobuf import json_format, struct_pb2
 
 
 GS_PREFIX = 'gs://chromeos-image-archive/'
@@ -51,7 +50,7 @@ class TestPlatformClient(object):
   """prpc client for cros_test_platform, aka frontdoor."""
   def __init__(self, address, project, bucket, builder):
     self.client = _get_client(address)
-    self.builder = builder_pb2.BuilderID(project=project,
+    self.builder = build_pb2.BuilderID(project=project,
                                        bucket=bucket,
                                        builder=builder)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
@@ -155,7 +154,7 @@ class TestPlatformClient(object):
     """
     requests_struct = struct_pb2.Struct()
     recipe_struct = json_format.Parse(reqs_json, requests_struct)
-    return builds_service_pb2.ScheduleBuildRequest(builder=self.builder,
+    return rpc_pb2.ScheduleBuildRequest(builder=self.builder,
                                         properties=recipe_struct,
                                         request_id=str(uuid.uuid1()),
                                         tags=tags)
