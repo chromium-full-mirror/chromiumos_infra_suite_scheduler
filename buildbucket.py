@@ -19,14 +19,13 @@ import file_getter
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from components import auth
 from components.prpc import client as prpc_client
-from infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
-from infra_libs.buildbucket.proto import rpc_pb2, build_pb2
-from infra_libs.buildbucket.proto.rpc_prpc_pb2 import BuildsServiceDescription
+from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
+from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_pb2, build_pb2
+from chromite.third_party.infra_libs.buildbucket.proto.builds_service_prpc_pb2 import BuildsServiceDescription
 
 from oauth2client import service_account
 
 from google.protobuf import json_format, struct_pb2
-
 
 GS_PREFIX = 'gs://chromeos-image-archive/'
 
@@ -50,9 +49,9 @@ class TestPlatformClient(object):
   """prpc client for cros_test_platform, aka frontdoor."""
   def __init__(self, address, project, bucket, builder):
     self.client = _get_client(address)
-    self.builder = build_pb2.BuilderID(project=project,
-                                       bucket=bucket,
-                                       builder=builder)
+    self.builder = builder_pb2.BuilderID(project=project,
+                                         bucket=bucket,
+                                         builder=builder)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
 
@@ -154,10 +153,11 @@ class TestPlatformClient(object):
     """
     requests_struct = struct_pb2.Struct()
     recipe_struct = json_format.Parse(reqs_json, requests_struct)
-    return rpc_pb2.ScheduleBuildRequest(builder=self.builder,
-                                        properties=recipe_struct,
-                                        request_id=str(uuid.uuid1()),
-                                        tags=tags)
+    return builds_service_pb2.ScheduleBuildRequest(builder=self.builder,
+                                                   properties=recipe_struct,
+                                                   request_id=str(
+                                                       uuid.uuid1()),
+                                                   tags=tags)
 
   def _gen_service_account_key(self, sa):
     """Generate credentials to authorize the call.
@@ -246,6 +246,7 @@ def _form_test_platform_request(task_params):
 
   request.test_plan.suite.add().name = task_params['suite']
   return request
+
 
 def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
@@ -384,9 +385,10 @@ def _bb_tags(suite):
   Returns:
     [bb_common_pb2.StringPair] tags to include the buildbucket request.
   """
-  return [bb_common_pb2.StringPair(key='suite', value=suite),
-          bb_common_pb2.StringPair(key='user_agent',
-                                   value='suite_scheduler')]
+  return [
+      bb_common_pb2.StringPair(key='suite', value=suite),
+      bb_common_pb2.StringPair(key='user_agent', value='suite_scheduler')
+  ]
 
 
 def _should_skip(params):

@@ -16,10 +16,10 @@ import task_executor
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
+from chromite.third_party.infra_libs.buildbucket.proto import build_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
 from google.protobuf import json_format
-from infra_libs.buildbucket.proto import build_pb2
 
 ADDR = u'http://localhost:1'
 FAKE_UUID = 'c78e0bf3-4142-11ea-bc66-88e9fe4c5349'

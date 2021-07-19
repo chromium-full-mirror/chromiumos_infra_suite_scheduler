@@ -49,7 +49,42 @@ def _install_third_party_lib():
     raise
 
 
-# _GitDep specifies a dependency in the form of a particular reference in a git
+def create_file(fname):
+  """Create an empty file by opening it for writing and closing."""
+  open(fname, 'w').close()
+
+
+def fixup_chromite_imports():
+  """Fixup chromite __init__.py files.
+
+  Chromite runs Python3 now so relies on implicit namespacing, which Python2
+  doesn't support, so we have to go back and add a few __init__.py files to make
+  things importable.
+  """
+  def remove_third_party(fname, package):
+    "Remove 'chromite.third_party.' prefix from given import string."
+    cmd = [
+        'sed',
+        '-i',
+        's/%s/%s/' % ('chromite.third_party.%s' % package, package),
+        fname,
+    ]
+    subprocess.check_call(cmd)
+
+  for root, _, files in os.walk('infra_libs/chromite'):
+    for fname in files:
+      if fname.endswith('_pb2.py'):
+        path = os.path.join(root, fname)
+        remove_third_party(path, 'google.protobuf')
+
+  # Add explicit __init__.py files to workaround implicit namespaces in python3
+  create_file('infra_libs/chromite/__init__.py')
+  create_file('infra_libs/chromite/third_party/__init__.py')
+  create_file('infra_libs/chromite/third_party/google/__init__.py')
+  create_file('infra_libs/chromite/third_party/google/api/__init__.py')
+
+
+# _GITDEP Specifies a dependency in the form of a particular reference in a git
 # project.
 #
 #   local_name: Name of the local directory to fetch into.
@@ -59,32 +94,40 @@ def _install_third_party_lib():
 #     contain too many files and AppEngine does not allow uploading > 10K files.
 #     Thus, we checkout only required sub-packages. This list is passed in to
 #     (and interpreted by) `git sparse-checkout`.
+#   post_process: An optional callable to evaluate after cloning dependency
 _GitDep = collections.namedtuple(
-    '_GitDep', 'local_name git_project git_ref sparse_checkout_paths')
+    '_GitDep',
+    'local_name git_project git_ref sparse_checkout_paths post_process')
 
 # List of all git project dependencies.
 _GIT_DEPS = [
+    # Note:  When upreving chromite, ensure that protobuf version in
+    # requirements.txt still matches the protobuf version used by chromite.
     _GitDep(
         'chromite',
         'https://chromium.googlesource.com/chromiumos/chromite',
-        '608e9e33b66a054e93de034881974c0b9dc5d1dd',
+        '3a7b7a26d93e82da511142a1284c6488ffa9babe',
         [
-            '/api/gen/**/*.py', '/api/__init__.py',
-            '/third_party/infra_libs/*', '/third_party/google/*',
-            '/third_party/__init__.py', '/__init__.py', '!*test.py'
+            '/api/gen/**/*.py',
+            '/api/__init__.py',
+            '/third_party/infra_libs/*',
+            '/third_party/six/*',
+            '/third_party/google/api/*',
+            '/third_party/google/rpc/*',
+            '/third_party/__init__.py',
+            '/__init__.py',
+            '!*test.py',
         ],
+        fixup_chromite_imports,
     ),
-    _GitDep(
-        'luci',
-        'https://chromium.googlesource.com/infra/luci/luci-py',
-        '33a910c714948a5189f9c58101ce9b131f01c1fd',
-        [
-            '/appengine/components/components/auth/**/*.py',
-            '/appengine/components/components/datastore_utils/**/*.py',
-            '/appengine/components/components/prpc/**/*.py',
-            '/appengine/components/components/*.py', '!*test.py'
-        ],
-    ),
+    _GitDep('luci', 'https://chromium.googlesource.com/infra/luci/luci-py',
+            '33a910c714948a5189f9c58101ce9b131f01c1fd', [
+                '/appengine/components/components/auth/**/*.py',
+                '/appengine/components/components/datastore_utils/**/*.py',
+                '/appengine/components/components/prpc/**/*.py',
+                '/appengine/components/components/*.py',
+                '!*test.py',
+            ], None),
 ]
 
 
@@ -110,6 +153,9 @@ def _install_infra_libs():
     _set_sparse_checkout_paths(dep_path, dep.sparse_checkout_paths)
     subprocess.check_call(
         ['git', 'checkout', dep.git_ref, '-b', 'deploy', '-f'], cwd=dep_path)
+
+    if dep.post_process:
+      dep.post_process()
 
 
 def _set_sparse_checkout_paths(checkout_dir, sparse_checkout_paths):
