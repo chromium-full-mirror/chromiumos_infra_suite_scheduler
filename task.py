@@ -6,6 +6,7 @@
 # pylint: disable=dangerous-default-value
 
 from distutils import version
+from collections import namedtuple, defaultdict
 import logging
 import uuid
 
@@ -16,6 +17,9 @@ import tot_manager
 
 # The max lifetime of a suite scheduled by suite scheduler
 _JOB_MAX_RUNTIME_MINS_DEFAULT = 72 * 60
+
+# BuildTarget contains information for a hwtest target.
+BuildTarget = namedtuple('BuildTarget', ['board', 'model', 'cros_build'])
 
 
 class SchedulingError(Exception):
@@ -105,6 +109,21 @@ class Task(object):
           testbed_dut_count, number of duts to test when using a testbed.
           qs_account, quota account for the unmanaged pool which has enabled
             Quota Scheduler.
+          multi_dut_boards, a common separated list of strings to specify
+            board family in a multi-DUTs testing. Each string contains two
+            or more boards that separated by semicolon, where the first board
+            will be treated as primary board while the rest are secondaries.
+            If this args is not None then multi_dut_models args will be
+            ignored as they cannot be used together.
+          multi_dut_models, a common separated list of strings to specify
+            models of DUTs expected in a multi-DUTs testing. Each string
+            contains two or more models that separated by semicolon, where the
+            first model will be treated as primary model while the rest are
+            secondaries.
+          multi_dut_trigger, a string to specify how should we trigger a
+            multi-DUTs testing. E.g. 'primary': when the primary board has
+            a new build, or 'all': when primary and all secondary has a new
+            build.
 
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
@@ -139,6 +158,7 @@ class Task(object):
     self.test_source = task_info.test_source
     self.testbed_dut_count = task_info.testbed_dut_count
     self.timeout = task_info.timeout
+    self.multi_dut_trigger = task_info.multi_dut_trigger
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -203,6 +223,21 @@ class Task(object):
     if not is_sanity:
       self.job_section = analytics.ScheduleJobSection(task_info)
 
+    self.is_multi_dut_testing = False
+    if task_info.multi_dut_boards:
+      self.is_multi_dut_testing = True
+      self.multi_dut_boards = [
+          t.strip().split(';') for t in task_info.multi_dut_boards.split(',')]
+    else:
+      self.multi_dut_boards = []
+
+    if task_info.multi_dut_models:
+      self.is_multi_dut_testing = True
+      self.multi_dut_models = [
+          t.strip().split(';') for t in task_info.multi_dut_models.split(',')]
+    else:
+      self.multi_dut_models = []
+
   def schedule(self, launch_control_builds, cros_builds_tuple,
                firmware_builds, configs):
     """Schedule the task by its settings.
@@ -264,6 +299,89 @@ class Task(object):
     if not upload_result:
       logging.warning('Failed to insert row: %r', self.job_section)
     return self.is_pushed
+
+  def schedule_multi_duts(self, cros_builds_tuple,
+                          daily_cros_builds_tuple, configs):
+    """Schedule the multi-DUTs task by its settings.
+
+    Args:
+      cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
+        see return value of |get_cros_builds|.
+      daily_cros_builds_tuple: Same as cros_builds_tuple, but contains
+        build info of last 24 hours.
+      configs: a config_reader.Configs object.
+
+    Raises:
+      SchedulingError: if tasks that should be scheduled fail to schedule.
+
+    Returns:
+      A boolean indicator; true if there were any suites related to this
+        task which got pushed into the suites queue.
+    """
+    assert configs.lab_config is not None
+    # For multi-DUTs We allow either request by board or request by model,
+    # but not both.
+    if self.multi_dut_boards and self.multi_dut_models:
+      logging.error('Both board and model presented in request but expecting'
+                    'only one of them present at a time.')
+      return False
+    self.is_pushed = False
+
+    branch_builds, relaxed_builds = cros_builds_tuple
+    daily_branch_builds, daily_relaxed_builds = daily_cros_builds_tuple
+    builds_dict = branch_builds
+    daily_builds_dict = daily_branch_builds
+    if self.only_hwtest_sanity_required:
+      builds_dict = _split_unibuilds(relaxed_builds, configs)
+      # We don't need to expand build info to model level as
+      # secondary DUTs will have their builds determined by
+      # their board name.
+      daily_builds_dict = daily_relaxed_builds
+
+    # Record multi-DUTs testing only for primary boards as we're
+    # going to have a replacement for SS and analytics layer soon.
+    build_targets_dict = self._get_multi_duts_build_targets_dict(configs)
+    model_set = set()
+    for board, groups in build_targets_dict.items():
+      self.job_section.add_board(board)
+      for group in groups:
+        if group[0].model:
+          model_set.add(group[0].model)
+    for model in model_set:
+      if self.exclude_models and model not in self.exclude_models:
+        self.job_section.add_model(model)
+
+    logging.info('######## Scheduling task %s ########', self.name)
+    if self.os_type != build_lib.OS_TYPE_CROS:
+      logging.info('Multi-DUTs testing only support cros currently.')
+      return False
+    if not builds_dict:
+      logging.info('No CrOS build to run, skip running.')
+      return False
+    if not daily_builds_dict:
+      logging.info('No daily CrOS build for secondary DUTs to run,'
+                   ' skip running.')
+      return False
+    self._schedule_multi_duts_cros_builds(builds_dict,
+                                          daily_builds_dict, configs)
+
+    upload_result = False
+    try:
+      upload_result = self.job_section.upload()
+    # For any exceptions from BQ, only log it and move on.
+    except Exception as e: #pylint: disable=broad-except
+      logging.exception(str(e))
+    if not upload_result:
+      logging.warning('Failed to insert row: %r', self.job_section)
+    return self.is_pushed
+
+  def _model_to_board_dict(self, models_by_board):
+    """Build a model to board dict based on model by boards dict."""
+    d = {}
+    for board, models in models_by_board.items():
+      for model in models:
+        d[model] = board
+    return d
 
   def _set_spec_compare_info(self):
     """Set branch spec compare info for task for further check."""
@@ -375,7 +493,8 @@ class Task(object):
       firmware_ro_build=None,
       test_source_build=None,
       launch_control_build=None,
-      run_prod_code=False):
+      run_prod_code=False,
+      secondary_targets=None):
     """Schedule suite job for the task by pushing suites to SuiteQueue.
 
     Args:
@@ -392,6 +511,8 @@ class Task(object):
         in prod aka the test code currently on the lab servers. If
         False, the control files and test code for this suite run will
         be retrieved from the build artifacts. Default is False.
+      secondary_targets: A list of BuildTarget namedtuple to represent
+        required secondary DUTs info in this suite job run.
     """
     android_build = None
     testbed_build = None
@@ -429,6 +550,7 @@ class Task(object):
         'priority': self.priority,
         'qs_account': self.qs_account,
         'run_prod_code': run_prod_code,
+        'secondary_targets': secondary_targets,
         'suite': self.suite,
         'task_id': task_id,
         'test_source_build': test_source_build,
@@ -608,6 +730,98 @@ class Task(object):
           self.job_section.add_schedule_job(
               board, explicit_model, task_id=task_id)
 
+  def _schedule_multi_duts_cros_builds(self, build_dict,
+                                       daily_build_dict, configs):
+    """Schedule multi-DUTs tasks with branch builds.
+
+    Args:
+      build_dict: the build dict for ChromeOS boards, see return
+        value of |build_lib.get_cros_builds|.
+      daily_build_dict: Same as build_dict, but contains build info
+        of last 24 hours.
+      configs: A config_reader.Configs object.
+    """
+    build_targets_dict = self._get_multi_duts_build_targets_dict(configs)
+    model_agnostic_builds = set()
+    for (board, passed_model, build_type,
+         milestone), manifest in build_dict.iteritems():
+      cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
+                                           manifest))
+      logging.info('Running %s on %s', self.name, cros_build)
+      if board not in build_targets_dict.keys():
+        logging.debug('Board %s is not in primary board list: %s',
+                      board, build_targets_dict.keys())
+        continue
+
+      # Check the fitness of the build's branch for task
+      branch_build_spec = _pick_branch(build_type, milestone)
+      if not self._fits_spec(branch_build_spec):
+        msg = ("branch_build spec %s doesn't fit this task's "
+               "requirement: %s") % (branch_build_spec,
+                   ",".join(self.branch_specs))
+        logging.debug(msg)
+        self.job_section.add_schedule_job(board, passed_model, msg=msg)
+        continue
+
+      # Record this build as it matches both board and branch specs.
+      if self.only_hwtest_sanity_required:
+        self.job_section.add_matched_relax_build(
+            board, build_type, milestone, manifest)
+      else:
+        self.job_section.add_matched_build(
+            board, build_type, milestone, manifest)
+
+      # Board above is used as build target to control the CrOS image.
+      # The following part is to assign models for lab boards, where
+      # the suffix should be removed.
+      hwtest_board = build_lib.reshape_board(board)
+      for group in build_targets_dict.get(board):
+        joined_board_strings = '_'.join(dut.board for dut in group)
+        build_tag = '%s_%s' % (joined_board_strings, cros_build)
+        primary_dut = group[0]
+        if primary_dut.model:
+          if primary_dut.model != passed_model:
+            # Explict model specified but not match, so skip to next.
+            continue
+        elif build_tag in model_agnostic_builds:
+          msg = ("Skip model %s as any_model enabled for this job."
+                % passed_model)
+          self.job_section.add_schedule_job(board, passed_model, msg=msg)
+          continue
+
+        # Determine cros builds for secondary DUTs from daily build dict.
+        secondary_targets = []
+        for s_dut in group[1:]:
+          s_key = (s_dut.board, None, build_type, milestone)
+          s_manifest = daily_build_dict.get(s_key, '')
+          if s_manifest:
+            s_cros_build = str(build_lib.CrOSBuild(
+                s_dut.board, build_type, milestone, s_manifest))
+            s_hwtest_board = build_lib.reshape_board(s_dut.board)
+            secondary_targets.append(
+                BuildTarget(s_hwtest_board, s_dut.model, s_cros_build))
+        # Check if we get cros build for all secondary DUTs.
+        if len(secondary_targets) != len(group[1:]):
+          logging.info('Cannot determine cros version for all secondary'
+                       ' DUTs, skip.')
+          continue
+
+        # Schedule task.
+        model_agnostic_builds.add(build_tag)
+        task_id = str(uuid.uuid1())
+        self._push_suite(
+          task_id = task_id,
+          board=hwtest_board,
+          model=primary_dut.model,
+          cros_build=cros_build,
+          test_source_build=cros_build,
+          secondary_targets=secondary_targets
+        )
+
+        # Analytics table stores the build target instead of the lab board.
+        self.job_section.add_schedule_job(
+            board, primary_dut.model, task_id=task_id)
+
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
 
@@ -635,6 +849,70 @@ class Task(object):
         self._push_suite(board=board,
                          test_source_build=android_build,
                          launch_control_build=android_build)
+
+  def _get_multi_duts_build_targets_dict(self, configs):
+    """Generate a dict contains all build targets info based on
+    self.multi_dut_boards or self.multi_dut_models.
+
+    Args:
+      configs: A config_reader.Configs object.
+
+    Returns:
+      A dict where key is a cros board, and value is a list that represents
+      group of DUTs where primary DUT's board equal to key. Each group of
+      DUTs are represented by a list of BuildTarget. Example:
+      {
+        'coral': [
+          [
+            BuildTarget(board='coral', model='babytiger', cros_build=None),
+            BuildTarget(board='eve', model=None, cros_build=None),
+            BuildTarget(board='nami', model='None', cros_build=None)
+          ],
+          [
+            BuildTarget(board='coral', model='blacktiplte', cros_build=None),
+            BuildTarget(board='octopus', model=None, cros_build=None),
+            BuildTarget(board='nami', model=None, cros_build=None)],
+          ]
+        ]
+      }
+    """
+    lab_config = configs.lab_config
+    build_targets = defaultdict(lambda: [])
+    models_by_board = lab_config.get_cros_model_map() if lab_config else {}
+    model_to_board_dict = self._model_to_board_dict(models_by_board)
+    # Handle the case when multi-DUTs testing requested by board.
+    for group in self.multi_dut_boards:
+      primary_board = group[0]
+      if self.any_model:
+        new_group = [BuildTarget(board, None, None) for board in group]
+        build_targets[primary_board].append(new_group)
+      else:
+        # If any_model disbled, we need to have each model from primary_board
+        # family pair with requested secondary devices.
+        # Board above is used as build target to control the CrOS image.
+        # The following part is to assign models for lab boards, where
+        # the suffix should be removed.
+        hwtest_board = build_lib.reshape_board(primary_board)
+        models = models_by_board.get(hwtest_board, [None])
+        for model in models:
+          if self.exclude_models and model in self.exclude_models:
+            logging.info('Model %s is in exclude list, skipping.' % model)
+            continue
+          new_group = []
+          new_group.append(BuildTarget(primary_board, model, None))
+          for board in group[1:]:
+            new_group.append(BuildTarget(board, None, None))
+          build_targets[primary_board].append(new_group)
+    # Handle the case when multi-DUTs testing requested by model.
+    for group in self.multi_dut_models:
+      boards = [model_to_board_dict.get(model, '') for model in group]
+      if '' in boards:
+        logging.info('Cannot find board name from one of requested model,'
+                     ' skipping.')
+        continue
+      new_group = [BuildTarget(boards[i], group[i], None) for i in range(len(group))]
+      build_targets[boards[0]].append(new_group)
+    return build_targets
 
 
 def _pick_branch(build_type, milestone):

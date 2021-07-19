@@ -27,6 +27,7 @@ class FakeTask(object):
     self.success = success
     self.launch_control_branches = lc_branches.split(',')
     self.launch_control_targets = lc_targets.split(',')
+    self.is_multi_dut_testing = False
 
   def schedule(self, lc_builds, cros_builds, firmware_builds,
                lab_config):
@@ -103,7 +104,7 @@ class BaseEventTestCase(unittest.TestCase):
         task_config_reader.EventSettings(True, None), utc_now, utc_now)
     task_list = [FakeTask('test1', True), FakeTask('test2', False)]
     event.set_task_list(task_list)
-    finished_tasks = event.process_tasks(None, None, None, None)
+    finished_tasks = event.process_tasks(None, None, None, None, None)
     self.assertEqual(len(finished_tasks), 1)
     self.assertEqual(finished_tasks[0], 'test1')
 

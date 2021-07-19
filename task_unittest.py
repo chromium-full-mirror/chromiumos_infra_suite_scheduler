@@ -634,3 +634,207 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     self.assertEqual(1, len(jobs))
     self.assertEqual(jobs[0].build_target.name, 'hatch-kernelnext')
     self.assertEqual(jobs[0].model.value, 'akemi')
+
+
+class TaskBaseMultiDUTsTestCase(unittest.TestCase):
+
+  NAME = 'fake_name'
+  ANALYTICS_NAME='fake_name'
+  SUITE = 'fake_suite'
+  POOL = 'fake_pool'
+  PLATFORM = '6182.0.0-rc2'
+  MILESTONE = '30'
+  NUM = 1
+  PRIORITY = 50
+  TIMEOUT = 600
+  BUILD_DICT = {
+    ('coral', 'robo', 'release', '55'): '0000.00.00',
+    ('coral', 'robo', 'release', '56'): '0000.00.00',
+    ('coral', 'nasher', 'release', '55'): '0000.00.00',
+    ('coral', 'nasher', 'release', '56'): '0000.00.00',
+    ('coral', 'lava', 'release', '55'): '0000.00.00',
+    ('coral', 'lava', 'release', '56'): '0000.00.00',
+    ('hatch', 'akemi', 'release', '55'): '0000.00.00',
+    ('hatch', 'akemi', 'release', '56'): '0000.00.00',
+    ('hatch', 'kled', 'release', '55'): '0000.00.00',
+    ('hatch', 'kled', 'release', '56'): '0000.00.00',
+  }
+  DAILY_BUILD_DICT = {
+    ('coral', None, 'release', '55'): '0000.00.00',
+    ('coral', None, 'release', '56'): '0000.00.00',
+    ('hatch', None, 'release', '55'): '0000.00.00',
+    ('hatch', None, 'release', '56'): '0000.00.00',
+  }
+
+  def setUp(self, multi_dut_boards=None, multi_dut_models=None):
+    tot_patcher = mock.patch('tot_manager.TotMilestoneManager')
+    self._mock_tot = tot_patcher.start()
+    self.addCleanup(tot_patcher.stop)
+    # Can't pass in False since storage_client is not mocked.
+    self._mock_tot.return_value = FakeTotMilestoneManager(True)
+
+    _mock_bq_client = mock.patch('rest_client.BigqueryRestClient')
+    mock_bq_client = _mock_bq_client.start()
+    self.addCleanup(_mock_bq_client.stop)
+    self.mock_bq_client = FakeBigqueryRestClient(
+        None, project='proj', dataset='dataset', table='foo')
+    mock_bq_client.return_value = self.mock_bq_client
+
+    self.task = task.Task(
+        task_config_reader.TaskInfo(
+            name=self.NAME,
+            suite=self.SUITE,
+            branch_specs=[],
+            analytics_name=self.ANALYTICS_NAME,
+            pool=self.POOL,
+            num=self.NUM,
+            multi_dut_boards=multi_dut_boards,
+            multi_dut_models=multi_dut_models,
+            priority=self.PRIORITY,
+            timeout=self.TIMEOUT))
+
+    self._empty_configs = config_reader.Configs(
+      lab_config=config_reader.LabConfig(None))
+    self._fake_configs = config_reader.Configs(
+        lab_config=FakeLabConfig())
+
+
+class TaskMultiDUTsByBoardTestCase(TaskBaseMultiDUTsTestCase):
+
+  def setUp(self):
+    super(TaskMultiDUTsByBoardTestCase, self).setUp(
+        multi_dut_boards="coral;hatch, hatch;coral")
+
+    mock_push = mock.patch('task.Task._push_suite')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testMultiDUTsTaskAttributes(self):
+    """Test correct multi-duts related attributes is set when
+    multi_dut_boards presents in configs.
+    """
+    self.assertEqual(self.task.is_multi_dut_testing, True)
+    self.assertEqual(self.task.multi_dut_boards,
+                     [['coral', 'hatch'], ['hatch', 'coral']])
+
+  def testGetMultiDUTsBuildTargetsDictWithAnyModel(self):
+    """Test the correct build targets dict can be generated with
+    any_model set to True.
+    """
+    self.task.any_model = True
+    d = self.task._get_multi_duts_build_targets_dict(self._fake_configs)
+    expected_dict = {
+      'coral': [
+        [
+          task.BuildTarget('coral', None, None),
+          task.BuildTarget('hatch', None, None),
+        ],
+      ],
+      'hatch': [
+        [
+          task.BuildTarget('hatch', None, None),
+          task.BuildTarget('coral', None, None),
+        ],
+      ]
+    }
+    self.assertEqual(d, expected_dict)
+
+  def testGetMultiDUTsBuildTargetsDictWithoutAnyModel(self):
+    """Test the correct build targets dict can be generated with
+    any_model set to False.
+    """
+    self.task.any_model = False
+    d = self.task._get_multi_duts_build_targets_dict(self._fake_configs)
+    expected_dict = {
+      'coral': [
+        [
+          task.BuildTarget('coral', 'robo', None),
+          task.BuildTarget('hatch', None, None),
+        ],
+        [
+          task.BuildTarget('coral', 'nasher', None),
+          task.BuildTarget('hatch', None, None),
+        ],
+        [
+          task.BuildTarget('coral', 'lava', None),
+          task.BuildTarget('hatch', None, None),
+        ],
+      ],
+      'hatch': [
+        [
+          task.BuildTarget('hatch', 'akemi', None),
+          task.BuildTarget('coral', None, None),
+        ],
+        [
+          task.BuildTarget('hatch', 'kled', None),
+          task.BuildTarget('coral', None, None),
+        ],
+      ]
+    }
+    self.assertEqual(d, expected_dict)
+
+  def testScheduleMultiDUTsCrosWithAnyModel(self):
+    """Test schedule multi DUTs cros build with any_model set to True."""
+    self.task.any_model = True
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 4)
+
+  def testScheduleMultiDUTsCrosWithoutAnyModel(self):
+    """Test schedule multi DUTs cros build with any_model set to False."""
+    self.task.any_model = False
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 10)
+
+  def testScheduleMultiDUTsWithMissingSecondaryBuild(self):
+    """Test schedule multi DUTs cros build when missing secondary build
+    info in daily dict, the expectation is no suite will be pushed.
+    """
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, {}, self._fake_configs)
+    assert not self._mock_push.called
+
+
+class TaskMultiDUTsByModelTestCase(TaskBaseMultiDUTsTestCase):
+
+  def setUp(self):
+    super(TaskMultiDUTsByModelTestCase, self).setUp(
+        multi_dut_models='robo;akemi, kled;lava')
+
+    mock_push = mock.patch('task.Task._push_suite')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testMultiDUTsTaskAttributes(self):
+    """Test correct multi-duts related attributes is set when
+    multi_dut_models presents in configs.
+    """
+    self.assertEqual(self.task.is_multi_dut_testing, True)
+    self.assertEqual(self.task.multi_dut_models,
+                     [['robo', 'akemi'], ['kled', 'lava']])
+
+  def testGetMultiDUTsBuildTargetsDict(self):
+    """Test the correct build targets dict can be generated."""
+    d = self.task._get_multi_duts_build_targets_dict(self._fake_configs)
+    expected_dict = {
+      'coral': [
+        [
+          task.BuildTarget('coral', 'robo', None),
+          task.BuildTarget('hatch', 'akemi', None),
+        ],
+      ],
+      'hatch': [
+        [
+          task.BuildTarget('hatch', 'kled', None),
+          task.BuildTarget('coral', 'lava', None),
+        ],
+      ]
+    }
+    self.assertEqual(d, expected_dict)
+
+  def testScheduleMultiDUTsCrosWithoutAnyModel(self):
+    """Test schedule multi DUTs cros build."""
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 4)

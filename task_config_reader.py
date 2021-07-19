@@ -56,6 +56,8 @@ COMMON_TASK_ENTRIES = [
     'lc_branches',
     'lc_targets',
     'models',
+    'multi_dut_boards',
+    'multi_dut_models',
     'no_delay',
     'num',
     'only_hwtest_sanity_required',
@@ -66,6 +68,7 @@ COMMON_TASK_ENTRIES = [
     'suite',
     'test_source',
     'timeout',
+    'multi_dut_trigger',
 ]
 
 # Namedtuple for storing task info.
@@ -239,10 +242,13 @@ class TaskConfig(object):
     lc_branches = self._config_reader.getstring(section, 'lc_branches')
     lc_targets = self._config_reader.getstring(section, 'lc_targets')
     models = self._config_reader.getstring(section, 'models')
+    multi_dut_boards = self._config_reader.getstring(section, 'multi_dut_boards')
+    multi_dut_models = self._config_reader.getstring(section, 'multi_dut_models')
     pool = self._config_reader.getstring(section, 'pool')
     qs_account = self._config_reader.getstring(section, 'qs_account')
     suite = self._config_reader.getstring(section, 'suite')
     test_source = self._config_reader.getstring(section, 'test_source')
+    multi_dut_trigger = self._config_reader.getstring(section, 'multi_dut_trigger')
 
     _b_s = self._config_reader.getstring(section, 'branch_specs')
     branch_specs = [] if _b_s is None else re.split(r'\s*,\s*', _b_s)
@@ -328,6 +334,8 @@ class TaskConfig(object):
         lc_branches=lc_branches,
         lc_targets=lc_targets,
         models=models,
+        multi_dut_boards=multi_dut_boards,
+        multi_dut_models=multi_dut_models,
         name=section,
         no_delay=no_delay,
         num=num,
@@ -340,6 +348,7 @@ class TaskConfig(object):
         test_source=test_source,
         testbed_dut_count=testbed_dut_count,
         timeout=timeout,
+        multi_dut_trigger=multi_dut_trigger,
     )
 
   def _validate_task_section(self, task_info):

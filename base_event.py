@@ -97,6 +97,34 @@ class BaseEvent(object):
                                      self.target_exec_utc - delay_minutes,
                                      self.keyword)
 
+  def get_daily_cros_builds(self, lab_config, build_client):
+    """Get CrOS builds in most recent 24 hours.
+
+    Multi-DUTs testing can be triggered by new build of primary board,
+    however it may not necessary all secondary boards also have a new
+    build within the same time frame(from last exec to target exec), so
+    we need to determine builds for secondary boards based on recent build
+    info, and one day window should be good enough to at least contain one
+    build for every boards.
+
+    Args:
+      lab_config: a config_reader.LabConfig object, to read lab configs.
+      build_client: a rest_client.BuildBucketBigqueryClient object, to
+        connect Buildbucket Bigquery.
+
+    Returns:
+      A two-tuples of dicts containing cros builds, see return from
+        |build_lib.get_cros_builds|.
+    """
+    delay_minutes = datetime.timedelta(minutes=constants.BaseEvent.DELAY_MINUTES)
+    one_week_delta = datetime.timedelta(days=1)
+    since_date = self.target_exec_utc - one_week_delta
+    return build_lib.get_cros_builds(build_client,
+                                     lab_config.get_cros_board_list(),
+                                     since_date - delay_minutes,
+                                     self.target_exec_utc - delay_minutes,
+                                     self.keyword)
+
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.
 
@@ -143,7 +171,7 @@ class BaseEvent(object):
     return firmware_build_dict
 
   def process_tasks(self, launch_control_builds, cros_builds_tuple,
-                    firmware_builds, configs):
+                    firmware_builds, configs, daily_cros_builds_tuple):
     """Schedule tasks in task_list.
 
     Args:
@@ -155,6 +183,8 @@ class BaseEvent(object):
         |get_firmware_builds|.
       configs: a config_reader.Configs object, to contain several config
         readers.
+      daily_cros_builds_tuple: Same as cros_builds_tuple, but contains
+        build info of last 24 hours.
 
     Returns:
       A list of finished tasks' names.
@@ -162,8 +192,21 @@ class BaseEvent(object):
     scheduled_tasks = []
     for per_task in self.task_list:
       try:
-        if per_task.schedule(launch_control_builds, cros_builds_tuple,
-                             firmware_builds, configs):
+        scheduled = False
+        if per_task.is_multi_dut_testing:
+          scheduled = per_task.schedule_multi_duts(
+              cros_builds_tuple,
+              daily_cros_builds_tuple,
+              configs
+          )
+        else:
+          scheduled = per_task.schedule(
+              launch_control_builds,
+              cros_builds_tuple,
+              firmware_builds,
+              configs
+          )
+        if scheduled:
           scheduled_tasks.append(per_task.name)
         else:
           logging.debug('No suites are scheduled in suites queue for '

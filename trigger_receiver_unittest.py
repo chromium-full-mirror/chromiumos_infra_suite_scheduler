@@ -837,7 +837,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
       suite_trigger.cron()
       # The new CrOS builds we fetched should be created within
       # the specified time span.
-      mock_get_cros_builds.assert_called_once_with(
+      mock_get_cros_builds.assert_any_call(
           mock.ANY, mock.ANY, since_date - delay_minutes,
           target_exec_utc - delay_minutes, 'new_build')
 
