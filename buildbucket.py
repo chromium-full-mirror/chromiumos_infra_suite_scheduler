@@ -244,6 +244,17 @@ def _form_test_platform_request(task_params):
     build = params.software_dependencies.add()
     build.rw_firmware_build = fw_rw_build
 
+  secondary_targets = task_params.get('secondary_targets')
+  if secondary_targets:
+    for s_target in secondary_targets:
+      s_device = params.secondary_devices.add()
+      s_device.software_attributes.build_target.name = s_target.board
+      if s_target.model:
+        s_device.hardware_attributes.model = s_target.model
+      if s_target.cros_build:
+        s_build = s_device.software_dependencies.add()
+        s_build.chromeos_build = s_target.cros_build
+
   request.test_plan.suite.add().name = task_params['suite']
   return request
 
