@@ -6,7 +6,7 @@
 # pylint: disable=dangerous-default-value
 
 from distutils import version
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 import logging
 import uuid
 
@@ -15,11 +15,10 @@ import build_lib
 import task_executor
 import tot_manager
 
+from multi_duts_lib import BuildTarget, convert_secondary_targets_to_string
+
 # The max lifetime of a suite scheduled by suite scheduler
 _JOB_MAX_RUNTIME_MINS_DEFAULT = 72 * 60
-
-# BuildTarget contains information for a hwtest target.
-BuildTarget = namedtuple('BuildTarget', ['board', 'model', 'cros_build'])
 
 
 class SchedulingError(Exception):
@@ -528,6 +527,11 @@ class Task(object):
         android_build = launch_control_build
       else:
         testbed_build = launch_control_build
+
+    if secondary_targets:
+      secondary_targets = convert_secondary_targets_to_string(secondary_targets)
+    else:
+      secondary_targets = ''
 
     suite_job_parameters = {
         build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: android_build,

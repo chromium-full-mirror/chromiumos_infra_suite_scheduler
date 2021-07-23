@@ -15,6 +15,7 @@ import analytics
 import build_lib
 import constants
 import file_getter
+from multi_duts_lib import restruct_secondary_targets_from_string
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from components import auth
@@ -245,6 +246,7 @@ def _form_test_platform_request(task_params):
     build.rw_firmware_build = fw_rw_build
 
   secondary_targets = task_params.get('secondary_targets')
+  secondary_targets = restruct_secondary_targets_from_string(secondary_targets)
   if secondary_targets:
     for s_target in secondary_targets:
       s_device = params.secondary_devices.add()
