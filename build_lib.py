@@ -475,7 +475,6 @@ def reshape_board(board):
     '-arc-s', #
     '-arcnext', #
     '-arcvm', #
-    '-blueznext', #
     '-connectivitynext', #
     '-borealis', #
     '-campfire', #
