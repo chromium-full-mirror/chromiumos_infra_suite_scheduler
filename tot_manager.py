@@ -110,8 +110,14 @@ class TotMilestoneManager(object):
     num_back = match.groups()[1]
     if num_back:
       tot_mstone_num = tot_mstone.lstrip('R')
+      effective_milestone = int(tot_mstone_num) - int(num_back)
+      # R95 doesn't exist. Use this ugly hack to correct for the right milestone.
+      # The second logic clause gets around unittests :)
+      if effective_milestone <= 95 and int(tot_mstone_num) > 95:
+        effective_milestone -= 1
+
       tot_mstone = tot_mstone.replace(
-          tot_mstone_num, str(int(tot_mstone_num) - int(num_back)))
+          tot_mstone_num, str(effective_milestone))
 
     return tot_mstone
 
