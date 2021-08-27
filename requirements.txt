@@ -2,5 +2,5 @@
 # chromite uses to avoid issues with other dependencies.
 protobuf==3.13.0
 google-api-python-client
-google-endpoints
+google-apitools
 httplib2
