@@ -659,7 +659,7 @@ class TaskBaseMultiDUTsTestCase(unittest.TestCase):
     ('hatch', 'kled', 'release', '55'): '0000.00.00',
     ('hatch', 'kled', 'release', '56'): '0000.00.00',
   }
-  DAILY_BUILD_DICT = {
+  RECENT_BUILD_DICT = {
     ('coral', None, 'release', '55'): '0000.00.00',
     ('coral', None, 'release', '56'): '0000.00.00',
     ('hatch', None, 'release', '55'): '0000.00.00',
@@ -777,19 +777,19 @@ class TaskMultiDUTsByBoardTestCase(TaskBaseMultiDUTsTestCase):
     """Test schedule multi DUTs cros build with any_model set to True."""
     self.task.any_model = True
     self.task._schedule_multi_duts_cros_builds(
-        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+        self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 4)
 
   def testScheduleMultiDUTsCrosWithoutAnyModel(self):
     """Test schedule multi DUTs cros build with any_model set to False."""
     self.task.any_model = False
     self.task._schedule_multi_duts_cros_builds(
-        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+        self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 10)
 
   def testScheduleMultiDUTsWithMissingSecondaryBuild(self):
     """Test schedule multi DUTs cros build when missing secondary build
-    info in daily dict, the expectation is no suite will be pushed.
+    info in recent dict, the expectation is no suite will be pushed.
     """
     self.task._schedule_multi_duts_cros_builds(
         self.BUILD_DICT, {}, self._fake_configs)
@@ -836,5 +836,5 @@ class TaskMultiDUTsByModelTestCase(TaskBaseMultiDUTsTestCase):
   def testScheduleMultiDUTsCrosWithoutAnyModel(self):
     """Test schedule multi DUTs cros build."""
     self.task._schedule_multi_duts_cros_builds(
-        self.BUILD_DICT, self.DAILY_BUILD_DICT, self._fake_configs)
+        self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 4)

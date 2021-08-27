@@ -300,14 +300,14 @@ class Task(object):
     return self.is_pushed
 
   def schedule_multi_duts(self, cros_builds_tuple,
-                          daily_cros_builds_tuple, configs):
+                          recent_cros_builds_tuple, configs):
     """Schedule the multi-DUTs task by its settings.
 
     Args:
       cros_builds_tuple: the two-tuple of build dicts for ChromeOS boards,
         see return value of |get_cros_builds|.
-      daily_cros_builds_tuple: Same as cros_builds_tuple, but contains
-        build info of last 24 hours.
+      recent_cros_builds_tuple: Same as cros_builds_tuple, but contains
+        build info with a wider time range.
       configs: a config_reader.Configs object.
 
     Raises:
@@ -327,15 +327,15 @@ class Task(object):
     self.is_pushed = False
 
     branch_builds, relaxed_builds = cros_builds_tuple
-    daily_branch_builds, daily_relaxed_builds = daily_cros_builds_tuple
+    recent_branch_builds, recent_relaxed_builds = recent_cros_builds_tuple
     builds_dict = branch_builds
-    daily_builds_dict = daily_branch_builds
+    recent_builds_dict = recent_branch_builds
     if self.only_hwtest_sanity_required:
       builds_dict = _split_unibuilds(relaxed_builds, configs)
       # We don't need to expand build info to model level as
       # secondary DUTs will have their builds determined by
       # their board name.
-      daily_builds_dict = daily_relaxed_builds
+      recent_builds_dict = recent_relaxed_builds
 
     # Record multi-DUTs testing only for primary boards as we're
     # going to have a replacement for SS and analytics layer soon.
@@ -357,12 +357,12 @@ class Task(object):
     if not builds_dict:
       logging.info('No CrOS build to run, skip running.')
       return False
-    if not daily_builds_dict:
-      logging.info('No daily CrOS build for secondary DUTs to run,'
+    if not recent_builds_dict:
+      logging.info('No recent CrOS build for secondary DUTs to run,'
                    ' skip running.')
       return False
     self._schedule_multi_duts_cros_builds(builds_dict,
-                                          daily_builds_dict, configs)
+                                          recent_builds_dict, configs)
 
     upload_result = False
     try:
@@ -735,14 +735,14 @@ class Task(object):
               board, explicit_model, task_id=task_id)
 
   def _schedule_multi_duts_cros_builds(self, build_dict,
-                                       daily_build_dict, configs):
+                                       recent_build_dict, configs):
     """Schedule multi-DUTs tasks with branch builds.
 
     Args:
       build_dict: the build dict for ChromeOS boards, see return
         value of |build_lib.get_cros_builds|.
-      daily_build_dict: Same as build_dict, but contains build info
-        of last 24 hours.
+      recent_build_dict: Same as build_dict, but contains build info
+        with a wider time range.
       configs: A config_reader.Configs object.
     """
     build_targets_dict = self._get_multi_duts_build_targets_dict(configs)
@@ -793,11 +793,11 @@ class Task(object):
           self.job_section.add_schedule_job(board, passed_model, msg=msg)
           continue
 
-        # Determine cros builds for secondary DUTs from daily build dict.
+        # Determine cros builds for secondary DUTs from recent build dict.
         secondary_targets = []
         for s_dut in group[1:]:
           s_key = (s_dut.board, None, build_type, milestone)
-          s_manifest = daily_build_dict.get(s_key, '')
+          s_manifest = recent_build_dict.get(s_key, '')
           if s_manifest:
             s_cros_build = str(build_lib.CrOSBuild(
                 s_dut.board, build_type, milestone, s_manifest))

@@ -97,8 +97,8 @@ class BaseEvent(object):
                                      self.target_exec_utc - delay_minutes,
                                      self.keyword)
 
-  def get_daily_cros_builds(self, lab_config, build_client):
-    """Get CrOS builds in most recent 24 hours.
+  def get_recent_cros_builds(self, lab_config, build_client, delta_days=1):
+    """Get most recent CrOS builds based on a given delta.
 
     Multi-DUTs testing can be triggered by new build of primary board,
     however it may not necessary all secondary boards also have a new
@@ -111,14 +111,16 @@ class BaseEvent(object):
       lab_config: a config_reader.LabConfig object, to read lab configs.
       build_client: a rest_client.BuildBucketBigqueryClient object, to
         connect Buildbucket Bigquery.
+      delta_days: a int, to indicate time range of days(now - delta_days)
+        we want to get builds.
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
         |build_lib.get_cros_builds|.
     """
     delay_minutes = datetime.timedelta(minutes=constants.BaseEvent.DELAY_MINUTES)
-    one_week_delta = datetime.timedelta(days=1)
-    since_date = self.target_exec_utc - one_week_delta
+    time_delta = datetime.timedelta(days=delta_days)
+    since_date = self.target_exec_utc - time_delta
     return build_lib.get_cros_builds(build_client,
                                      lab_config.get_cros_board_list(),
                                      since_date - delay_minutes,
@@ -171,7 +173,7 @@ class BaseEvent(object):
     return firmware_build_dict
 
   def process_tasks(self, launch_control_builds, cros_builds_tuple,
-                    firmware_builds, configs, daily_cros_builds_tuple):
+                    firmware_builds, configs, recent_cros_builds_tuple):
     """Schedule tasks in task_list.
 
     Args:
@@ -183,8 +185,8 @@ class BaseEvent(object):
         |get_firmware_builds|.
       configs: a config_reader.Configs object, to contain several config
         readers.
-      daily_cros_builds_tuple: Same as cros_builds_tuple, but contains
-        build info of last 24 hours.
+      recent_cros_builds_tuple: Same as cros_builds_tuple, but contains
+        build info from a wider range(e.g. 3 days).
 
     Returns:
       A list of finished tasks' names.
@@ -196,7 +198,7 @@ class BaseEvent(object):
         if per_task.is_multi_dut_testing:
           scheduled = per_task.schedule_multi_duts(
               cros_builds_tuple,
-              daily_cros_builds_tuple,
+              recent_cros_builds_tuple,
               configs
           )
         else:
