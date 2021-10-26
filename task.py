@@ -18,7 +18,7 @@ import tot_manager
 from multi_duts_lib import BuildTarget, convert_secondary_targets_to_string
 
 # The max lifetime of a suite scheduled by suite scheduler
-_JOB_MAX_RUNTIME_MINS_DEFAULT = 72 * 60
+_JOB_MAX_RUNTIME_MINS_DEFAULT = 40 * 60
 
 
 class SchedulingError(Exception):
