@@ -52,7 +52,7 @@ class Buildbucket(object):
 
   # Source of truth:
   # https://chrome-internal.googlesource.com/chromeos/infra/config/+/8f12edac54383831aaed9ed1819ef909a66ecc97/testplatform/main.star#90
-  MAX_BUILDBUCKET_TIMEOUT_MINS = 40*60
+  MAX_BUILDBUCKET_TIMEOUT_MINS = (39*60 + 30)
   MAX_RETRY = 3
 
   # TODO(crbug.com/1034166): this is a workaround to reduce the child task count
