@@ -2,12 +2,16 @@ cron:
 - description: schedule suite scheduler jobs
   url: /cron/trigger_event
   target: beta
-  schedule: every 30 minutes
+  # Disabling temporarily for b/204809008. Previously:
+  # schedule: every 30 minutes
+  schedule: 1st saturday of may 2:00
 
 - description: kick off suite scheduler jobs
   url: /cron/execute_task
   target: beta
-  schedule: every 1 minutes
+  # Disabling temporarily for b/204809008. Previously:
+  # schedule: every 1 minutes
+  schedule: 1st saturday of may 2:00
 
 - description: test push for suite_scheduler on staging instance
   url: /cron/test_push
