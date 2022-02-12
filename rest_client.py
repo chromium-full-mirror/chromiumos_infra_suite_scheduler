@@ -5,7 +5,6 @@
 """Module for interacting with google APIs."""
 # pylint: disable=g-bad-import-order
 # pylint: disable=g-bad-exception-name
-
 import ast
 import httplib2
 import logging
@@ -294,6 +293,7 @@ class BigqueryRestClient(object):
     query_data = {
         'query': query_str,
         'useLegacySql': False,
+        'timeoutMs': 200000,
     }
 
     for cnt in range(RETRY_LIMIT+1):
