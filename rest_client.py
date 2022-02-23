@@ -413,19 +413,23 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                   * [1] is the firmware ver.
                   */
                   IF(prefix = 'firmware', 'firmware', 'cros') AS spec,
-                  IF(prefix = 'firmware', firmware_post_prefix, cros_prefix) AS board,
+                  IF(prefix = 'firmware', COALESCE(
+                    SPLIT(firmware_tarball, '/') [OFFSET(0)],
+                    SPLIT(build_config, '-') [OFFSET(1)]
+                  ), cros_prefix) AS board,
                   artifact,
                   end_time
                 FROM
                   (
                     SELECT
                       SPLIT(build_config, '-') [OFFSET(0)] AS prefix,
-                      SPLIT(build_config, '-') [OFFSET(1)] AS firmware_post_prefix,
+                      build_config,
                       REGEXP_EXTRACT(
                         build_config, r"(^[a-zA-Z0-9_.+-]+)-release"
                       ) as cros_prefix,
                       end_time,
-                      artifact
+                      artifact,
+                      JSON_VALUE(fbb, '$') as firmware_tarball
                     FROM
                       (
                         SELECT
@@ -443,14 +447,15 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                             ),
                             builder.builder
                           ) as build_config,
-                          end_time
+                          end_time,
+                          JSON_EXTRACT_ARRAY(output.properties, '$.artifacts.files_by_artifact.FIRMWARE_TARBALL') as firmware_by_board
                         FROM `cr-buildbucket.chromeos.completed_builds_BETA`
                         WHERE
                           status = 'SUCCESS'
                           AND JSON_EXTRACT_SCALAR(
                             output.properties, '$.suite_scheduling'
                           ) = 'True'
-                      )
+                      ) LEFT JOIN UNNEST(firmware_by_board) as fbb
                   )
               )
           )
