@@ -39,6 +39,9 @@ class FakeLabConfig(object):
   def get_cros_model_map(self):
     return {'coral': ['robo', 'nasher', 'lava'], 'hatch': ['akemi', 'kled']}
 
+  def get_android_model_map(self):
+    return {'pixel3': ['pixel3xl'], 'pixel4': ['pixel4a']}
+
 
 class FakeBigqueryRestClient(object):
 
@@ -835,6 +838,85 @@ class TaskMultiDUTsByModelTestCase(TaskBaseMultiDUTsTestCase):
 
   def testScheduleMultiDUTsCrosWithoutAnyModel(self):
     """Test schedule multi DUTs cros build."""
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 4)
+
+
+class TaskMultiDUTsWithAndroidByBoardTestCase(TaskBaseMultiDUTsTestCase):
+
+  def setUp(self):
+    super(TaskMultiDUTsWithAndroidByBoardTestCase, self).setUp(
+        multi_dut_boards='coral;pixel3, hatch;pixel4')
+
+    mock_push = mock.patch('task.Task._push_suite')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testGetMultiDUTsBuildTargetsDictWithAndroidByBoard(self):
+    """Test the correct build targets dict can be generated with
+    Android devices when specified by board.
+    """
+    self.task.any_model = True
+    d = self.task._get_multi_duts_build_targets_dict(self._fake_configs)
+    expected_dict = {
+      'coral': [
+        [
+          task.BuildTarget('coral', None, None),
+          task.BuildTarget('pixel3', None, None),
+        ],
+      ],
+      'hatch': [
+        [
+          task.BuildTarget('hatch', None, None),
+          task.BuildTarget('pixel4', None, None),
+        ],
+      ]
+    }
+    self.assertEqual(d, expected_dict)
+
+  def testScheduleMultiDUTsWithAndroidByBoard(self):
+    """Test schedule multi DUTs cros build with Android by board."""
+    self.task.any_model = True
+    self.task._schedule_multi_duts_cros_builds(
+        self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 4)
+
+
+class TaskMultiDUTsWithAndroidByModelTestCase(TaskBaseMultiDUTsTestCase):
+
+  def setUp(self):
+    super(TaskMultiDUTsWithAndroidByModelTestCase, self).setUp(
+        multi_dut_models='robo;pixel3xl, kled;pixel4a')
+
+    mock_push = mock.patch('task.Task._push_suite')
+    self._mock_push = mock_push.start()
+    self.addCleanup(mock_push.stop)
+
+  def testGetMultiDUTsBuildTargetsDictWithAndroidByModel(self):
+    """Test the correct build targets dict can be generated with
+    Android devices when specified by model.
+    """
+    d = self.task._get_multi_duts_build_targets_dict(self._fake_configs)
+    expected_dict = {
+      'coral': [
+        [
+          task.BuildTarget('coral', 'robo', None),
+          task.BuildTarget('pixel3', 'pixel3xl', None),
+        ],
+      ],
+      'hatch': [
+        [
+          task.BuildTarget('hatch', 'kled', None),
+          task.BuildTarget('pixel4', 'pixel4a', None),
+        ],
+      ]
+    }
+    self.assertEqual(d, expected_dict)
+
+  def testScheduleMultiDUTsWithAndroidByModel(self):
+    """Test schedule multi DUTs cros build with Android by model."""
+    self.task.any_model = True
     self.task._schedule_multi_duts_cros_builds(
         self.BUILD_DICT, self.RECENT_BUILD_DICT, self._fake_configs)
     self.assertEqual(self._mock_push.call_count, 4)

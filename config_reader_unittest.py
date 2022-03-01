@@ -47,6 +47,17 @@ class LabReaderTestCase(unittest.TestCase):
     lab_config = config_reader.LabConfig(self.config)
     self.assertEqual(lab_config.get_cros_model_map(), {})
 
+  def testGetAndroidModelMap(self):
+    """Ensure android_model_map can be correctly fetched."""
+    self.config.set(config_reader.ANDROID_SETTINGS, 'model_list',
+                    '\npixel3_pixel3xl,\npixel3_pixel3a,\npixel4_pixel4a')
+    lab_config = config_reader.LabConfig(self.config)
+    expected = {'pixel3': ['pixel3xl', 'pixel3a'],
+                'pixel4': ['pixel4a']}
+    actual = lab_config.get_android_model_map()
+    self.assertEqual(len(actual), 2)
+    self.assertEqual(actual, expected)
+
 
 if __name__ == '__main__':
   unittest.main()

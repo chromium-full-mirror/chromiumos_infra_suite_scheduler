@@ -352,7 +352,7 @@ class Task(object):
 
     logging.info('######## Scheduling task %s ########', self.name)
     if self.os_type != build_lib.OS_TYPE_CROS:
-      logging.info('Multi-DUTs testing only support cros currently.')
+      logging.info('Multi-DUTs testing only support CrOS builds.')
       return False
     if not builds_dict:
       logging.info('No CrOS build to run, skip running.')
@@ -746,6 +746,7 @@ class Task(object):
       configs: A config_reader.Configs object.
     """
     build_targets_dict = self._get_multi_duts_build_targets_dict(configs)
+    android_boards_list = configs.lab_config.get_android_model_map().keys()
     model_agnostic_builds = set()
     for (board, passed_model, build_type,
          milestone), manifest in build_dict.iteritems():
@@ -796,6 +797,11 @@ class Task(object):
         # Determine cros builds for secondary DUTs from recent build dict.
         secondary_targets = []
         for s_dut in group[1:]:
+          if s_dut.board in android_boards_list:
+            # We don't need to provision Android devices for CrOS test.
+            secondary_targets.append(
+              BuildTarget(s_dut.board, s_dut.model, None))
+            continue
           s_key = (s_dut.board, None, build_type, milestone)
           s_manifest = recent_build_dict.get(s_key, '')
           if s_manifest:
@@ -882,8 +888,13 @@ class Task(object):
     """
     lab_config = configs.lab_config
     build_targets = defaultdict(lambda: [])
-    models_by_board = lab_config.get_cros_model_map() if lab_config else {}
-    model_to_board_dict = self._model_to_board_dict(models_by_board)
+    cros_models_by_board = lab_config.get_cros_model_map() if lab_config else {}
+    android_models_by_board = lab_config.get_android_model_map() if lab_config else {}
+    model_to_board_dict = self._model_to_board_dict(cros_models_by_board)
+    # Multi-DUTs support Android as secondary devices, so we need to update
+    # the dict to include Android boards/models.
+    model_to_board_dict.update(self._model_to_board_dict(android_models_by_board))
+
     # Handle the case when multi-DUTs testing requested by board.
     for group in self.multi_dut_boards:
       primary_board = group[0]
@@ -897,7 +908,7 @@ class Task(object):
         # The following part is to assign models for lab boards, where
         # the suffix should be removed.
         hwtest_board = build_lib.reshape_board(primary_board)
-        models = models_by_board.get(hwtest_board, [None])
+        models = cros_models_by_board.get(hwtest_board, [None])
         for model in models:
           if self.exclude_models and model in self.exclude_models:
             logging.info('Model %s is in exclude list, skipping.' % model)

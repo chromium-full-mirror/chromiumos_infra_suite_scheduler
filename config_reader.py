@@ -126,11 +126,22 @@ class LabConfig(object):
     Returns:
       A map of CrOS board names onto a list of models
     """
+    return self._get_model_map(CROS_SETTINGS)
+
+  def get_android_model_map(self):
+    """Gets a map of Android boards onto a list of their corresponding models.
+
+    Returns:
+      A map of Android board names onto a list of models
+    """
+    return self._get_model_map(ANDROID_SETTINGS)
+
+  def _get_model_map(self, setting_name):
     result = {}
     if not self._config_reader:
       return result
 
-    encoded_map = self._config_reader.getstring(CROS_SETTINGS, 'model_list')
+    encoded_map = self._config_reader.getstring(setting_name, 'model_list')
     if encoded_map is None:
       return result
 
