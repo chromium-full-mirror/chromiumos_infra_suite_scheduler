@@ -27,6 +27,8 @@ ANDROID_SETTINGS = 'ANDROID'
 # The entries of CrOS settings in lab config file.
 CROS_SETTINGS = 'CROS'
 
+# The entries of Rubik boards in rubik board config file.
+RUBIK_SETTINGS = 'RUBIK'
 
 def forgive_config_error(func):
   """A decorator making ConfigParser get*() functions return None on fail."""
@@ -154,6 +156,34 @@ class LabConfig(object):
         result[board_name] = [model_name]
 
     return result
+
+class RubikConfig(object):
+  """Class for reading the Rubik config file for suite scheduler."""
+
+  def __init__(self, config_reader):
+    """Initialize a RubikConfig to read rubik config.
+
+    Args:
+      config_reader: a ConfigReader to read rubik config.
+    """
+    self._config_reader = config_reader
+
+  def get_build_target_list(self):
+    """Get a build target list from the Rubik config file.
+
+    Returns:
+      A set of build targets: (atlas-kernelnext, eve, ...)
+
+    Raises:
+      ValueError: no build target list is found.
+    """
+    build_target_list = self._config_reader.getstring(RUBIK_SETTINGS, 'build_target_list')
+    if build_target_list is None:
+      raise ValueError('Cannot find build_target_list in Rubik config file.')
+
+    build_targets = set([bt.strip() for bt in build_target_list.split(',')])
+    logging.info('Found build targets in rubik_config.ini: %s', str(build_targets))
+    return build_targets
 
 
 def config_dump(res):

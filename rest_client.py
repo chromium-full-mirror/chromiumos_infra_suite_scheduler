@@ -469,6 +469,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         [row[2] for row in res])
     return res
 
+  # TODO(b/225382624): Remove this when Rubik is the only source of builds.
   def get_passed_builds(self, earliest_end_time, latest_end_time, event_type):
     """Get passed builds inside a given time span.
 
@@ -531,6 +532,86 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     FROM builds
     WHERE
         board IS NOT NULL
+    """
+    return self._get_passed_builds(base_query_template, earliest_end_time, latest_end_time, event_type)
+
+  def get_passed_rubik_builds(self, earliest_end_time, latest_end_time, event_type):
+    """Get passed Rubik builds inside a given time span.
+
+    BigQuery does not guarantee the inserted time of rows. A new build
+    may not get inserted when suite scheduler runs the query. To avoid
+    it, we scan each time span twice:
+    - the first run catches the new build from earliest_end_time to
+      latest_end_time, and inserts the result to a temp BQ table.
+    - the second run checks the build from (earliest_end_time - 1Day)
+      to (latest_end_time - 1Day) plus (earliest_end_time to
+      latest_end_time). The query returns the build which does not
+      appear in the temp table. Thus, if a build was not fetched by the
+      first run, we still could schedule test on it at most 1 day later
+      for new_build events.
+    Weekly and nightly events do not need this arrangement because
+    they do not cover every single build.
+
+
+    Args:
+      earliest_end_time: a datetime.datetime object in UTC.
+      latest_end_time: a datetime.datetime object in UTC.
+      event_type: a string of event type. It could be one of
+        [WEEKLY|NIGHTLY|new_build].
+
+    Returns:
+      A list of build_lib.BuildInfo objects.
+    """
+    base_query_template = """
+    WITH builds AS (
+      SELECT
+        JSON_EXTRACT_SCALAR(input.properties, '$.build_target.name') AS board,
+        JSON_EXTRACT_SCALAR(output.properties, '$.target_versions.platformVersion') AS platform,
+        builder.builder AS build_config,
+        -- Time info
+        end_time as build_end_time,
+        CURRENT_TIMESTAMP() as inserted_time,
+      FROM `cr-buildbucket.chromeos.builds`
+      WHERE
+          status = 'SUCCESS' AND
+          JSON_EXTRACT_SCALAR(input.properties, '$.recipe') = 'build_release'
+    )
+    SELECT
+        *,
+        '{0}' as event_type
+    FROM builds
+    WHERE
+        board IS NOT NULL
+    """
+    return self._get_passed_builds(base_query_template, earliest_end_time, latest_end_time, event_type)
+
+  def _get_passed_builds(self, base_query_template, earliest_end_time, latest_end_time, event_type):
+    """Get passed builds inside a given time span.
+
+    BigQuery does not guarantee the inserted time of rows. A new build
+    may not get inserted when suite scheduler runs the query. To avoid
+    it, we scan each time span twice:
+    - the first run catches the new build from earliest_end_time to
+      latest_end_time, and inserts the result to a temp BQ table.
+    - the second run checks the build from (earliest_end_time - 1Day)
+      to (latest_end_time - 1Day) plus (earliest_end_time to
+      latest_end_time). The query returns the build which does not
+      appear in the temp table. Thus, if a build was not fetched by the
+      first run, we still could schedule test on it at most 1 day later
+      for new_build events.
+    Weekly and nightly events do not need this arrangement because
+    they do not cover every single build.
+
+
+    Args:
+      base_query_template: base query to use to find release builds.
+      earliest_end_time: a datetime.datetime object in UTC.
+      latest_end_time: a datetime.datetime object in UTC.
+      event_type: a string of event type. It could be one of
+        [WEEKLY|NIGHTLY|new_build].
+
+    Returns:
+      A list of build_lib.BuildInfo objects.
     """
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(

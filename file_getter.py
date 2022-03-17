@@ -22,9 +22,13 @@ TEST_SUITE_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_PATH,
 # Test lab config file
 TEST_LAB_CONFIG_FILE = os.path.join(CONFIG_PATH, 'fake_lab_config.ini')
 
+# Test rubik boards config file
+TEST_RUBIK_CONFIG_FILE = os.path.join(CONFIG_PATH, 'fake_rubik_config.ini')
+
 # Suite scheduler config repo
 NEW_SUITE_SCHEDULER_CONFIG_FILE = None
 NEW_LAB_CONFIG_FILE = None
+NEW_RUBIK_CONFIG_FILE = None
 
 def _write_config(config_name):
   tot_response = urllib2.urlopen(
@@ -41,10 +45,12 @@ def clone_config():
   """Function to clone the config for suite scheduler from the current head."""
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
+  global NEW_RUBIK_CONFIG_FILE
   logging.info('Fetching config from suite scheduler repo.')
   try:
     NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
     NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
+    NEW_RUBIK_CONFIG_FILE = _write_config('rubik_config.ini')
   except Exception as e:
     logging.error(str(e))
 

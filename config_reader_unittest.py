@@ -59,5 +59,20 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertEqual(actual, expected)
 
 
+class RubikReaderTestCase(unittest.TestCase):
+
+  def setUp(self):
+    self.config = config_reader.ConfigReader(None)
+    self.config.add_section(config_reader.RUBIK_SETTINGS)
+
+  def testGetRubikBuildTargetList(self):
+    """Ensure Rubik build target list can be correctly fetched."""
+    self.config.set(config_reader.RUBIK_SETTINGS, 'build_target_list',
+                    '\natlas-kernelnext,\neve')
+    rubik_config = config_reader.RubikConfig(self.config)
+    self.assertEqual(rubik_config.get_build_target_list(),
+                     set(['atlas-kernelnext', 'eve']))
+
+
 if __name__ == '__main__':
   unittest.main()

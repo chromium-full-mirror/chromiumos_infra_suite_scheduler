@@ -201,12 +201,18 @@ def get_board_family_mapping_from_gs(storage_client):
     raise
 
 
-def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
+def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list,
+                                        rubik_build_targets = None,
+                                        use_rubik = False):
   """Validate and convert a list of BuildInfo to branch build dict.
 
   Args:
     cros_board_list: The board list including all CrOS boards.
     buildinfo_list: A list of BuildInfo objects.
+    rubik_build_targets: A set of build targets to use Rubik builds for.
+    use_rubik: bool. If True will only keep builds for build targets in
+      rubik_build_targets. If False, will only keep build targets not in
+      rubik_build_targets.
 
   Returns:
     A branch build dict:
@@ -234,6 +240,18 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
       logging.warning('%s is not a valid CrOS board.', build.board)
       continue
 
+    if rubik_build_targets:
+      if use_rubik:
+        # Discard builds for build targets not in rubik_build_targets.
+        if build.board not in rubik_build_targets:
+          logging.warning('%s is not a Rubik board, discarding.', build.board)
+          continue
+      else:
+        # Discard builds for build targets in rubik_build_targets.
+        if build.board in rubik_build_targets:
+          logging.warning('%s is a Rubik board, discarding.', build.board)
+          continue
+
     build_key = (build.board, build.model, build_config_info.type,
                  build.milestone)
     cur_manifest = branch_build_dict.get(build_key)
@@ -247,7 +265,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
 
 
 def get_cros_builds(build_client, cros_board_list, earliest_end_time,
-                    latest_end_time, event_type):
+                    latest_end_time, event_type, rubik_build_targets = None):
   """Get branch builds for ChromeOS boards inside the given time span.
 
   Args:
@@ -257,6 +275,8 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
     earliest_end_time: a datetime.datetime object in UTC.
     latest_end_time: a datetime.datetime object in UTC.
     event: a string of event type.
+    rubik_build_targets: set of build targets for which we should use Rubik
+      builds instead of Leagcy.
 
   Returns:
     a two-tuple of branch build dicts.  Each branch build dict has
@@ -274,13 +294,20 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
       earliest_end_time, latest_end_time, event_type)
   relaxed_builds = build_client.get_relaxed_passed_builds(
       earliest_end_time, latest_end_time, event_type)
+  all_branch_rubik_builds = build_client.get_passed_rubik_builds(
+      earliest_end_time, latest_end_time, event_type)
 
+  # TODO(b/225382624): Remove all logic fetching Legacy builds
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, all_branch_builds)
+      cros_board_list, all_branch_builds, rubik_build_targets=rubik_build_targets)
+  rubik_branch_builds_dict = buildinfo_list_to_branch_build_dict(
+      cros_board_list, all_branch_rubik_builds, rubik_build_targets=rubik_build_targets,
+      use_rubik=True)
   relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, relaxed_builds + all_branch_builds)
+      cros_board_list, relaxed_builds + all_branch_builds,
+      rubik_build_targets=rubik_build_targets)
 
-  return branch_builds_dict, relaxed_builds_dict
+  return dict(branch_builds_dict, **rubik_branch_builds_dict), relaxed_builds_dict
 
 
 def get_latest_launch_control_build(android_client, branch, target):

@@ -125,6 +125,20 @@ class FakeBuildClient(object):
             'coral', 'astronaut', '62', '9868.0.0', 'coral-release'),
         build_lib.BuildInfo(
             'coral', 'lava', '62', '9868.0.0', 'coral-release'),
+        build_lib.BuildInfo(
+            'atlas-kernelnext', None, '62', '9868.0.0', 'atlas-kernelnext-release'),
+    ]
+
+  def get_passed_rubik_builds(self, earliest, latest, event_type):
+    """Mock get_passed_rubik_builds."""
+    del earliest  # unused
+    del latest # unused
+    del event_type  #unused
+    return [
+        build_lib.BuildInfo(
+            'atlas-kernelnext', None, '62', '9869.0.0', 'atlas-kernelnext-release'),
+        build_lib.BuildInfo(
+            'coral', 'lava', '62', '9869.0.0', 'coral-release'),
     ]
 
   def get_relaxed_passed_builds(self, earliest, latest, event_type):
@@ -174,7 +188,7 @@ class FakeLabConfig(object):
   def get_cros_board_list(self):
     """Mock config_reader.LabConfig.get_cros_board_list."""
     return ('grunt', 'link', 'peppy', 'daisy', 'zako', 'samus-kernelnext',
-            'coral', 'reef', 'nami')
+            'coral', 'reef', 'nami', 'atlas-kernelnext', 'kevin-kernelnext')
 
   def get_cros_model_map(self):
     """Mock config_reader.LabConfig.get_cros_model_map."""
@@ -183,6 +197,14 @@ class FakeLabConfig(object):
         'reef': ['electro'],
         'nami': ['akali', 'bard'],
     }
+
+
+class FakeRubikConfig(object):
+  """Mock config_reader.Rubik_Config."""
+
+  def get_build_target_list(self):
+    """Mock config_reader.LabConfig.get_cros_board_list."""
+    return ('atlas-kernelnext', 'kevin-kernelnext')
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
@@ -212,6 +234,10 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_lab_config = mock_lab_config.start()
     self.addCleanup(mock_lab_config.stop)
 
+    mock_rubik_config = mock.patch('config_reader.RubikConfig')
+    self._mock_rubik_config = mock_rubik_config.start()
+    self.addCleanup(mock_rubik_config.stop)
+
     mock_utc_now = mock.patch('time_converter.utc_now')
     self._mock_utc_now = mock_utc_now.start()
     self.addCleanup(mock_utc_now.stop)
@@ -219,6 +245,7 @@ class TriggerReceiverBaseTestCase(unittest.TestCase):
     self._mock_build_client.return_value = FakeBuildClient()
     self._mock_android_client.return_value = FakeAndroidBuildRestClient()
     self._mock_lab_config.return_value = FakeLabConfig()
+    self._mock_rubik_config.return_value = FakeRubikConfig()
 
     board_family_patcher = mock.patch(
         'build_lib.get_board_family_mapping_from_gs')
@@ -524,10 +551,18 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
                      [link_suite])
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 1)
-    self.assertNotIn('link-release', tasks[0].payload)
-    self.assertNotIn('asuka-release', tasks[0].payload)
-    self.assertIn('zako-release', tasks[0].payload)
+    self.assertEqual(len(tasks), 2)
+    tasks = sorted(tasks, key = lambda task: task.payload)
+    # We have a Rubik build for kernelnext-release at 9869.0, and a Legacy
+    # build for kernelnext-release at 9868.0. Verify that we're scheduling
+    # for the Rubik build and not for the Legacy build.
+    self.assertNotIn('9868', tasks[0].payload)
+    self.assertIn('9869', tasks[0].payload)
+    self.assertIn('atlas-kernelnext-release', tasks[0].payload)
+    self.assertNotIn('link-release', tasks[1].payload)
+    self.assertNotIn('asuka-release', tasks[1].payload)
+    self.assertNotIn('atlas-kernelnext-release', tasks[1].payload)
+    self.assertIn('zako-release', tasks[1].payload)
 
   def testNewBuildExcludingNonExistingBoardFamilies(self):
     """Test the new_build suite excluding an non-existing board family."""
@@ -637,10 +672,11 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertIn('new_build', suite_trigger.event_results)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 2)
-    self.assertIn('model=akali', tasks[0].payload)
-    self.assertIn('9868.0.0', tasks[0].payload)
-    self.assertIn('model=bard', tasks[1].payload)
-    self.assertIn('9867.0.0', tasks[1].payload)
+    tasks = sorted(tasks, key = lambda task: task.payload)
+    self.assertIn('model=bard', tasks[0].payload)
+    self.assertIn('9867.0.0', tasks[0].payload)
+    self.assertIn('model=akali', tasks[1].payload)
+    self.assertIn('9868.0.0', tasks[1].payload)
 
   def testNewBuildWithExcludeModels(self):
     """Test the new_build suite with an existing exclude_models entry."""
@@ -839,7 +875,8 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
       # the specified time span.
       mock_get_cros_builds.assert_any_call(
           mock.ANY, mock.ANY, since_date - delay_minutes,
-          target_exec_utc - delay_minutes, 'new_build')
+          target_exec_utc - delay_minutes, 'new_build',
+          rubik_build_targets=mock.ANY)
 
   def testCronWithoutLastExec(self):
     """Test the first round of cron can be successfully executed."""
