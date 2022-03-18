@@ -575,7 +575,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       FROM `cr-buildbucket.chromeos.builds`
       WHERE
           status = 'SUCCESS' AND
-          JSON_EXTRACT_SCALAR(input.properties, '$.recipe') = 'build_release'
+          JSON_EXTRACT_SCALAR(input.properties, '$.recipe') = 'build_release' AND
+          builder.builder NOT LIKE "staging-%"
     )
     SELECT
         *,
