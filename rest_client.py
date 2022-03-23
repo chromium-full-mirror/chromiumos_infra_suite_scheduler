@@ -568,7 +568,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         JSON_EXTRACT_SCALAR(input.properties, '$.build_target.name') AS board,
         JSON_EXTRACT_SCALAR(output.properties, '$.target_versions.milestoneVersion') AS milestone,
         JSON_EXTRACT_SCALAR(output.properties, '$.target_versions.platformVersion') AS platform,
-        builder.builder AS build_config,
+        CONCAT(JSON_EXTRACT_SCALAR(input.properties, '$.build_target.name'), "-release") AS build_config,
         -- Time info
         end_time as build_end_time,
         CURRENT_TIMESTAMP() as inserted_time,
