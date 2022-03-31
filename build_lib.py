@@ -304,7 +304,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
       cros_board_list, all_branch_rubik_builds, rubik_build_targets=rubik_build_targets,
       use_rubik=True)
   relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, relaxed_builds + all_branch_builds,
+      cros_board_list, relaxed_builds + all_branch_builds + all_branch_rubik_builds,
       rubik_build_targets=rubik_build_targets)
 
   return dict(branch_builds_dict, **rubik_branch_builds_dict), relaxed_builds_dict
