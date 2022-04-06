@@ -265,6 +265,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
         'ctp-fwd-task-name:None',
     }
     want_bb = {
+        'label-image:fake_cros_build',
+        'label-suite:fake_suite',
         'suite:fake_suite',
         'user_agent:suite_scheduler',
     }
@@ -302,6 +304,8 @@ class TestPlatformClientTestCase(unittest.TestCase):
         'ctp-fwd-task-name:None',
     }
     want_bb = {
+        'label-suite:fake_suite',
+        'label-image:fake_build',
         'suite:fake_suite',
         'user_agent:suite_scheduler',
     }

@@ -73,6 +73,7 @@ class TestPlatformClient(object):
     executed_tasks = []
     counter = collections.defaultdict(int)
     task_executions = []
+    req_tags = _bb_tags(suite)
     for task in tasks:
       try:
         params = task.extract_params()
@@ -88,6 +89,10 @@ class TestPlatformClient(object):
         if counter[counter_key] > 1:
           req_name += '_' + str(counter[counter_key] - 1)
         requests.append('"%s": %s' % (req_name, req_json))
+        req_tags.append(
+            bb_common_pb2.StringPair(
+                key='label-image',
+                value=_infer_build_from_task_params(params)))
         executed_tasks.append(task)
         if params.get('task_id'):
           task_executions.append(
@@ -98,7 +103,7 @@ class TestPlatformClient(object):
       return []
     try:
       requests_json = '{ "requests": { %s } }' % ', '.join(requests)
-      req_build = self._build_request(requests_json, _bb_tags(suite))
+      req_build = self._build_request(requests_json, req_tags)
       logging.debug('Raw request to buildbucket: %r', req_build)
 
       if (self.running_env == constants.RunningEnv.ENV_STANDALONE
@@ -399,6 +404,7 @@ def _bb_tags(suite):
     [bb_common_pb2.StringPair] tags to include the buildbucket request.
   """
   return [
+      bb_common_pb2.StringPair(key='label-suite', value=suite),
       bb_common_pb2.StringPair(key='suite', value=suite),
       bb_common_pb2.StringPair(key='user_agent', value='suite_scheduler')
   ]

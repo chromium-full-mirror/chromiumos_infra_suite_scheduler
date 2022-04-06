@@ -1,6 +1,8 @@
 /credentials/
+.idea/
 /infra_libs/
 /lib/
 *.pyc
 *.swp
 *.swo
+suite_scheduler.iml
