@@ -671,7 +671,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
   def get_relaxed_passed_builds(self, earliest_end_time, latest_end_time,
                                 event_type):
-    """Get builds with successful SkylabHWTest stages between a given span.
+    """Get builds with successful UploadTestArtifacts stages in a given span.
 
     Same as get_passed_builds, we run the query twice to ensure we
     fetched all builds from BQ for new_build event.
@@ -714,7 +714,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         UNNEST(build.steps) AS step
     WHERE
             build.status != 'SUCCESS'
-        AND step.name like 'SkylabHWTest%%'
+        AND step.name = 'UploadTestArtifacts'
         AND step.status = 'SUCCESS'
         AND JSON_EXTRACT_SCALAR(output.properties, '$.suite_scheduling') = 'True')
 
@@ -774,9 +774,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
 
     build_infos = []
     for stage_name, board, milestone, platform, build_config in res:
-      model = _try_parse_model(stage_name)
       build_infos.append(
-          build_lib.BuildInfo(board, model, milestone, platform, build_config))
+          build_lib.BuildInfo(board, None, milestone, platform, build_config))
 
     return build_infos
 
@@ -826,30 +825,6 @@ def _parse_bq_job_query(json_input):
     res.append(rc)
 
   return res
-
-
-def _try_parse_model(build_stage_name):
-  """Try to parse model name from the SkylabHWTest stage name.
-
-  An example build_stage_name is 'HWTest [bvt-isntaller] [whitetip]'.  So we'll
-  regexp match on this to get the board name out of the second bracket.
-
-  Args:
-    build_stage_name: The stage name of a HWTest sanity stage, e.g.
-      "SkylabHWTest [bvt-installer] [whitetip]".
-
-  Returns:
-    A model name, e.g. "whitetip" or None if not found.
-  """
-
-  match = re.search(
-    "SkylabHWTest \[[a-z0-9-]+\] \[([a-z0-9-]+)\]",
-    build_stage_name,
-  )
-
-  if match:
-    return match.group(1)
-  return None
 
 def _passed_build_query_template(event_type):
   """Wrapper to create the query template for passed builds."""
