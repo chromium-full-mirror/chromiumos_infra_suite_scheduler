@@ -787,6 +787,9 @@ class Task(object):
         if primary_dut.model:
           if primary_dut.model != passed_model:
             # Explict model specified but not match, so skip to next.
+            logging.info(
+                "Explict model %s specified but doesn't match with passed"
+                " model %s, skipping.", primary_dut.model, passed_model)
             continue
         elif build_tag in model_agnostic_builds:
           msg = ("Skip model %s as any_model enabled for this job."
