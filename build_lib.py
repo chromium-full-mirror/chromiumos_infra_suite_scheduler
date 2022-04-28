@@ -282,7 +282,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
     a two-tuple of branch build dicts.  Each branch build dict has
     keys and value described below.  The first build_dict describes
     successful builds and the second describes builds that failed
-    but met the relaxed success requirement (a successful 'HWTest [sanity]'
+    but met the relaxed success requirement (a successful 'UploadTestArtifacts'
     stage).
         key: a tuple of (board, build_type, milestone), like:
           ('wolf', 'release', '58')

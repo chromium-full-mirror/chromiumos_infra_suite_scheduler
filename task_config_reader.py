@@ -60,7 +60,7 @@ COMMON_TASK_ENTRIES = [
     'multi_dut_models',
     'no_delay',
     'num',
-    'only_hwtest_sanity_required',
+    'only_successful_build_required',
     'os_type',
     'pool',
     'priority',
@@ -268,8 +268,8 @@ class TaskConfig(object):
     if priority is None and pool != 'suites' and qs_account is None:
       priority = EVENT_CLASSES[keyword].PRIORITY
 
-    only_hwtest_sanity_required = self._config_reader.getstring(
-        section, 'only_hwtest_sanity_required')
+    only_successful_build_required = self._config_reader.getstring(
+        section, 'only_successful_build_required')
 
     try:
       num = self._config_reader.getint(section, 'num')
@@ -339,7 +339,7 @@ class TaskConfig(object):
         name=section,
         no_delay=no_delay,
         num=num,
-        only_hwtest_sanity_required=only_hwtest_sanity_required,
+        only_successful_build_required=only_successful_build_required,
         os_type=os_type,
         pool=pool,
         priority=priority,

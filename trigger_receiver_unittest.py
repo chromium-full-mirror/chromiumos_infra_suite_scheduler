@@ -390,9 +390,9 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
         'new_build', utc_now - datetime.timedelta(hours=1))
     self._mock_utc_now.return_value = utc_now
 
-  def testNewBuildForHWTestSanityRequired(self):
+  def testNewBuildForOnlySuccessfulBuildRequired(self):
     """Test the new_build functionality."""
-    # Construct a fake config with only_hwtest_sanity_required.
+    # Construct a fake config with only_successful_build_required.
     fsnbt_name = 'FakeStrictNewBuildTask'
     self.fake_config.add_section(fsnbt_name)
     self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
@@ -402,7 +402,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.add_section(frnbt_name)
     self.fake_config.set(frnbt_name, 'run_on', 'new_build')
     self.fake_config.set(frnbt_name, 'suite', 'fake_suite_relaxed')
-    self.fake_config.set(frnbt_name, 'only_hwtest_sanity_required', 'True')
+    self.fake_config.set(frnbt_name, 'only_successful_build_required', 'True')
     self.fake_config.set(frnbt_name, 'boards', 'link, zako, grunt')
 
     self._mock_config_reader.return_value = self.fake_config
@@ -651,7 +651,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.assertNotIn('model=astronaut', tasks[0].payload)
     self.assertIn('model=santa', tasks[0].payload)
 
-  def testNewBuildWithModelsForHWTestSanityRequired(self):
+  def testNewBuildWithModelsForOnlySuccessfulBuildRequired(self):
     """Test the new_build suite with an existing models entry."""
     normal_suite = 'FakeModelsNewBuildTask'
     self.fake_config.add_section(normal_suite)
@@ -659,7 +659,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     self.fake_config.set(normal_suite, 'suite', 'fake_suite_base')
     self.fake_config.set(normal_suite, 'models', 'nami_akali, nami_bard')
     self.fake_config.set(normal_suite, 'boards', 'nami')
-    self.fake_config.set(normal_suite, 'only_hwtest_sanity_required', 'True')
+    self.fake_config.set(normal_suite, 'only_successful_build_required', 'True')
     self._mock_config_reader.return_value = self.fake_config
 
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)

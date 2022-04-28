@@ -461,7 +461,7 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
         suite=self.SUITE,
         branch_specs=['>=tot-2'],
         boards='coral,hatch',
-        only_hwtest_sanity_required=True,
+        only_successful_build_required=True,
         os_type=build_lib.OS_TYPE_CROS))
     new_task.schedule(
             [], ([], relax_builds), self.firmware_dict, self._fake_configs)

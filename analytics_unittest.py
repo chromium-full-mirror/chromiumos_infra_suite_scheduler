@@ -76,7 +76,7 @@ class TestScheduleJobSection(unittest.TestCase):
     client = analytics.ScheduleJobSection(_get_task_info())
     job_trigger = client.message.schedule_job_trigger
     self.assertFalse(
-        job_trigger.build_filters.only_hwtest_sanity_required)
+        job_trigger.build_filters.only_successful_build_required)
     branch_filters = job_trigger.build_filters.branch_filters
     self.assertEqual(len(branch_filters), 2)
     self.assertEqual(branch_filters[0].channel,

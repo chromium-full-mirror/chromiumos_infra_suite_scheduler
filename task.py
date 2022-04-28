@@ -148,7 +148,7 @@ class Task(object):
     self.name = task_info.name
     self.no_delay = task_info.no_delay
     self.num = task_info.num
-    self.only_hwtest_sanity_required = task_info.only_hwtest_sanity_required
+    self.only_successful_build_required = task_info.only_successful_build_required
     self.os_type = task_info.os_type
     self.pool = task_info.pool
     self.priority = task_info.priority
@@ -262,7 +262,7 @@ class Task(object):
 
     branch_builds, relaxed_builds = cros_builds_tuple
     builds_dict = branch_builds
-    if self.only_hwtest_sanity_required:
+    if self.only_successful_build_required:
       builds_dict = _split_unibuilds(relaxed_builds, configs)
 
     # Record all target boards and models into job section.
@@ -330,7 +330,7 @@ class Task(object):
     recent_branch_builds, recent_relaxed_builds = recent_cros_builds_tuple
     builds_dict = branch_builds
     recent_builds_dict = recent_branch_builds
-    if self.only_hwtest_sanity_required:
+    if self.only_successful_build_required:
       builds_dict = _split_unibuilds(relaxed_builds, configs)
       # We don't need to expand build info to model level as
       # secondary DUTs will have their builds determined by
@@ -607,7 +607,7 @@ class Task(object):
         continue
 
       # Record this build as it matches both board and branch specs.
-      if self.only_hwtest_sanity_required:
+      if self.only_successful_build_required:
         self.job_section.add_matched_relax_build(
             board, build_type, milestone, manifest)
       else:
@@ -769,7 +769,7 @@ class Task(object):
         continue
 
       # Record this build as it matches both board and branch specs.
-      if self.only_hwtest_sanity_required:
+      if self.only_successful_build_required:
         self.job_section.add_matched_relax_build(
             board, build_type, milestone, manifest)
       else:

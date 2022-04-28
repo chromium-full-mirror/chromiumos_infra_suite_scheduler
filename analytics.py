@@ -282,8 +282,8 @@ def _job_section(task_info):
   else:
     job_section.schedule_job_trigger.interval.pause = 0
   build_filters = job_section.schedule_job_trigger.build_filters
-  build_filters.only_hwtest_sanity_required = (
-      task_info.only_hwtest_sanity_required is not None)
+  build_filters.only_successful_build_required = (
+      task_info.only_successful_build_required is not None)
   if task_info.branch_specs:
     for spec in task_info.branch_specs:
       try:
