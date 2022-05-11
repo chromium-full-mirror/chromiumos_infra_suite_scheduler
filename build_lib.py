@@ -503,6 +503,7 @@ def reshape_board(board):
     '-arc-r', #
     '-arc-r-userdebug', #
     '-arc-s', #
+    '-arc-t', #
     '-arcnext', #
     '-arcvm', #
     '-connectivitynext', #
