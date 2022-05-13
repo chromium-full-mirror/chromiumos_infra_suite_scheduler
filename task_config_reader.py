@@ -69,7 +69,6 @@ COMMON_TASK_ENTRIES = [
     'test_source',
     'timeout',
     'multi_dut_trigger',
-    'run_via_cft',
 ]
 
 # Namedtuple for storing task info.
@@ -262,7 +261,6 @@ class TaskConfig(object):
     frontdoor = not bool(self._config_reader.getboolean(section, 'not_frontdoor'))
     job_retry = bool(self._config_reader.getboolean(section, 'job_retry'))
     no_delay = bool(self._config_reader.getboolean(section, 'no_delay'))
-    run_via_cft = bool(self._config_reader.getboolean(section, 'run_via_cft'))
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
@@ -351,7 +349,6 @@ class TaskConfig(object):
         testbed_dut_count=testbed_dut_count,
         timeout=timeout,
         multi_dut_trigger=multi_dut_trigger,
-        run_via_cft=run_via_cft,
     )
 
   def _validate_task_section(self, task_info):

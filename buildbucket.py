@@ -6,7 +6,9 @@
 import collections
 import datetime
 import logging
-import os
+import re
+import string
+import types
 import uuid
 
 import analytics
@@ -19,7 +21,7 @@ from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from components import auth
 from components.prpc import client as prpc_client
 from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_common_pb2
+from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_pb2, build_pb2
 from chromite.third_party.infra_libs.buildbucket.proto.builds_service_prpc_pb2 import BuildsServiceDescription
 
 from oauth2client import service_account
@@ -27,7 +29,6 @@ from oauth2client import service_account
 from google.protobuf import json_format, struct_pb2
 
 GS_PREFIX = 'gs://chromeos-image-archive/'
-CONTAINER_METADATA_LOC = 'metadata/containers.jsonpb'
 
 # The default prpc timeout(10 sec) is too short for the request_id
 # to propgate in buildbucket, and could not fully dedup the
@@ -49,7 +50,7 @@ class TestPlatformClient(object):
   """prpc client for cros_test_platform, aka frontdoor."""
   def __init__(self, address, project, bucket, builder):
     self.client = _get_client(address)
-    self.builder = builder_common_pb2.BuilderID(project=project,
+    self.builder = builder_pb2.BuilderID(project=project,
                                          bucket=bucket,
                                          builder=builder)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
@@ -213,7 +214,6 @@ def _form_test_platform_request(task_params):
   gs_url = GS_PREFIX + task_params['test_source_build']
   params.metadata.test_metadata_url = gs_url
   params.metadata.debug_symbols_archive_url = gs_url
-  params.metadata.container_metadata_url = os.path.join(gs_url, CONTAINER_METADATA_LOC)
 
   params.time.maximum_duration.FromTimedelta(timeout)
 
@@ -229,8 +229,6 @@ def _form_test_platform_request(task_params):
   if task_params['job_retry'] == 'True':
     params.retry.allow = True
     params.retry.max = constants.Buildbucket.MAX_RETRY
-
-  params.run_via_cft = (task_params['run_via_cft'] == 'True')
 
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
   fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
