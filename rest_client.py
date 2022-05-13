@@ -55,14 +55,17 @@ class BaseRestClient(object):
 
     return self._service
 
-  def create_service(self, discovery_url=None):
+  def create_service(self, discovery_url=None, http_timeout_seconds=30):
     """Create the service for a google API."""
     self._init_credentials()
+
+    logging.debug('HTTP timeout seconds: %s', http_timeout_seconds)
     # Explicitly specify timeout for http to avoid DeadlineExceededError.
     # It's used for services like AndroidBuild API, which raise such error
     # when being triggered too many calls in a short time frame.
     # http://stackoverflow.com/questions/14698119/httpexception-deadline-exceeded-while-waiting-for-http-response-from-url-dead
-    http_auth = self._credentials.authorize(httplib2.Http(timeout=30))
+    http_auth = self._credentials.authorize(
+        httplib2.Http(timeout=http_timeout_seconds))
     if discovery_url is None:
       self._service = apiclient.discovery.build(
           self.service_name, self.service_version,
@@ -256,11 +259,15 @@ class BigqueryRestClient(object):
   """Class of REST client for Bigquery API."""
 
   PROJECT_TO_RUN_BIGQUERY_JOB = 'google.com:suite-scheduler'
+  QUERY_TIMEOUT_SECONDS = 200
 
   def __init__(self, rest_client, project=None, dataset=None, table=None):
     """Initialize a REST client for connecting to Bigquery API."""
     self._rest_client = rest_client
-    self._rest_client.create_service()
+    # We always want to use an HTTP timeout that's greater than the
+    # underlying query timeout.
+    self._rest_client.create_service(
+        http_timeout_seconds=self.QUERY_TIMEOUT_SECONDS + 5)
     self.project = project
     self.dataset = dataset
     self.table = table
@@ -290,10 +297,12 @@ class BigqueryRestClient(object):
       #   ]
       # }
     """
+    query_timeout_ms = self.QUERY_TIMEOUT_SECONDS * 1000
+    logging.debug('BQ query timeout seconds: %s', query_timeout_ms)
     query_data = {
         'query': query_str,
         'useLegacySql': False,
-        'timeoutMs': 200000,
+        'timeoutMs': query_timeout_ms,
     }
 
     for cnt in range(RETRY_LIMIT+1):
