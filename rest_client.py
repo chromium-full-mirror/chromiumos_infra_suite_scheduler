@@ -59,7 +59,6 @@ class BaseRestClient(object):
     """Create the service for a google API."""
     self._init_credentials()
 
-    logging.debug('HTTP timeout seconds: %s', http_timeout_seconds)
     # Explicitly specify timeout for http to avoid DeadlineExceededError.
     # It's used for services like AndroidBuild API, which raise such error
     # when being triggered too many calls in a short time frame.
@@ -298,7 +297,6 @@ class BigqueryRestClient(object):
       # }
     """
     query_timeout_ms = self.QUERY_TIMEOUT_SECONDS * 1000
-    logging.debug('BQ query timeout seconds: %s', query_timeout_ms)
     query_data = {
         'query': query_str,
         'useLegacySql': False,
