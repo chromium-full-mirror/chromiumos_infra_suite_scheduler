@@ -123,6 +123,8 @@ class Task(object):
             multi-DUTs testing. E.g. 'primary': when the primary board has
             a new build, or 'all': when primary and all secondary has a new
             build.
+          run_via_cft, a boolean to specify if current task should be scheduled
+            to run via CFT test execution path.
 
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
@@ -158,6 +160,7 @@ class Task(object):
     self.testbed_dut_count = task_info.testbed_dut_count
     self.timeout = task_info.timeout
     self.multi_dut_trigger = task_info.multi_dut_trigger
+    self.run_via_cft = task_info.run_via_cft
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -560,6 +563,7 @@ class Task(object):
         'test_source_build': test_source_build,
         'timeout': self.timeout,
         'timeout_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
+        'run_via_cft': self.run_via_cft,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
