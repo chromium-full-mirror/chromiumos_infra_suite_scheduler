@@ -226,11 +226,11 @@ def _form_test_platform_request(task_params):
   if task_params['model'] != 'None':
     params.hardware_attributes.model = task_params['model']
 
-  if task_params['job_retry'] == 'True':
+  if task_params.has_key('job_retry') and task_params['job_retry'] == 'True':
     params.retry.allow = True
     params.retry.max = constants.Buildbucket.MAX_RETRY
 
-  params.run_via_cft = (task_params['run_via_cft'] == 'True')
+  params.run_via_cft = (task_params.has_key('run_via_cft') and task_params['run_via_cft'] == 'True')
 
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
   fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
