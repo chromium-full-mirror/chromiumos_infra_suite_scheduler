@@ -74,10 +74,10 @@ class BuildLibTestCase(unittest.TestCase):
   def testGetCrosBuilds(self):
     mock_build_client = FakeBuildClient()
     cros_board_list = ['coral', 'atlas-kernelnext']
-    rubik_build_targets = ['atlas-kernelnext']
+    stable_rubik_milestones = {'atlas-kernelnext': 62}
     build_dict, relaxed_build_dict = build_lib.get_cros_builds(
       mock_build_client, cros_board_list, None, None, None,
-      rubik_build_targets=rubik_build_targets)
+      stable_rubik_milestones=stable_rubik_milestones)
 
     expected_build_dict = {
       ('coral', 'santa', 'release', '62'): '9868.0.0',

@@ -101,16 +101,16 @@ class TriggerReceiver(object):
         scheduled.
     """
     # TODO(b/225382624): Remove all Rubik logic once Rubik is fully rolled out.
-    rubik_build_targets = self._rubik_config.get_build_target_list()
+    stable_rubik_milestones = self._rubik_config.get_stable_rubik_milestones()
     cros_builds_tuple = event.get_cros_builds(
-        self._lab_config, self._build_client, rubik_build_targets=rubik_build_targets)
+        self._lab_config, self._build_client, stable_rubik_milestones=stable_rubik_milestones)
     logging.debug('Found CrOS builds: %r', cros_builds_tuple)
     # Set delta to 3 days here as we only build once per day for non tot
     # builds, so a single failure on secondary boards may cause a skip
     # of primary board.
     recent_cros_builds_tuple = event.get_recent_cros_builds(
         self._lab_config, self._build_client, delta_days=3,
-        rubik_build_targets=rubik_build_targets)
+        stable_rubik_milestones=stable_rubik_milestones)
     logging.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)

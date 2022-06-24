@@ -126,6 +126,8 @@ class FakeBuildClient(object):
         build_lib.BuildInfo(
             'coral', 'lava', '62', '9868.0.0', 'coral-release'),
         build_lib.BuildInfo(
+            'atlas-kernelnext', None, '60', '8500.0.0', 'atlas-kernelnext-release'),
+        build_lib.BuildInfo(
             'atlas-kernelnext', None, '62', '9868.0.0', 'atlas-kernelnext-release'),
     ]
 
@@ -135,6 +137,8 @@ class FakeBuildClient(object):
     del latest # unused
     del event_type  #unused
     return [
+        build_lib.BuildInfo(
+            'atlas-kernelnext', None, '60', '8501.0.0', 'atlas-kernelnext-release'),
         build_lib.BuildInfo(
             'atlas-kernelnext', None, '62', '9869.0.0', 'atlas-kernelnext-release'),
         build_lib.BuildInfo(
@@ -202,9 +206,9 @@ class FakeLabConfig(object):
 class FakeRubikConfig(object):
   """Mock config_reader.Rubik_Config."""
 
-  def get_build_target_list(self):
+  def get_stable_rubik_milestones(self):
     """Mock config_reader.LabConfig.get_cros_board_list."""
-    return ('atlas-kernelnext', 'kevin-kernelnext')
+    return {'atlas-kernelnext': 62, 'kevin-kernelnext': 61}
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
@@ -551,18 +555,24 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
                      [link_suite])
     queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
-    self.assertEqual(len(tasks), 2)
+    self.assertEqual(len(tasks), 3)
     tasks = sorted(tasks, key = lambda task: task.payload)
+    # We have a Rubik build for kernelnext-release at 8501.0, and a Legacy
+    # build for kernelnext-release at 8500.0. Verify that we're scheduling
+    # for the Legacy build and not for the Rubik build on R60.
+    self.assertNotIn('8501', tasks[0].payload)
+    self.assertIn('8500', tasks[0].payload)
+    self.assertIn('atlas-kernelnext-release', tasks[0].payload)
     # We have a Rubik build for kernelnext-release at 9869.0, and a Legacy
     # build for kernelnext-release at 9868.0. Verify that we're scheduling
-    # for the Rubik build and not for the Legacy build.
-    self.assertNotIn('9868', tasks[0].payload)
-    self.assertIn('9869', tasks[0].payload)
-    self.assertIn('atlas-kernelnext-release', tasks[0].payload)
-    self.assertNotIn('link-release', tasks[1].payload)
-    self.assertNotIn('asuka-release', tasks[1].payload)
-    self.assertNotIn('atlas-kernelnext-release', tasks[1].payload)
-    self.assertIn('zako-release', tasks[1].payload)
+    # for the Rubik build and not for the Legacy build on R62.
+    self.assertNotIn('9868', tasks[1].payload)
+    self.assertIn('9869', tasks[1].payload)
+    self.assertIn('atlas-kernelnext-release', tasks[1].payload)
+    self.assertNotIn('link-release', tasks[2].payload)
+    self.assertNotIn('asuka-release', tasks[2].payload)
+    self.assertNotIn('atlas-kernelnext-release', tasks[2].payload)
+    self.assertIn('zako-release', tasks[2].payload)
 
   def testNewBuildExcludingNonExistingBoardFamilies(self):
     """Test the new_build suite excluding an non-existing board family."""
@@ -876,7 +886,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
       mock_get_cros_builds.assert_any_call(
           mock.ANY, mock.ANY, since_date - delay_minutes,
           target_exec_utc - delay_minutes, 'new_build',
-          rubik_build_targets=mock.ANY)
+          stable_rubik_milestones=mock.ANY)
 
   def testCronWithoutLastExec(self):
     """Test the first round of cron can be successfully executed."""

@@ -168,22 +168,26 @@ class RubikConfig(object):
     """
     self._config_reader = config_reader
 
-  def get_build_target_list(self):
-    """Get a build target list from the Rubik config file.
+  def get_stable_rubik_milestones(self):
+    """Get stable rubik milestones from the Rubik config file.
 
     Returns:
-      A set of build targets: (atlas-kernelnext, eve, ...)
+      A dict mapping build target (e.g. eve) to a stable rubik milestone.
 
     Raises:
       ValueError: no build target list is found.
     """
-    build_target_list = self._config_reader.getstring(RUBIK_SETTINGS, 'build_target_list')
-    if build_target_list is None:
-      raise ValueError('Cannot find build_target_list in Rubik config file.')
+    data = self._config_reader.getstring(RUBIK_SETTINGS, 'stable_rubik_milestones')
+    if data is None:
+      raise ValueError('Cannot find stable_rubik_milestones in Rubik config file.')
 
-    build_targets = set([bt.strip() for bt in build_target_list.split(',')])
-    logging.info('Found build targets in rubik_config.ini: %s', str(build_targets))
-    return build_targets
+    data = set([bt.strip() for bt in data.split(',')])
+    mstone_map = {}
+    for entry in data:
+      entry = entry.split('=')
+      mstone_map[entry[0]] = int(entry[1])
+    logging.info('Found stable rubik milestones targets in rubik_config.ini: %s', str(mstone_map))
+    return mstone_map
 
 
 def config_dump(res):
