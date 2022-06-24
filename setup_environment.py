@@ -106,7 +106,7 @@ _GIT_DEPS = [
     _GitDep(
         'chromite',
         'https://chromium.googlesource.com/chromiumos/chromite',
-        '33e50500efbba70fc1dace41f2344c5e0406b9ae',
+        'ef9462c3b0055bd7ba54f355749b5b03a18ae3eb',
         [
             '/api/gen/**/*.py',
             '/api/__init__.py',
@@ -161,7 +161,7 @@ def _install_infra_libs():
 def _set_sparse_checkout_paths(checkout_dir, sparse_checkout_paths):
   """Set the path patterns to checkout in a git checkout."""
   # Pass in path patterns via stdin to avoid shell escaping issues.
-  proc = subprocess.Popen(['git', 'sparse-checkout', 'set', '--stdin'],
+  proc = subprocess.Popen(['git', 'sparse-checkout', 'set', '--no-cone', '--stdin'],
                           stdin=subprocess.PIPE,
                           cwd=checkout_dir)
   proc.communicate(input='\n'.join(sparse_checkout_paths))
