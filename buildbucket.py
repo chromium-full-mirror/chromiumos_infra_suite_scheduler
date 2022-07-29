@@ -21,6 +21,7 @@ from components.prpc import client as prpc_client
 from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
 from chromite.third_party.infra_libs.buildbucket.proto import builds_service_pb2, builder_common_pb2
 from chromite.third_party.infra_libs.buildbucket.proto.builds_service_prpc_pb2 import BuildsServiceDescription
+from chromite.api.gen.chromiumos.test.api import test_suite_pb2
 
 from oauth2client import service_account
 
@@ -265,6 +266,14 @@ def _form_test_platform_request(task_params):
         s_build.chromeos_build = s_target.cros_build
 
   request.test_plan.suite.add().name = task_params['suite']
+  if params.run_via_cft:
+    include_tags = task_params.get('include_tags', None)
+    exclude_tags = task_params.get('exclude_tags', None)
+    if include_tags or exclude_tags:
+      request.test_plan.tag_criteria.CopyFrom(
+          test_suite_pb2.TestSuite.TestCaseTagCriteria(
+              tags=_get_test_tags(include_tags),
+              tag_excludes=_get_test_tags(exclude_tags)))
   return request
 
 
@@ -381,6 +390,20 @@ def _request_tags(task_params, build, pool):
   if task_params.get('analytics_name') not in (None, 'None'):
     tags['analytics_name'] = task_params['analytics_name']
   return tags
+
+
+def _get_test_tags(tags_list_str):
+  """parse test tags properly and return them.
+
+  Args:
+    tags_list_str: comma separated list of tags.
+
+  Returns:
+    A list of strings; an empty list if no tags set.
+  """
+  if tags_list_str not in (None, '', 'None'):
+    return [d.lstrip() for d in tags_list_str.split(',')]
+  return []
 
 
 def _get_key_val_from_label(label):

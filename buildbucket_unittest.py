@@ -57,7 +57,9 @@ def _get_suite_params(board='fake_board',
       'is_skylab': False,
       'analytics_name': analytics_name,
       'secondary_targets': '',
-      'run_via_cft': False,
+      'run_via_cft': True,
+      'include_tags': 'a, b, c',
+      'exclude_tags': 'e, f, g',
   }
 
 

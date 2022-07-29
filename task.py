@@ -125,6 +125,12 @@ class Task(object):
             build.
           run_via_cft, a boolean to specify if current task should be scheduled
             to run via CFT test execution path.
+          include_tags, a comma separated list of tags that will be included while
+            finding test cases for CFT test execution path. This will be used only if
+            run_via_cft is set to true.
+          exclude_tags, a comma separated list of tags that will be excluded while
+            finding test cases for CFT test execution path. This will be used only if
+            run_via_cft is set to true.
 
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
@@ -161,6 +167,8 @@ class Task(object):
     self.timeout = task_info.timeout
     self.multi_dut_trigger = task_info.multi_dut_trigger
     self.run_via_cft = task_info.run_via_cft
+    self.include_tags = task_info.include_tags
+    self.exclude_tags = task_info.exclude_tags
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -564,6 +572,8 @@ class Task(object):
         'timeout': self.timeout,
         'timeout_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
         'run_via_cft': self.run_via_cft,
+        'include_tags': self.include_tags,
+        'exclude_tags': self.exclude_tags,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

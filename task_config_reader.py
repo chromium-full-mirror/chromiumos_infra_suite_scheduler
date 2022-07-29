@@ -70,6 +70,8 @@ COMMON_TASK_ENTRIES = [
     'timeout',
     'multi_dut_trigger',
     'run_via_cft',
+    'include_tags',
+    'exclude_tags',
 ]
 
 # Namedtuple for storing task info.
@@ -263,6 +265,8 @@ class TaskConfig(object):
     job_retry = bool(self._config_reader.getboolean(section, 'job_retry'))
     no_delay = bool(self._config_reader.getboolean(section, 'no_delay'))
     run_via_cft = bool(self._config_reader.getboolean(section, 'run_via_cft'))
+    include_tags = self._config_reader.getstring(section, 'include_tags')
+    exclude_tags = self._config_reader.getstring(section, 'exclude_tags')
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
@@ -352,6 +356,8 @@ class TaskConfig(object):
         timeout=timeout,
         multi_dut_trigger=multi_dut_trigger,
         run_via_cft=run_via_cft,
+        include_tags=include_tags,
+        exclude_tags=exclude_tags,
     )
 
   def _validate_task_section(self, task_info):
