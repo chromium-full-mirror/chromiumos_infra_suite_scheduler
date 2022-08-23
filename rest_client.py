@@ -538,9 +538,12 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         '{0}' as event_type
     FROM builds
     WHERE
-        board IS NOT NULL
+        board IS NOT NULL AND
+        milestone != "None" AND
+        milestone IS NOT NULL
     """
-    return self._get_passed_builds(base_query_template, earliest_end_time, latest_end_time, event_type)
+    return self._get_passed_builds(base_query_template, earliest_end_time,
+    latest_end_time, event_type)
 
   def get_passed_rubik_builds(self, earliest_end_time, latest_end_time, event_type):
     """Get passed Rubik builds inside a given time span.
@@ -590,7 +593,9 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
         '{0}' as event_type
     FROM builds
     WHERE
-        board IS NOT NULL
+        board IS NOT NULL AND
+        milestone != "None" AND
+        milestone IS NOT NULL
     """
     return self._get_passed_builds(base_query_template, earliest_end_time, latest_end_time, event_type)
 
