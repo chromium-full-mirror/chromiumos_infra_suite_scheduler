@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -53,7 +53,7 @@ CrOSBuildConfigInfo = collections.namedtuple(
 _DEFAULT_BUILD_SUFFIX = '-release'
 
 # The default setting of board for fetching latest build.
-_DEFAULT_HEAD = 'master'
+_DEFAULT_HEAD = 'main'
 
 # The path for storing the latest build.
 _GS_LATEST_HEAD_PATTERN = '%(board)s%(suffix)s/%(name)s'
@@ -137,7 +137,7 @@ def get_latest_cros_build_from_gs(storage_client, board=None, suffix=None):
 
   Args:
     storage_client: a rest_client.StorageRestClient object.
-    board: the board to fetch latest build. Default is 'master'.
+    board: the board to fetch latest build. Default is 'main'.
     suffix: suffix represents build channel, like '-release'.
       Default is '-paladin'.
 
