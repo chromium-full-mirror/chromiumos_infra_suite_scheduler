@@ -523,6 +523,7 @@ def reshape_board(board):
     '-manatee', #
     '-manatee-kernelnext', #
     '-ndktranslation', #
+    '-nopkvm', #
     '-pkvm', #
     '-userdebug', #
   ]
