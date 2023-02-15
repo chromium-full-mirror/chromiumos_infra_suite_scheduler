@@ -1,6 +1,6 @@
-# Note: Protobuf version must be kept in sync with the version that 
+# Note: Protobuf version must be kept in sync with the version that
 # chromite uses to avoid issues with other dependencies.
 protobuf==3.13.0
-google-api-python-client
-google-apitools
-httplib2
+google-api-python-client==1.12.10
+google-apitools==0.5.32
+httplib2==0.20.4
