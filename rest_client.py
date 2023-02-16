@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -402,7 +402,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
           * Firmware builds may contain artifacts for multiple boards in a
           * single build - each in a separate directory.
           */
-          IF(spec = 'firmware', CONCAT(artifact, '/', board), artifact) as artifact
+          artifact
         FROM
           (
             SELECT
@@ -421,15 +421,21 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                   */
                   IF(prefix = 'firmware', 'firmware', 'cros') AS spec,
                   IF(prefix = 'firmware', COALESCE(
-                    SPLIT(firmware_tarball, '/') [OFFSET(0)],
-                    SPLIT(build_config, '-') [OFFSET(1)]
+                    IF(branch_board IN ('icarus', 'quiche'), branch_board, NULL),
+                    SPLIT(firmware_tarball, '/') [SAFE_OFFSET(0)],
+                    SPLIT(build_config, '-') [SAFE_OFFSET(1)]
                   ), cros_prefix) AS board,
-                  artifact,
+                  IF(prefix = 'firmware',
+                    IF(firmware_tarball IS NOT NULL,
+                      CONCAT(artifact, '/', SPLIT(firmware_tarball, '/') [SAFE_OFFSET(0)]),
+                      artifact),
+                    artifact) as artifact,
                   end_time
                 FROM
                   (
                     SELECT
-                      SPLIT(build_config, '-') [OFFSET(0)] AS prefix,
+                      SPLIT(build_config, '-') [SAFE_OFFSET(0)] AS prefix,
+                      SPLIT(build_config, '-') [SAFE_OFFSET(1)] AS branch_board,
                       build_config,
                       REGEXP_EXTRACT(
                         build_config, r"(^[a-zA-Z0-9_.+-]+)-release"
@@ -445,8 +451,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                               output.properties, '$.artifact_link'
                             ),
                             FORMAT('gs://%s/%s',
-                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_bucket'),
-                                   JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_path'))
+                                    JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_bucket'),
+                                    JSON_EXTRACT_SCALAR(output.properties, '$.artifacts.gs_path'))
                           ) as artifact,
                           COALESCE(
                             JSON_EXTRACT_SCALAR(
