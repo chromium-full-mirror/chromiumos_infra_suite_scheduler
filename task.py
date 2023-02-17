@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -149,6 +149,7 @@ class Task(object):
     self.firmware_rw_build_spec = task_info.firmware_rw_build_spec
     self.firmware_ro_version = task_info.firmware_ro_version
     self.firmware_rw_version = task_info.firmware_rw_version
+    self.firmware_board_name = task_info.firmware_board_name
     self.force = task_info.force
     self.frontdoor = task_info.frontdoor
     self.hour = task_info.hour
@@ -484,6 +485,10 @@ class Task(object):
       return None
 
     try:
+      if self.firmware_board_name:
+        logging.info('Using %s instead of %s for firmware board',
+                     self.firmware_board_name, board)
+        board = self.firmware_board_name
       if firmware_build_dict:
         return firmware_build_dict.get((spec, board), None)
       else:

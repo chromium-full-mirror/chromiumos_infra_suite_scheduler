@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -105,9 +105,13 @@ class TaskBaseTestCase(unittest.TestCase):
 
     self.firmware_dict = {
         ('cros', 'fake_board'): ('fake_board-release/R30-6182.0.0-rc2'),
+        ('cros', 'alt_board'): ('alt_board-release/R30-6182.0.0-rc2'),
         ('firmware', 'fake_board'): ('firmware-fake_board-12345.67.'
                                      'A-firmwarebranch/RFoo-1.0.0-b1234567'
-                                     '/fake_board')
+                                     '/fake_board'),
+        ('firmware', 'alt_board'): ('firmware-alt_board-12345.67.'
+                                     'A-firmwarebranch/RFoo-1.0.0-b1234567'
+                                     '/fake_board'),
       }
 
 
@@ -192,6 +196,24 @@ class TaskTestCase(TaskBaseTestCase):
         'firmware-{0}-12345.67.A-firmwarebranch/'
         'RFoo-1.0.0-b1234567/{0}'.format(self.BOARD))
 
+  def testGetFirmwareSuccessfullyAltBoard(self):
+    """Test get firmware from firmware_dict successfully."""
+
+    self.task.firmware_board_name = 'alt_board'
+    firmware = self.task._get_firmware_build(
+        'cros', self.BOARD, self.firmware_dict, None)
+    self.assertEqual(
+        firmware,
+        '{0}-release/R{1}-{2}'.format('alt_board',
+                                      self.MILESTONE,
+                                      self.PLATFORM))
+    firmware = self.task._get_firmware_build(
+        'firmware', self.BOARD, self.firmware_dict, None)
+    self.assertEqual(
+        firmware,
+        'firmware-{0}-12345.67.A-firmwarebranch/'
+        'RFoo-1.0.0-b1234567/{1}'.format('alt_board', self.BOARD))
+
   def testGetNonExistentBoard(self):
     """Test get firmware for non-existent board from firmware_dict."""
     self.assertIsNone(self.task._get_firmware_build(
@@ -259,6 +281,16 @@ class TaskTestCase(TaskBaseTestCase):
     """Test schedule cros builds successfully with valid firmware."""
     branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
     self.task.firmware_ro_build_spec = 'firmware'
+    self.task._schedule_cros_builds(branch_builds,
+                                    self.firmware_dict,
+                                    self._fake_configs)
+    self.assertEqual(self._mock_push.call_count, 1)
+
+  def testScheduleCrosSuccessfullyWithValidFirmwareAltBoard(self):
+    """Test schedule cros builds successfully with valid firmware."""
+    branch_builds = {(self.BOARD, None, 'release', '56'): '0000.00.00'}
+    self.task.firmware_ro_build_spec = 'firmware'
+    self.task.firmware_board_name = 'alt_board'
     self.task._schedule_cros_builds(branch_builds,
                                     self.firmware_dict,
                                     self._fake_configs)
@@ -498,6 +530,30 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     self.assertEqual(build.type, branch_pb2.Branch.FIRMWARE)
     self.assertEqual(build.artifact.path,
                      self.firmware_dict['firmware', 'fake_board'])
+
+  def testAddMatchedFirmwareBuildAltBoard(self):
+    """Test the matched firmware build is recorded with an alternate board."""
+    branch_builds = {('fake_board', '', 'release', '40'):
+                     '0000.00.00'}
+    new_task = task.Task(task_config_reader.TaskInfo(
+        name=self.NAME,
+        suite=self.SUITE,
+        branch_specs=['>=tot-2'],
+        boards='fake_board',
+        firmware_rw_build_spec='firmware',
+        firmware_board_name='alt_board',
+        os_type=build_lib.OS_TYPE_CROS))
+    new_task.schedule(
+            [], (branch_builds, []), self.firmware_dict, self._fake_configs)
+    job_sec = json_format.Parse(
+          json.dumps(self.mock_bq_client.rows[0]['json']),
+          analytics_pb2.ScheduleJobSection())
+    self.assertEqual(len(job_sec.matched_builds), 2)
+    build = job_sec.matched_builds[1].firmware_rw_build
+    self.assertEqual(build.build_target.name, 'fake_board')
+    self.assertEqual(build.type, branch_pb2.Branch.FIRMWARE)
+    self.assertEqual(build.artifact.path,
+                     self.firmware_dict['firmware', 'alt_board'])
 
   def testScheduleJobSuccessfully(self):
     """Test the scheduled job is recorded."""
