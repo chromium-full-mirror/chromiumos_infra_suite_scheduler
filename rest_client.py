@@ -421,7 +421,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                   */
                   IF(prefix = 'firmware', 'firmware', 'cros') AS spec,
                   IF(prefix = 'firmware', COALESCE(
-                    IF(branch_board IN ('icarus', 'quiche'), branch_board, NULL),
+                    IF(branch_board IN ('icarus', 'quiche', 'cr50'), branch_board, NULL),
                     SPLIT(firmware_tarball, '/') [SAFE_OFFSET(0)],
                     SPLIT(build_config, '-') [SAFE_OFFSET(1)]
                   ), cros_prefix) AS board,
