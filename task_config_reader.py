@@ -236,6 +236,7 @@ class TaskConfig(object):
             section, 'exclude_board_families')
     exclude_boards = self._config_reader.getstring(section, 'exclude_boards')
     exclude_models = self._config_reader.getstring(section, 'exclude_models')
+    firmware_board_name = self._config_reader.getstring(section, 'firmware_board_name')
     firmware_ro_build_spec = self._config_reader.getstring(
             section, 'firmware_ro_build_spec')
     firmware_rw_build_spec = self._config_reader.getstring(
@@ -329,6 +330,7 @@ class TaskConfig(object):
         exclude_board_families=exclude_board_families,
         exclude_boards=exclude_boards,
         exclude_models=exclude_models,
+        firmware_board_name=firmware_board_name,
         firmware_ro_build_spec=firmware_ro_build_spec,
         firmware_rw_build_spec=firmware_rw_build_spec,
         firmware_ro_version=firmware_ro_version,
