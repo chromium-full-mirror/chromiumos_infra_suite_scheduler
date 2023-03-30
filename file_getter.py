@@ -9,6 +9,8 @@ import os
 import subprocess
 import urllib2
 
+from retry import retry
+
 # The path to save credentials.
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), 'credentials')
 
@@ -30,6 +32,8 @@ NEW_SUITE_SCHEDULER_CONFIG_FILE = None
 NEW_LAB_CONFIG_FILE = None
 NEW_RUBIK_CONFIG_FILE = None
 
+
+@retry(max_retries=5, first_retry_delay_in_seconds=5)
 def _write_config(config_name):
   tot_response = urllib2.urlopen(
       'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'.format(config_name)
