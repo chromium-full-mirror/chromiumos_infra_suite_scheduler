@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -296,6 +296,8 @@ def _job_section(task_info):
     build_filters.firmware_rw_build_spec = branch_pb2.Branch.FIRMWARE
   if task_info.firmware_ro_build_spec:
     build_filters.firmware_ro_build_spec = branch_pb2.Branch.FIRMWARE
+  if task_info.firmware_board_name:
+    build_filters.firmware_board_name = task_info.firmware_board_name
   return job_section
 
 

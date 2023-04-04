@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -169,6 +169,9 @@ class FakeBuildClient(object):
                                     'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
         ['firmware', 'zako', ('gs://chromeos-image-archive/'
                               'firmware-zako-12345.67.'
+                              'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
+        ['firmware', 'alt_board', ('gs://chromeos-image-archive/'
+                              'firmware-alt_board-12345.67.'
                               'A-firmwarebranch/RFoo-1.0.0-b1e234567')],
     ]
 
@@ -817,6 +820,31 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 1)
     self.assertIn('firmware-zako-12345.67', tasks[0].payload)
+
+
+  def testNewBuildWithAltFirmwareTask(self):
+    """Test the new_build suite with firmware option set."""
+    # Construct a fake config with firmware build.
+    fsnbt_name = 'FakeStrictNewBuildTask'
+    self.fake_config.add_section(fsnbt_name)
+    self.fake_config.set(fsnbt_name, 'run_on', 'new_build')
+    self.fake_config.set(fsnbt_name, 'suite', 'fake_suite_base')
+    self.fake_config.set(fsnbt_name, 'boards', 'zako')
+    self.fake_config.set(fsnbt_name, 'firmware_ro_build_spec', 'firmware')
+    self.fake_config.set(fsnbt_name, 'firmware_board_name', 'alt_board')
+    self.fake_config.set(fsnbt_name, 'test_source', 'cros')
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
+    some_event = suite_trigger.events['new_build']
+    suite_trigger.cron()
+
+    # The firmware query has run for once.
+    self.assertEqual(suite_trigger._build_client.firmware_builds_called, 1)
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    self.assertEqual(len(tasks), 1)
+    self.assertIn('firmware-alt_board-12345.67', tasks[0].payload)
 
 
   def testNewBuildWithoutFirmwareTask(self):
