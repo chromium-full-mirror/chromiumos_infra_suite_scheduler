@@ -22,7 +22,8 @@ def import_appengine_config():
     import appengine_config
     # pylint: disable=pointless-statement
     (appengine_config)
-  except ImportError:
+  except ImportError as e:
+    print(e)
     print 'Note: unable to import appengine_config.'
 
 
