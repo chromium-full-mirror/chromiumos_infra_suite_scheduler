@@ -99,7 +99,7 @@ if __name__ == '__main__':
   except ImportError as e:
     print(e)
     print('Error with importing Google Cloud Packages. Be sure that you\'ve '
-          'followed the developer set up instructions in the README.')
+          'followed the developer set up instructions in the README. run `./install_gcp_reqs`')
     sys.exit(1)
 
   result = main(args)

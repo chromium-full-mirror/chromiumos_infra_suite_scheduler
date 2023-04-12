@@ -1,16 +1,8 @@
-# Primary owners of Suite Scheduler are brigitr and the testplatform team.
-# Please send CLs here.
-include chromiumos/chromite:/OWNERS.ci
+# Do not inherit parents from top-level OWNERS
+set noparent
 
-# Legacy owners of config that was formerly saved in this repo.
-harpreet@chromium.org
-ihf@chromium.org
-kalin@chromium.org
-kmshelton@chromium.org
-pwang@chromium.org
-shapiroc@chromium.org
-shijinabraham@chromium.org
-xixuan@chromium.org
+# CrOS Infra Test Scheduling & Execution Team
+include chromiumos/owners:v1:/infra/OWNERS.tse
 
 # Service accounts
 chromeos-ci-prod@chromeos-bot.iam.gserviceaccount.com
