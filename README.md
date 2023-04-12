@@ -21,20 +21,20 @@ this application:
 [install-sdk]: https://cloud.google.com/sdk/docs#install_the_latest_cloud_sdk_version
 
 * Install App Engine Python extensions
-  * `gcloud components install app-engine-python`
-  * `gcloud components install app-engine-python-extras`
+  * `./install_gcp_reqs`
 
 ### Developer environment
 
 Suite-scheduler development must be done in the standard [Chrome OS source
 checkout][cros-checkout] but entirely outside the Chrome OS chroot environment.
 
-suite-scheduler uses [infra_virtualenv] to provide a stable environment for
+suite-scheduler uses `depot_tools/vpython` to provide a stable environment for
 development and release.
 
-First, make sure you
-[install](https://virtualenv.pypa.io/en/latest/installation.html) `virtualenv`
-with version at least 20.0.
+First, make sure you have [depot_tools
+installed](https://chromium.googlesource.com/chromium/tools/depot_tools/+/HEAD/README.md)
+and stored within your `$PATH`
+
 
 Then, to (re)initialize developer environment, run
 ```
