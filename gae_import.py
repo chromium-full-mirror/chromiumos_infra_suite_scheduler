@@ -23,8 +23,8 @@ def import_appengine_config():
     # pylint: disable=pointless-statement
     (appengine_config)
   except ImportError as e:
-    print(e)
-    print 'Note: unable to import appengine_config.'
+    print('Error with importing Google Cloud Packages. Be sure that you\'ve '
+          'followed the developer set up instructions in the README. run `./install_gcp_reqs`')
 
 
 def import_sdk_path(sdk_path=GOOGLE_CLOUD_SDK_PATH):

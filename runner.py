@@ -97,7 +97,6 @@ if __name__ == '__main__':
   try:
     gae_import.import_sdk_path(args.sdk_path)
   except ImportError as e:
-    print(e)
     print('Error with importing Google Cloud Packages. Be sure that you\'ve '
           'followed the developer set up instructions in the README. run `./install_gcp_reqs`')
     sys.exit(1)
