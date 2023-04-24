@@ -1,18 +1,18 @@
 python_version: "2.7"
 wheel: <
-  name: "infra/python/wheels/argparse-py2"
+  name: "infra/python/wheels/argparse-py2_py3"
   version: "version:1.4.0"
 >
 wheel: <
-  name: "infra/python/wheels/protobuf-py2"
+  name: "infra/python/wheels/protobuf-py2_py3"
   version: "version:3.6.1"
 >
 wheel: <
-  name: "infra/python/wheels/google-apitools-py2"
+  name: "infra/python/wheels/google-apitools-py2_py3"
   version: "version:0.5.27"
 >
 wheel: <
-  name: "infra/python/wheels/google-api-python-client-py2"
+  name: "infra/python/wheels/google-api-python-client-py2_py3"
   version: "version:1.6.2"
 >
 wheel: <
@@ -24,50 +24,50 @@ wheel: <
   version: "version:0.13.1"
 >
 wheel: <
-  name: "infra/python/wheels/six-py2"
+  name: "infra/python/wheels/six-py2_py3"
   version: "version:1.15.0"
 >
 wheel: <
-  name: "infra/python/wheels/uritemplate-py2"
+  name: "infra/python/wheels/uritemplate-py2_py3"
   version: "version:3.0.0"
 >
 wheel: <
-  name: "infra/python/wheels/fasteners-py2"
+  name: "infra/python/wheels/fasteners-py2_py3"
   version: "version:0.14.1"
 >
 wheel: <
-  name: "infra/python/wheels/monotonic-py2"
+  name: "infra/python/wheels/monotonic-py2_py3"
   version: "version:1.5"
 >
 wheel: <
-  name: "infra/python/wheels/rsa-py2"
+  name: "infra/python/wheels/rsa-py2_py3"
   version: "version:4.0"
 >
 wheel: <
-  name: "infra/python/wheels/pyasn1-py2"
+  name: "infra/python/wheels/pyasn1-py2_py3"
   version: "version:0.4.8"
 >
 wheel: <
-  name: "infra/python/wheels/pyasn1_modules-py2"
+  name: "infra/python/wheels/pyasn1_modules-py2_py3"
   version: "version:0.2.8"
 >
 wheel: <
-  name: "infra/python/wheels/google-auth-py2"
+  name: "infra/python/wheels/google-auth-py2_py3"
   version: "version:1.29.0"
 >
 wheel: <
-  name: "infra/python/wheels/cachetools-py2"
+  name: "infra/python/wheels/cachetools-py2_py3"
   version: "version:2.0.1"
 >
 wheel: <
-  name: "infra/python/wheels/mock-py2"
+  name: "infra/python/wheels/mock-py2_py3"
   version: "version:2.0.0"
 >
 wheel: <
-  name: "infra/python/wheels/pbr-py2"
+  name: "infra/python/wheels/pbr-py2_py3"
   version: "version:3.0.0"
 >
 wheel: <
-  name: "infra/python/wheels/funcsigs-py2"
+  name: "infra/python/wheels/funcsigs-py2_py3"
   version: "version:1.0.2"
 >

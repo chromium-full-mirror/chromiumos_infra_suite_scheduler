@@ -14,4 +14,4 @@ find . -name "*.pyc" -delete
 
 # depot_tools/vpython must be in path
 PATH=$PATH
-exec vpython runner.py "$@"
+exec vpython3 runner.py "$@"
