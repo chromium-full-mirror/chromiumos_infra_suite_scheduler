@@ -39,26 +39,6 @@ class FakeBuildClient(object):
             'atlas-kernelnext', None, '62', '9868.0.0', 'atlas-kernelnext-release'),
     ]
 
-  def get_passed_rubik_builds(self, earliest, latest, event_type):
-    """Mock get_passed_rubik_builds."""
-    del earliest  # unused
-    del latest # unused
-    del event_type  #unused
-    return [
-        build_lib.BuildInfo(
-            'atlas-kernelnext', None, '62', '9869.0.0', 'atlas-kernelnext-release'),
-        build_lib.BuildInfo(
-            'coral', 'lava', '62', '9869.0.0', 'coral-release'),
-    ]
-
-  def get_relaxed_passed_builds(self, earliest, latest, event_type):
-    """Mock get_relaxed_pased_builds."""
-    del earliest  # unused
-    del latest # unused
-    del event_type  #unused
-    return []
-
-
 class BuildLibTestCase(unittest.TestCase):
 
   def testReshapeBoard(self):
@@ -74,16 +54,14 @@ class BuildLibTestCase(unittest.TestCase):
   def testGetCrosBuilds(self):
     mock_build_client = FakeBuildClient()
     cros_board_list = ['coral', 'atlas-kernelnext']
-    stable_rubik_milestones = {'atlas-kernelnext': 62}
     build_dict, relaxed_build_dict = build_lib.get_cros_builds(
-      mock_build_client, cros_board_list, None, None, None,
-      stable_rubik_milestones=stable_rubik_milestones)
+      mock_build_client, cros_board_list, None, None, None)
 
     expected_build_dict = {
       ('coral', 'santa', 'release', '62'): '9868.0.0',
       ('coral', 'astronaut', 'release', '62'): '9868.0.0',
       ('coral', 'lava', 'release', '62'): '9868.0.0',
-      ('atlas-kernelnext', None, 'release', '62'): '9869.0.0'
+      ('atlas-kernelnext', None, 'release', '62'): '9868.0.0'
     }
     self.assertEqual(expected_build_dict, build_dict)
     self.assertEqual(expected_build_dict, relaxed_build_dict)

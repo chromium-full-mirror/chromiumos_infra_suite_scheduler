@@ -59,20 +59,5 @@ class LabReaderTestCase(unittest.TestCase):
     self.assertEqual(actual, expected)
 
 
-class RubikReaderTestCase(unittest.TestCase):
-
-  def setUp(self):
-    self.config = config_reader.ConfigReader(None)
-    self.config.add_section(config_reader.RUBIK_SETTINGS)
-
-  def testGetStableRubikMilestones(self):
-    """Ensure Rubik stable milestones can be correctly fetched."""
-    self.config.set(config_reader.RUBIK_SETTINGS, 'stable_rubik_milestones',
-                    '\natlas-kernelnext=105,\neve=103')
-    rubik_config = config_reader.RubikConfig(self.config)
-    self.assertEqual(rubik_config.get_stable_rubik_milestones(),
-                     {'atlas-kernelnext': 105, 'eve': 103})
-
-
 if __name__ == '__main__':
   unittest.main()

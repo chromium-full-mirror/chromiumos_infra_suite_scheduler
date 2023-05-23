@@ -201,22 +201,12 @@ def get_board_family_mapping_from_gs(storage_client):
     raise
 
 
-def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list,
-                                        stable_rubik_milestones = None,
-                                        use_rubik = False):
+def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
   """Validate and convert a list of BuildInfo to branch build dict.
 
   Args:
     cros_board_list: The board list including all CrOS boards.
     buildinfo_list: A list of BuildInfo objects.
-    stable_rubik_milestones: map of build target to stable Rubik milestone,
-        used to determine where we should use Rubik builds instead of Leagcy.
-    use_rubik: bool. If True will only keep builds for milestones >= the stable
-      rubik milestone for the build target (as specified in
-      stable_rubik_milestone) If False, will only keep builds for milestones <
-      the stable rubik milestone. If a build target is not included in
-      stable_rubik_milestones, no Rubik builds for that build target will be
-      used.
 
   Returns:
     A branch build dict:
@@ -244,21 +234,6 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list,
       logging.warning('%s is not a valid CrOS board.', build.board)
       continue
 
-    if stable_rubik_milestones:
-      stable_rubik_milestone = stable_rubik_milestones.get(build.board, None)
-      if use_rubik:
-        # Discard builds for milestones before the stable_rubik_milestone.
-        if not stable_rubik_milestone or int(build.milestone) < stable_rubik_milestone:
-          logging.warning('%s is not a Rubik board for milestone %s, discarding.',
-                          build.board, build.milestone)
-          continue
-      else:
-        # Discard builds for milestones after the stable_rubik_milestone.
-        if stable_rubik_milestone and int(build.milestone) >= stable_rubik_milestones:
-          logging.warning('%s is a Rubik board for milestone %s, discarding.',
-                          build.board, build.milestone)
-          continue
-
     build_key = (build.board, build.model, build_config_info.type,
                  build.milestone)
     cur_manifest = branch_build_dict.get(build_key)
@@ -272,7 +247,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list,
 
 
 def get_cros_builds(build_client, cros_board_list, earliest_end_time,
-                    latest_end_time, event_type, stable_rubik_milestones = None):
+                    latest_end_time, event_type):
   """Get branch builds for ChromeOS boards inside the given time span.
 
   Args:
@@ -282,8 +257,6 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
     earliest_end_time: a datetime.datetime object in UTC.
     latest_end_time: a datetime.datetime object in UTC.
     event: a string of event type.
-    stable_rubik_milestones:  map of build target to stable Rubik milestone,
-        used to determine where we should use Rubik builds instead of Leagcy.
 
   Returns:
     a two-tuple of branch build dicts.  Each branch build dict has
@@ -299,25 +272,18 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
   # Buildbucket Bigquery use UTC timezone
   all_branch_builds = build_client.get_passed_builds(
       earliest_end_time, latest_end_time, event_type)
-  relaxed_builds = build_client.get_relaxed_passed_builds(
-      earliest_end_time, latest_end_time, event_type)
-  all_branch_rubik_builds = build_client.get_passed_rubik_builds(
-      earliest_end_time, latest_end_time, event_type)
+  #relaxed_builds = build_client.get_relaxed_passed_builds(
+  #    earliest_end_time, latest_end_time, event_type)
 
-  # TODO(b/225382624): Remove all logic fetching Legacy builds
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, all_branch_builds, stable_rubik_milestones=stable_rubik_milestones)
-  rubik_branch_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, all_branch_rubik_builds, stable_rubik_milestones=stable_rubik_milestones,
-      use_rubik=True)
-  relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
-      cros_board_list, relaxed_builds + all_branch_builds,
-      stable_rubik_milestones=stable_rubik_milestones)
+      cros_board_list, all_branch_builds)
+  """relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
+      cros_board_list, relaxed_builds + all_branch_builds)
   # Include Rubik builds in the relaxed builds dict. We can't pass the rubik
   # builds to the above call because they'll get filtered out (use_rubik is False).
-  relaxed_builds_dict.update(rubik_branch_builds_dict)
+  relaxed_builds_dict.update(rubik_branch_builds_dict)"""
 
-  return dict(branch_builds_dict, **rubik_branch_builds_dict), relaxed_builds_dict
+  return branch_builds_dict, branch_builds_dict
 
 
 def get_latest_launch_control_build(android_client, branch, target):

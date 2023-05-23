@@ -27,9 +27,6 @@ ANDROID_SETTINGS = 'ANDROID'
 # The entries of CrOS settings in lab config file.
 CROS_SETTINGS = 'CROS'
 
-# The entries of Rubik boards in rubik board config file.
-RUBIK_SETTINGS = 'RUBIK'
-
 def forgive_config_error(func):
   """A decorator making ConfigParser get*() functions return None on fail."""
   def wrapper(*args, **kwargs):
@@ -156,38 +153,6 @@ class LabConfig(object):
         result[board_name] = [model_name]
 
     return result
-
-class RubikConfig(object):
-  """Class for reading the Rubik config file for suite scheduler."""
-
-  def __init__(self, config_reader):
-    """Initialize a RubikConfig to read rubik config.
-
-    Args:
-      config_reader: a ConfigReader to read rubik config.
-    """
-    self._config_reader = config_reader
-
-  def get_stable_rubik_milestones(self):
-    """Get stable rubik milestones from the Rubik config file.
-
-    Returns:
-      A dict mapping build target (e.g. eve) to a stable rubik milestone.
-
-    Raises:
-      ValueError: no build target list is found.
-    """
-    data = self._config_reader.getstring(RUBIK_SETTINGS, 'stable_rubik_milestones')
-    if data is None:
-      raise ValueError('Cannot find stable_rubik_milestones in Rubik config file.')
-
-    data = set([bt.strip() for bt in data.split(',')])
-    mstone_map = {}
-    for entry in data:
-      entry = entry.split('=')
-      mstone_map[entry[0]] = int(entry[1])
-    logging.info('Found stable rubik milestones targets in rubik_config.ini: %s', str(mstone_map))
-    return mstone_map
 
 
 def config_dump(res):

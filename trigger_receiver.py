@@ -41,9 +41,6 @@ class TriggerReceiver(object):
       fake_lab_config_reader = config_reader.ConfigReader(
           file_getter.TEST_LAB_CONFIG_FILE)
       self._lab_config = config_reader.LabConfig(fake_lab_config_reader)
-      fake_rubik_config_reader = config_reader.ConfigReader(
-          file_getter.TEST_RUBIK_CONFIG_FILE)
-      self._rubik_config = config_reader.RubikConfig(fake_rubik_config_reader)
     else:
       file_getter.clone_config()
       self._task_config = task_config_reader.TaskConfig(
@@ -51,8 +48,6 @@ class TriggerReceiver(object):
                 file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE))
       lab_config_reader = config_reader.ConfigReader(file_getter.NEW_LAB_CONFIG_FILE)
       self._lab_config = config_reader.LabConfig(lab_config_reader)
-      rubik_config_reader = config_reader.ConfigReader(file_getter.NEW_RUBIK_CONFIG_FILE)
-      self._rubik_config = config_reader.RubikConfig(rubik_config_reader)
 
     # Initialize events
     self.events = {}
@@ -100,17 +95,14 @@ class TriggerReceiver(object):
       event: a kind of event, which contains its tasks that should be
         scheduled.
     """
-    # TODO(b/225382624): Remove all Rubik logic once Rubik is fully rolled out.
-    stable_rubik_milestones = self._rubik_config.get_stable_rubik_milestones()
     cros_builds_tuple = event.get_cros_builds(
-        self._lab_config, self._build_client, stable_rubik_milestones=stable_rubik_milestones)
+        self._lab_config, self._build_client)
     logging.debug('Found CrOS builds: %r', cros_builds_tuple)
     # Set delta to 3 days here as we only build once per day for non tot
     # builds, so a single failure on secondary boards may cause a skip
     # of primary board.
     recent_cros_builds_tuple = event.get_recent_cros_builds(
-        self._lab_config, self._build_client, delta_days=3,
-        stable_rubik_milestones=stable_rubik_milestones)
+        self._lab_config, self._build_client, delta_days=3)
     logging.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)

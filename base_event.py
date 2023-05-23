@@ -77,15 +77,13 @@ class BaseEvent(object):
     """
     self.task_list = list(self.task_list)
 
-  def get_cros_builds(self, lab_config, build_client, stable_rubik_milestones=None):
+  def get_cros_builds(self, lab_config, build_client):
     """Get CrOS builds to run on for this event.
 
     Args:
       lab_config: a config_reader.LabConfig object, to read lab configs.
       build_client: a rest_client.BuildBucketBigqueryClient object, to
         connect Buildbucket Bigquery.
-      stable_rubik_milestones: map of build target to stable Rubik milestone,
-        used to determine where we should use Rubik builds instead of Leagcy.
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
@@ -97,11 +95,9 @@ class BaseEvent(object):
                                      lab_config.get_cros_board_list(),
                                      self.since_date - delay_minutes,
                                      self.target_exec_utc - delay_minutes,
-                                     self.keyword,
-                                     stable_rubik_milestones=stable_rubik_milestones)
+                                     self.keyword)
 
-  def get_recent_cros_builds(self, lab_config, build_client, delta_days=1,
-                             stable_rubik_milestones=None):
+  def get_recent_cros_builds(self, lab_config, build_client, delta_days=1):
     """Get most recent CrOS builds based on a given delta.
 
     Multi-DUTs testing can be triggered by new build of primary board,
@@ -117,8 +113,6 @@ class BaseEvent(object):
         connect Buildbucket Bigquery.
       delta_days: a int, to indicate time range of days(now - delta_days)
         we want to get builds.
-      stable_rubik_milestones: map of build target to stable Rubik milestone,
-        used to determine where we should use Rubik builds instead of Leagcy.
 
     Returns:
       A two-tuples of dicts containing cros builds, see return from
@@ -131,8 +125,7 @@ class BaseEvent(object):
                                      lab_config.get_cros_board_list(),
                                      since_date - delay_minutes,
                                      self.target_exec_utc - delay_minutes,
-                                     self.keyword,
-                                     stable_rubik_milestones=stable_rubik_milestones)
+                                     self.keyword)
 
   def get_launch_control_builds(self, lab_config, android_client):
     """Get launch control builds to run on for this event.
