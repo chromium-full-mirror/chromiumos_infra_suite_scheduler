@@ -6,3 +6,5 @@
 *.swp
 *.swo
 suite_scheduler.iml
+.cipd/
+bin/cipd/
