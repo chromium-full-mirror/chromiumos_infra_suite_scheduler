@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -200,6 +200,94 @@ class Weekly(TimedEvent):
     """Filter tasks by target_exec_utc."""
     if global_config.GAE_TESTING:
       super(Weekly, self).filter_tasks()
+    else:
+      cur_day = self.target_exec_utc.weekday()
+      cur_hour = self.target_exec_utc.hour
+      logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
+      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+      tasks = [t for t in self.task_list if
+               (t.day == cur_day and t.hour == cur_hour)]
+      self.task_list = tasks
+
+class Fortnightly(TimedEvent):
+  """The class for fortnightly-triggered TimedEvent.
+
+  A fortnightly-triggered TimedEvent allows a task to be triggered at
+  every other week. One can set the day when this task should be triggered
+  through 'day' setting, and set the hour for tasks to run by config
+  section in 'weekly_params'.
+
+  For example:
+  [ChameleonDpOldBranch]
+  run_on: fortnightly
+  day: 5
+  This fortnightly task means it should be triggered at every other Saturday 11PM, which
+  is the default PST hour setting (DEFAULT_PST_HOUR) for Fortnightly Event.
+  """
+  KEYWORD = 'fortnightly'
+  PRIORITY = constants.Priorities.FORTNIGHTLY
+
+  # Each task may have its own settings of 'day' & 'hour'. The default day
+  # is Saturday. The default hour is set to 11PM.
+  DEFAULT_PST_DAY = 5  # Saturday
+  DEFAULT_PST_HOUR = 23
+
+  # Fortnightly event is triggered once every other week.
+  DAYS_INTERVAL = 14
+
+  # Every 24 hours a batch of tasks in task_list of fortnightly event is
+  # scheduled, eg. suite scheduler will schedule all fortnightly event's
+  # tasks whose day is set 5 in its first run after 11PM every Saturday.
+  LAST_EXEC_INTERVAL = 24
+
+  # Kicked off once every two week, it is reasonable to keep time out to 7 days
+  TIMEOUT = 7 * 24
+
+  def __init__(self, event_settings, last_exec_utc):
+    """Initialize a weekly TimedEvent.
+
+    Args:
+      event_settings: A config_reader.EventSettings object.
+      last_exec_utc: The utc datetime.datetime timestamp of last
+        execution.
+    """
+    self.set_default_utc_time()
+    now = time_converter.utc_now()
+
+    self.event_hour_pst = event_settings.event_hour
+    if self.event_hour_pst is None:
+      self.event_hour_pst = self.DEFAULT_PST_HOUR
+
+    target_exec_utc = datetime.datetime(
+        now.year, now.month, now.day, now.hour,
+        tzinfo=time_converter.UTC_TZ)
+
+    super(Fortnightly, self).__init__(
+        event_settings, last_exec_utc, target_exec_utc)
+
+  def set_task_list(self, task_list):
+    """Set task list for fortnightly event.
+
+    This also update all tasks' time from PST to UTC.
+
+    Args:
+      task_list: the given list of task.Task objects, in which their
+        day and hour are in PST.
+    """
+    for per_task in task_list:
+      hour = self.event_hour_pst if per_task.hour is None else per_task.hour
+      day = self.DEFAULT_PST_DAY if per_task.day is None else per_task.day
+      utc_time_info = time_converter.convert_time_info(
+          time_converter.TimeInfo(day, hour))
+      per_task.hour = utc_time_info.hour
+      per_task.day = utc_time_info.weekday
+
+    self.task_list = list(task_list)
+
+  def filter_tasks(self):
+    """Filter tasks by target_exec_utc."""
+    if global_config.GAE_TESTING:
+      super(Fortnightly, self).filter_tasks()
     else:
       cur_day = self.target_exec_utc.weekday()
       cur_hour = self.target_exec_utc.hour

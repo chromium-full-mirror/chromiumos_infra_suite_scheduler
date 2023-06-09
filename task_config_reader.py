@@ -19,6 +19,7 @@ import tot_manager
 
 # Handled event classes
 EVENT_CLASSES = {
+    'fortnightly': timed_event.Fortnightly,
     'nightly': timed_event.Nightly,
     'weekly': timed_event.Weekly,
     'new_build': build_event.NewBuild,
@@ -385,10 +386,10 @@ class TaskConfig(object):
           task_info.name)
 
     if (task_info.hour is not None and
-        task_info.keyword not in ['nightly', 'weekly']):
+        task_info.keyword not in ['nightly', 'weekly', 'fortnightly']):
       raise MalformedConfigEntryError(
           '%s: |hour| represents a timepoint of a day, that can '
-          'only apply to nightly/weekly event.' % task_info.name)
+          'only apply to nightly/weekly/fortnightly event.' % task_info.name)
 
     if task_info.day is not None and (
         task_info.day < 0 or task_info.day > 6):
@@ -396,7 +397,8 @@ class TaskConfig(object):
           '%s: |day| must be an integer between 0 and 6, where 0 is '
           'for Monday and 6 is for Sunday.' % task_info.name)
 
-    if task_info.day is not None and task_info.keyword != 'weekly':
+    if task_info.day is not None and (
+        task_info.keyword not in ['weekly','fortnightly']):
       raise MalformedConfigEntryError(
           '%s: |day| represents a day of a week, that can '
           'only apply to weekly events.' % task_info.name)

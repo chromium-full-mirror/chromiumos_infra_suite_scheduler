@@ -51,7 +51,7 @@ def now_generator(start_time, interval_min=30, last_days=7):
 
 
 def _should_schedule_timed_task(last_now, now):
-  """Check whether timed (weekly/nightly) task should be scheduled.
+  """Check whether timed (weekly/nightly/fortnightly) task should be scheduled.
 
   A timed task should be schduled when next hour is coming.
 
@@ -236,6 +236,7 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
 
   _FAKE_NIGHTLY_TASK_NAME = 'fake_nightly_task'
   _FAKE_WEEKLY_TASK_NAME = 'fake_weekly_task'
+  _FAKE_FORTNIGHTLY_TASK_NAME = 'fake_fortnightly_task'
 
   def setUp(self):
     super(TriggerReceiverFakeConfigTestCase, self).setUp()
@@ -247,6 +248,9 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
     self.fake_config_with_settings = config_reader.ConfigReader(None)
     self._add_weekly_tasks(self.fake_config_with_settings)
     self._add_weekly_params(self.fake_config_with_settings)
+
+    self._add_fortnightly_tasks(self.fake_config_with_settings)
+    self._add_fortnightly_params(self.fake_config_with_settings)
 
     mock_config_reader = mock.patch('config_reader.ConfigReader')
     self._mock_config_reader = mock_config_reader.start()
@@ -270,6 +274,18 @@ class TriggerReceiverFakeConfigTestCase(TriggerReceiverBaseTestCase):
         'weekly'].section_name()
     fake_config.add_section(weekly_section_name)
     fake_config.set(weekly_section_name, 'hour', str(self._TEST_EVENT_PST_HOUR))
+
+  def _add_fortnightly_tasks(self, fake_config):
+    fake_config.add_section(self._FAKE_FORTNIGHTLY_TASK_NAME)
+    fake_config.set(self._FAKE_FORTNIGHTLY_TASK_NAME, 'suite', 'fake_suite')
+    fake_config.set(self._FAKE_FORTNIGHTLY_TASK_NAME, 'run_on', 'fortnightly')
+    fake_config.set(self._FAKE_FORTNIGHTLY_TASK_NAME, 'day', str(self._TEST_PST_DAY))
+
+  def _add_fortnightly_params(self, fake_config):
+    fortnightly_section_name = task_config_reader.EVENT_CLASSES[
+        'fortnightly'].section_name()
+    fake_config.add_section(fortnightly_section_name)
+    fake_config.set(fortnightly_section_name, 'hour', str(self._TEST_EVENT_PST_HOUR))
 
   def testInitializeTriggerReceiverWithNightlyEvent(self):
     """Test nightly event can be handled on right hour."""
@@ -803,9 +819,9 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
   def testEventShouldScanNewBuildFromSinceDateToTargetDate(self):
     """Test the event should scan new builds from last_exec to target_exec."""
     _utc_now = datetime.datetime.now(time_converter.UTC_TZ)
-    # utc_now() should be called only 3 times for the creation of Weekly,
+    # utc_now() should be called only 4 times for the creation of Weekly, Fortnightly
     # Nightly or New_Build event.
-    self._mock_utc_now.side_effect = [_utc_now, _utc_now, _utc_now]
+    self._mock_utc_now.side_effect = [_utc_now, _utc_now, _utc_now,_utc_now]
     target_exec_utc = _get_current_min(_utc_now)
     since_date = target_exec_utc - datetime.timedelta(hours=1)
     last_exec_client = datastore_client.LastExecutionRecordStore()
@@ -832,6 +848,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     self.assertFalse(suite_trigger.events['nightly'].should_handle)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
     self.assertFalse(suite_trigger.events['new_build'].should_handle)
+    self.assertFalse(suite_trigger.events['fortnightly'].should_handle)
 
     self.assertEqual(suite_trigger.event_results, {})
 
@@ -846,6 +863,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     self.assertTrue(suite_trigger.events['nightly'].should_handle)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
     self.assertFalse(suite_trigger.events['new_build'].should_handle)
+    self.assertFalse(suite_trigger.events['fortnightly'].should_handle)
 
   def testCronTriggerNightlyOutdated(self):
     """Test nightly event is read with available nightly last_exec_time."""
@@ -866,6 +884,16 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     self._mock_utc_now.return_value = utc_now
     suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
     self.assertFalse(suite_trigger.events['weekly'].should_handle)
+
+  def testCronTriggerFortnightlyOutdated(self):
+    """Test fortnightly event is read with available fortnightly last_exec_time."""
+    utc_now = datetime.datetime.now(time_converter.UTC_TZ)
+    last_exec_client = datastore_client.LastExecutionRecordStore()
+    last_exec_client.set_last_execute_time(
+        'fortnightly', utc_now - datetime.timedelta(days=15))
+    self._mock_utc_now.return_value = utc_now
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
+    self.assertFalse(suite_trigger.events['fortnightly'].should_handle)
 
   def testCronForADay(self):
     """Ensure cron job can be successfully scheduled for a day."""
@@ -888,6 +916,17 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
                          should_scheduled_nightly_tasks)
       else:
         self.assertNotIn('nightly', suite_trigger.event_results.keys())
+
+      # Verify fortnightly tasks
+      should_scheduled_fortnightly_tasks = [
+          t.name for t in all_tasks['fortnightly']
+          if now.weekday() == t.day and now.hour == t.hour]
+      if (_should_schedule_timed_task(last_now, now) and
+          should_scheduled_fortnightly_tasks):
+        self.assertEqual(suite_trigger.event_results['fortnightly'],
+                         should_scheduled_fortnightly_tasks)
+      else:
+        self.assertNotIn('fortnightly', suite_trigger.event_results.keys())
 
       # Verify weekly tasks
       should_scheduled_weekly_tasks = [

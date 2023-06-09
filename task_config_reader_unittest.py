@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -211,7 +211,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
                       task_config._validate_task_section,
                       task_info)
 
-  def testInvalidIntDay(self):
+  def testInvalidIntDayWeekly(self):
     """Ensure a Task's day is in 0~6."""
     self.config.set(self._TASK_NAME, 'day', '10')
     self.config.set(self._TASK_NAME, 'run_on', 'weekly')
@@ -221,8 +221,17 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
                       task_config._validate_task_section,
                       task_info)
 
-  def testNoDayForNonWeeklyEvent(self):
-    """Ensure a non-weekly Task cannot specify day."""
+  def testInvalidIntDayFortnightly(self):
+    """Ensure a Task's day is in 0~6."""
+    self.config.set(self._TASK_NAME, 'day', '7')
+    self.config.set(self._TASK_NAME, 'run_on', 'fortnightly')
+    task_config = task_config_reader.TaskConfig(self.config)
+    task_info = task_config._read_task_section(self._TASK_NAME)
+    self.assertRaises(task_config_reader.MalformedConfigEntryError,
+                      task_config._validate_task_section,
+                      task_info)
+  def testNoDayForNightlyEvent(self):
+    """Ensure a nightly Task cannot specify day."""
     self.config.set(self._TASK_NAME, 'day', '1')
     self.config.set(self._TASK_NAME, 'run_on', 'nightly')
     task_config = task_config_reader.TaskConfig(self.config)
