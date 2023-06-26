@@ -4,6 +4,7 @@
 
 """Module for CrOS ToT manager."""
 
+import logging
 import re
 
 import build_lib
@@ -135,4 +136,6 @@ class TotMilestoneManager(object):
 
     response = build_lib.get_latest_cros_build_from_gs(
         self.storage_client)
-    return response.split('-')[0]
+    tot = response.split('-')[0]
+    logging.info('TOTManager: ToT calculated as %s', tot)
+    return tot

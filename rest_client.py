@@ -606,8 +606,10 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       query_str += 'LIMIT 10'
     logging.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
+    logging.info("rest_client: running query %s", query_str)
     res = self.query(query_str)
     res = _parse_bq_job_query(res)
+    logging.info("rest_client: query results %r", query_str)
     if res is None:
       return []
 

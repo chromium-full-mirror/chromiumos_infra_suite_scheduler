@@ -272,11 +272,14 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
   # Buildbucket Bigquery use UTC timezone
   all_branch_builds = build_client.get_passed_builds(
       earliest_end_time, latest_end_time, event_type)
+  logging.info("get_cros_builds: all branch_builds: %r",all_branch_builds)
+
   #relaxed_builds = build_client.get_relaxed_passed_builds(
   #    earliest_end_time, latest_end_time, event_type)
 
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)
+  logging.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
   """relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, relaxed_builds + all_branch_builds)
   # Include Rubik builds in the relaxed builds dict. We can't pass the rubik

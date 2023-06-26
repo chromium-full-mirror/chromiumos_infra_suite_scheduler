@@ -176,7 +176,7 @@ def application_id(parse=True):
       Otherwise, return the full id.
   """
   app_id = app_identity.get_application_id()
-  logging.info('app_id: %s', app_id)
+  logging.debug('app_id: %s', app_id)
   if app_id == 'None':
     return None
 
