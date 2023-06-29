@@ -13,7 +13,7 @@ cd "${bin_dir}/.."
 find . -name "*.pyc" -delete
 
 # Install vpython2.7 from CIPD if it isn't already in path
-if [ "$(type -P vpdython)" == "" ]; then
+if [ "$(type -P vpython)" == "" ]; then
   cipd init bin/cipd --force  && cipd ensure -root bin/cipd -ensure-file bin/cipd_ensure_file
 fi
 

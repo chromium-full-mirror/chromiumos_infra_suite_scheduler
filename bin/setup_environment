@@ -8,5 +8,6 @@ set -eu
 
 readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
 
+./install_gcp_reqs
 cd "${bin_dir}/.."
 exec "${bin_dir}/python_venv" setup_environment.py "$@"
