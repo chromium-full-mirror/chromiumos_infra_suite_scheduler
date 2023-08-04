@@ -240,8 +240,8 @@ class Fortnightly(TimedEvent):
   # tasks whose day is set 5 in its first run after 11PM every Saturday.
   LAST_EXEC_INTERVAL = 24
 
-  # Kicked off once every two week, it is reasonable to keep time out to 7 days
-  TIMEOUT = 7 * 24
+  # Kicked off once every two week, it is reasonable to keep time out to 14 days
+  TIMEOUT = 14 * 24
 
   def __init__(self, event_settings, last_exec_utc):
     """Initialize a weekly TimedEvent.
@@ -289,10 +289,18 @@ class Fortnightly(TimedEvent):
     if global_config.GAE_TESTING:
       super(Fortnightly, self).filter_tasks()
     else:
-      cur_day = self.target_exec_utc.weekday()
+      cur_day = self.target_exec_utc.weekday()+((self.target_exec_utc.isocalendar()[1] % 2) * 7)
       cur_hour = self.target_exec_utc.hour
       logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
       logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
-      tasks = [t for t in self.task_list if
-               (t.day == cur_day and t.hour == cur_hour)]
+      tasks = []
+      for t in self.task_list:
+        logging.info("task.day",t.day)
+        logging.info("task.hour",t.hour)
+        if(t.day == cur_day and t.hour == cur_hour):
+          logging.info("Adding task for execution",t.name)
+          tasks.append(t)
+        else:
+          logging.info("Not adding task for execution",t.name)
+
       self.task_list = tasks
