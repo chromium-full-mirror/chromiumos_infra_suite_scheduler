@@ -11,6 +11,7 @@ import base_event
 import constants
 import global_config
 import time_converter
+import traceback
 
 
 class TimedEvent(base_event.BaseEvent):
@@ -240,8 +241,8 @@ class Fortnightly(TimedEvent):
   # tasks whose day is set 5 in its first run after 11PM every Saturday.
   LAST_EXEC_INTERVAL = 24
 
-  # Kicked off once every two week, it is reasonable to keep time out to 7 days
-  TIMEOUT = 7 * 24
+  # Kicked off once every two week, it is reasonable to keep time out to 14 days
+  TIMEOUT = 14 * 24
 
   def __init__(self, event_settings, last_exec_utc):
     """Initialize a weekly TimedEvent.
@@ -289,10 +290,24 @@ class Fortnightly(TimedEvent):
     if global_config.GAE_TESTING:
       super(Fortnightly, self).filter_tasks()
     else:
-      cur_day = self.target_exec_utc.weekday()
+      try:
+        (self.target_exec_utc.isocalendar()[1] % 2) * 7
+      except Exception as e:
+        loging.debug('An exception occurred: %s',e)
+        traceback.print_exc()
+        return
+      cur_day = self.target_exec_utc.weekday()+((self.target_exec_utc.isocalendar()[1] % 2) * 7)
       cur_hour = self.target_exec_utc.hour
-      logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
-      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
-      tasks = [t for t in self.task_list if
-               (t.day == cur_day and t.hour == cur_hour)]
+      logging.debug('Current weekday for %s event: %s', str(self.keyword), str(cur_day))
+      logging.debug('Current hour for %s event: %s', str(self.keyword), str(cur_hour))
+      tasks = []
+      for t in self.task_list:
+        logging.debug('task.day is %s',str(t.day))
+        logging.debug('task.hour is %s',str(t.hour))
+        if(t.day == cur_day and t.hour == cur_hour):
+          logging.debug('Adding task %s for execution',str(t.name))
+          tasks.append(t)
+        else:
+          logging.debug('Not adding task %s for execution',str(t.name))
+
       self.task_list = tasks
