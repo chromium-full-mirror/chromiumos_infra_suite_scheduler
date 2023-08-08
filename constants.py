@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -179,7 +179,6 @@ def application_id(parse=True):
       Otherwise, return the full id.
   """
   app_id = app_identity.get_application_id()
-  logging.debug('app_id: %s', app_id)
   if app_id == 'None':
     return None
 
