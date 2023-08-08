@@ -2,7 +2,7 @@ cron:
 - description: schedule suite scheduler jobs
   url: /cron/trigger_event
   target: beta
-  schedule: every 30 minutes
+  schedule: every 15 minutes
 
 - description: kick off suite scheduler jobs
   url: /cron/execute_task
@@ -20,4 +20,4 @@ cron:
 - description: check if suite tests can be scheduled
   url: /cron/check_jobs
   target: beta
-  schedule: every 30 minutes
+  schedule: every 15 minutes
