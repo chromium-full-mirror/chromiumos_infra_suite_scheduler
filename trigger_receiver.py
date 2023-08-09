@@ -14,6 +14,8 @@ import rest_client
 import StringIO
 import task_config_reader
 
+from google.appengine.api.runtime import runtime
+
 
 class TriggerReceiver(object):
   """The class for receiving event triggers."""
@@ -77,6 +79,7 @@ class TriggerReceiver(object):
       4. Schedule corresponding jobs with fetched builds.
       5. Reset event when it's finished.
     """
+    logging.debug("*******Start trigger_reciver.cron()*******\n%s*********************************", runtime.memory_usage())
     for keyword, event in self.events.iteritems():
       logging.info('Handling %s event in cron job', keyword)
 
@@ -87,6 +90,7 @@ class TriggerReceiver(object):
       else:
         logging.info('No task list found')
       event.finish()
+    logging.debug("*******End trigger_reciver.cron()*******\n%s*********************************", runtime.memory_usage())
 
   def _schedule_tasks(self, event):
     """Schedule tasks based on given event.
@@ -95,6 +99,7 @@ class TriggerReceiver(object):
       event: a kind of event, which contains its tasks that should be
         scheduled.
     """
+    logging.debug("*******Start trigger_reciver._schedule_tasks()*******\n%s*********************************", runtime.memory_usage())
     cros_builds_tuple = event.get_cros_builds(
         self._lab_config, self._build_client)
     logging.debug('Found CrOS builds: %r', cros_builds_tuple)
@@ -119,3 +124,4 @@ class TriggerReceiver(object):
         configs=config_reader.Configs(lab_config=self._lab_config),
         recent_cros_builds_tuple=recent_cros_builds_tuple)
     logging.info('Finished processing all tasks')
+    logging.debug("*******End trigger_reciver._schedule_tasks()*******\n%s*********************************", runtime.memory_usage())

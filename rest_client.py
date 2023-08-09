@@ -18,6 +18,8 @@ import file_getter
 import global_config
 import time_converter
 
+from google.appengine.api.runtime import runtime
+
 from oauth2client import service_account
 from oauth2client.contrib import appengine
 
@@ -564,6 +566,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
+    logging.debug("*******Start rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
         time_converter.TIME_FORMAT)
@@ -617,7 +620,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     for board, milestone, platform, build_config in res:
       build_infos.append(
           build_lib.BuildInfo(board, None, milestone, platform, build_config))
-
+    logging.debug("*******end rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
     return build_infos
 
 def _parse_bq_job_query(json_input):
