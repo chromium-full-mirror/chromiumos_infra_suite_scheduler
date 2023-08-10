@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -566,7 +566,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     Returns:
       A list of build_lib.BuildInfo objects.
     """
-    logging.debug("*******Start rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
+    logging.warning("*******Start rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
     base_query_str = base_query_template.format(event_type)
     earliest_end_time_str = earliest_end_time.strftime(
         time_converter.TIME_FORMAT)
@@ -620,7 +620,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     for board, milestone, platform, build_config in res:
       build_infos.append(
           build_lib.BuildInfo(board, None, milestone, platform, build_config))
-    logging.debug("*******end rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
+    logging.warning("*******end rest_client._get_passed_builds()*******\n%s*********************************", runtime.memory_usage())
     return build_infos
 
 def _parse_bq_job_query(json_input):

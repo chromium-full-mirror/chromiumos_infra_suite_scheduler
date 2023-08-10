@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -217,7 +217,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
         value: the latest manifest for the given tuple, like:
           '9242.0.0'.
   """
-  logging.debug("*******Start build_lib.buildinfo_list_to_branch_build_dict()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******Start build_lib.buildinfo_list_to_branch_build_dict()*******\n%s*********************************", runtime.memory_usage())
   branch_build_dict = {}
   for build in buildinfo_list:
     try:
@@ -245,7 +245,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
           [cur_manifest, build.platform], key=version.LooseVersion)
     else:
       branch_build_dict[build_key] = build.platform
-  logging.debug("*******End build_lib.buildinfo_list_to_branch_build_dict()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******End build_lib.buildinfo_list_to_branch_build_dict()*******\n%s*********************************", runtime.memory_usage())
 
   return branch_build_dict
 
@@ -273,7 +273,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
         value: the latest manifest for the given tuple, like:
           '9242.0.0'.
   """
-  logging.debug("*******Start build_lib.get_cros_builds()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******Start build_lib.get_cros_builds()*******\n%s*********************************", runtime.memory_usage())
   # Buildbucket Bigquery use UTC timezone
   all_branch_builds = build_client.get_passed_builds(
       earliest_end_time, latest_end_time, event_type)
@@ -286,7 +286,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
       cros_board_list, all_branch_builds)
   logging.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
 
-  logging.debug("*******End build_lib.get_cros_builds()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******End build_lib.get_cros_builds()*******\n%s*********************************", runtime.memory_usage())
   """relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, relaxed_builds + all_branch_builds)
   # Include Rubik builds in the relaxed builds dict. We can't pass the rubik
@@ -344,7 +344,7 @@ def get_launch_control_builds_by_branch_targets(
             [u'git_nyc-mr2-release/shamu-userdebug/3844975',
              u'git_nyc-mr1-release/shamu-userdebug/3783920']
   """
-  logging.debug("*******Start build_lib.get_launch_control_builds_by_branch_targets()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******Start build_lib.get_launch_control_builds_by_branch_targets()*******\n%s*********************************", runtime.memory_usage())
   launch_control_dict = {}
   board_to_builds_dict = {}
   for branch, targets in launch_control_branch_targets.iteritems():
@@ -382,7 +382,7 @@ def get_launch_control_builds_by_branch_targets(
       else:
         board_to_builds_dict[board] = board_to_builds_dict[
             mapped_board]
-  logging.debug("*******End build_lib.get_launch_control_builds_by_branch_targets()*******\n%s*********************************", runtime.memory_usage())
+  logging.warning("*******End build_lib.get_launch_control_builds_by_branch_targets()*******\n%s*********************************", runtime.memory_usage())
   return board_to_builds_dict
 
 
