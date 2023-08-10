@@ -37,7 +37,8 @@ class Task(object):
                task_info,
                board_family_config={},
                tot=None,
-               is_sanity=False):
+               is_sanity=False,
+               trigger_bq_client=None):
     """Initialize a task instance.
 
     Args:
@@ -138,6 +139,7 @@ class Task(object):
       tot: The tot manager for checking ToT. If it's None, a new tot_manager
         instance will be initialized.
       is_sanity: A boolean; true if we are running in sanity env.
+      trigger_bq_client: BQ client to pass on for task creation.
     """
     # Indicate whether there're suites get pushed into taskqueue for this task.
     self.is_pushed = False
@@ -233,7 +235,7 @@ class Task(object):
     self._set_spec_compare_info()
     # Sanity test does not have to upload metrics.
     if not is_sanity:
-      self.job_section = analytics.ScheduleJobSection(task_info)
+      self.job_section = analytics.ScheduleJobSection(task_info, trigger_bq_client)
 
     self.is_multi_dut_testing = False
     if task_info.multi_dut_boards:

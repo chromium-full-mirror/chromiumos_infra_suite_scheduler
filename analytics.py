@@ -1,4 +1,4 @@
-# Copyright 2020 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -89,17 +89,21 @@ class ExecutionTask(AnalyticsBase):
 class ScheduleJobSection(AnalyticsBase):
   """Record all the scheduling decisions in a job section."""
 
-  def __init__(self, task_info):
+  def __init__(self, task_info, trigger_bq_client=None):
     """Initialize a ScheduleJobSection
 
     Args:
       task_info: a config_reader.TaskInfo object.
     """
     self.job_section = _job_section(task_info)
-    self.bq_client = _gen_bq_client(constants.Metrics.TRIGGER_EVENT_TABLE)
-    super(ScheduleJobSection, self).__init__(
-        constants.Metrics.TRIGGER_EVENT_TABLE,
-        self.job_section)
+
+    if trigger_bq_client == None:
+      self.bq_client = _gen_bq_client(constants.Metrics.TRIGGER_EVENT_TABLE)
+      super(ScheduleJobSection, self).__init__(
+          constants.Metrics.TRIGGER_EVENT_TABLE,
+          self.job_section)
+    else:
+      self.bq_client = trigger_bq_client
 
   def add_board(self, board):
     """Add a board to job_section.

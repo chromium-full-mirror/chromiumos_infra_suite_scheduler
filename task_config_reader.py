@@ -110,6 +110,27 @@ class TaskConfig(object):
                  ', '.join(self._config_reader.sections()))
     self.is_sanity = is_sanity
     self._tot_manager = tot_manager.TotMilestoneManager(is_sanity=is_sanity)
+    project = constants.Metrics.PROJECT_ID_STAGING
+    if (constants.environment() == constants.RunningEnv.ENV_PROD and
+      constants.application_id() == constants.AppID.PROD_APP):
+      project = constants.Metrics.PROJECT_ID
+    # Create the clients to be passed down.
+    self._execution_bq_client = rest_client.BigqueryRestClient(
+      rest_client.BaseRestClient(
+          constants.RestClient.BIGQUERY_CLIENT.scopes,
+          constants.RestClient.BIGQUERY_CLIENT.service_name,
+          constants.RestClient.BIGQUERY_CLIENT.service_version),
+      project=project,
+      dataset=constants.Metrics.DATASET,
+      table=constants.Metrics.EXECUTION_TASK_TABLE)
+    self._trigger_bq_client = rest_client.BigqueryRestClient(
+      rest_client.BaseRestClient(
+          constants.RestClient.BIGQUERY_CLIENT.scopes,
+          constants.RestClient.BIGQUERY_CLIENT.service_name,
+          constants.RestClient.BIGQUERY_CLIENT.service_version),
+      project=project,
+      dataset=constants.Metrics.DATASET,
+      table=constants.Metrics.TRIGGER_EVENT_TABLE)
     self._board_family_config = {}
     if not is_sanity:
       self._board_family_config = build_lib.get_board_family_mapping_from_gs(
@@ -529,4 +550,5 @@ class TaskConfig(object):
         task_info,
         board_family_config=self._board_family_config,
         tot=self._tot_manager,
-        is_sanity=self.is_sanity)
+        is_sanity=self.is_sanity,
+        trigger_bq_client=self._trigger_bq_client)
