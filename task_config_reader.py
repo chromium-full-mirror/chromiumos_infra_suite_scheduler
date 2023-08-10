@@ -132,22 +132,19 @@ class TaskConfig(object):
     """
     tasks = []
     exceptions = []
+    logging.warning("*******Start task_config_reader make new task loop*******\n%s*********************************", runtime.memory_usage())
     for section in self._config_reader.sections():
       try:
-        logging.warning("*******Start task_config_reader make new task*******\n%s*********************************", runtime.memory_usage())
         if event_type == self._get_keyword(section):
           new_task = self._create_task_from_config_section(section)
           tasks.append(new_task)
-        logging.warning("*******End task_config_reader make new task*******\n%s*********************************", runtime.memory_usage())
       except MalformedConfigEntryError as e:
         exceptions.append(str(e))
         logging.exception(str(e))
         continue
 
     logging.info('Found %d tasks for %s.', len(tasks), event_type)
-    if len(tasks) > 3:
-      for i in range(3):
-        logging.warning("Size of task %d: %d", i, sys.getsizeof(tasks[i]))
+    logging.warning("*******End task_config_reader make new task loop*******\n%s*********************************", runtime.memory_usage())
 
     return {'tasks': tasks, 'exceptions': exceptions}
 
