@@ -27,14 +27,17 @@ class AnalyticsError(Exception):
 class AnalyticsBase(object):
   """Base class to handle analytics data."""
 
-  def __init__(self, table, message):
+  def __init__(self, message, bq_client=None, table=None):
     """Initialize a base event.
 
     Args:
       table: string of the table name.
       message: protobuf object to upload.
     """
-    self.bq_client = _gen_bq_client(table)
+    if bq_client:
+      self.bq_client = bq_client
+    else:
+      self.bq_client = _gen_bq_client(table)
     self.message = message
 
   def upload(self):
@@ -52,7 +55,7 @@ class AnalyticsBase(object):
 class ExecutionTask(AnalyticsBase):
   """Track the execution for the queued tasks."""
 
-  def __init__(self, task_id, request_tag):
+  def __init__(self, task_id, request_tag, execution_bq_client=None):
     """Initialize an ExecutionTask.
 
     Args:
@@ -65,8 +68,12 @@ class ExecutionTask(AnalyticsBase):
         request_tag=request_tag,
         request_sent=timestamp_pb2.Timestamp())
     self.task.request_sent.GetCurrentTime()
-    super(ExecutionTask, self).__init__(constants.Metrics.EXECUTION_TASK_TABLE,
-       self.task)
+
+    if execution_bq_client:
+      self.bq_client = execution_bq_client
+      super(ExecutionTask, self).__init__(self.task, bq_client=self.bq_client)
+    else:
+      super(ExecutionTask, self).__init__(self.task, table=constants.Metrics.EXECUTION_TASK_TABLE)
 
   def update_result(self, resp):
     """Attach the buildbucket id to task_execution.
@@ -99,11 +106,11 @@ class ScheduleJobSection(AnalyticsBase):
 
     if trigger_bq_client == None:
       self.bq_client = _gen_bq_client(constants.Metrics.TRIGGER_EVENT_TABLE)
-      super(ScheduleJobSection, self).__init__(
-          constants.Metrics.TRIGGER_EVENT_TABLE,
-          self.job_section)
     else:
       self.bq_client = trigger_bq_client
+
+    super(ScheduleJobSection, self).__init__(
+          self.job_section, bq_client=self.bq_client)
 
   def add_board(self, board):
     """Add a board to job_section.
