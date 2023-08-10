@@ -1,4 +1,4 @@
-# Copyright 2018 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 import collections
 import logging
 import re
+import sys
 
 import build_event
 import build_lib
@@ -16,6 +17,7 @@ import task
 import timed_event
 import tot_manager
 
+from google.appengine.api.runtime import runtime
 
 # Handled event classes
 EVENT_CLASSES = {
@@ -132,15 +134,21 @@ class TaskConfig(object):
     exceptions = []
     for section in self._config_reader.sections():
       try:
+        logging.warning("*******Start task_config_reader make new task*******\n%s*********************************", runtime.memory_usage())
         if event_type == self._get_keyword(section):
           new_task = self._create_task_from_config_section(section)
           tasks.append(new_task)
+        logging.warning("*******End task_config_reader make new task*******\n%s*********************************", runtime.memory_usage())
       except MalformedConfigEntryError as e:
         exceptions.append(str(e))
         logging.exception(str(e))
         continue
 
     logging.info('Found %d tasks for %s.', len(tasks), event_type)
+    if len(tasks) < 3:
+      for i in range(3):
+        logging.warning("Size of task %d: %d", i, sys.getsizeof(tasks[i]))
+
     return {'tasks': tasks, 'exceptions': exceptions}
 
   def get_event_setting(self, section_name):
