@@ -145,7 +145,7 @@ class TaskConfig(object):
         continue
 
     logging.info('Found %d tasks for %s.', len(tasks), event_type)
-    if len(tasks) < 3:
+    if len(tasks) > 3:
       for i in range(3):
         logging.warning("Size of task %d: %d", i, sys.getsizeof(tasks[i]))
 
