@@ -15,7 +15,6 @@ import build_lib
 import task_executor
 import tot_manager
 
-from google.appengine.api import runtime
 from multi_duts_lib import BuildTarget, convert_secondary_targets_to_string
 
 # The max lifetime of a suite scheduled by suite scheduler
@@ -273,7 +272,6 @@ class Task(object):
         task which got pushed into the suites queue.
     """
     assert configs.lab_config is not None
-    logging.warning("*******Start task.schedule()*******\n%s*********************************", runtime.memory_usage())
     self.is_pushed = False
 
     branch_builds, relaxed_builds = cros_builds_tuple
@@ -313,7 +311,6 @@ class Task(object):
       logging.exception(str(e))
     if not upload_result:
       logging.warning('Failed to insert row: %r', self.job_section)
-    logging.warning("*******End task.schedule()*******\n%s*********************************", runtime.memory_usage())
     return self.is_pushed
 
   def schedule_multi_duts(self, cros_builds_tuple,
@@ -335,7 +332,6 @@ class Task(object):
         task which got pushed into the suites queue.
     """
     assert configs.lab_config is not None
-    logging.warning("*******Start task.schedule_multi_duts()*******\n%s*********************************", runtime.memory_usage())
     # For multi-DUTs We allow either request by board or request by model,
     # but not both.
     if self.multi_dut_boards and self.multi_dut_models:
@@ -390,7 +386,6 @@ class Task(object):
       logging.exception(str(e))
     if not upload_result:
       logging.warning('Failed to insert row: %r', self.job_section)
-    logging.warning("*******End task.schedule_multi_duts()*******\n%s*********************************", runtime.memory_usage())
     return self.is_pushed
 
   def _model_to_board_dict(self, models_by_board):

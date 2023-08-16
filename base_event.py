@@ -15,7 +15,7 @@ import global_config
 import task
 import time_converter
 
-from google.appengine.api.runtime import runtime
+
 
 # The suffix for section
 _SECTION_SUFFIX = '_params'
@@ -193,7 +193,6 @@ class BaseEvent(object):
     Returns:
       A list of finished tasks' names.
     """
-    logging.warning("*******Start base_event.process_tasks()*******\n%s*********************************", runtime.memory_usage())
     scheduled_tasks = []
     for per_task in self.task_list:
       try:
@@ -219,7 +218,6 @@ class BaseEvent(object):
       except task.SchedulingError:
         logging.exception('Failed to schedule task: %s', per_task.name)
         continue
-    logging.warning("*******Endx base_event.process_tasks()*******\n%s*********************************", runtime.memory_usage())
     return scheduled_tasks
 
   def finish(self):

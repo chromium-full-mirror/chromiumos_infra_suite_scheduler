@@ -16,7 +16,6 @@ import task_executor
 import time_converter
 import trigger_receiver
 
-from google.appengine.api.runtime import runtime
 
 
 _PROD_CALENDAR_ID_MAPPING = {
@@ -53,7 +52,6 @@ class TriggerEvent(webapp2.RequestHandler):
   def get(self):
     # Don't kick off cron job in staging instance. This cron job can be
     # kicked off On local development env or prod instance.
-    logging.warning("*******Start trigger event*******\n%s*********************************", runtime.memory_usage())
     if global_config.is_in_staging():
       return
 
@@ -82,7 +80,6 @@ class TriggerEvent(webapp2.RequestHandler):
 
       _add_to_calendar(keyword, results, log_url, start_time, end_time,
                        calendar_client, _PROD_CALENDAR_ID_MAPPING[keyword])
-    logging.warning("*******End trigger event*******\n%s*********************************", runtime.memory_usage())
 
 
 class ExecuteTask(webapp2.RequestHandler):

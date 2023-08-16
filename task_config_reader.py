@@ -17,7 +17,6 @@ import task
 import timed_event
 import tot_manager
 
-from google.appengine.api.runtime import runtime
 
 # Handled event classes
 EVENT_CLASSES = {
@@ -153,7 +152,6 @@ class TaskConfig(object):
     """
     tasks = []
     exceptions = []
-    logging.warning("*******Start task_config_reader make new task loop*******\n%s*********************************", runtime.memory_usage())
     for section in self._config_reader.sections():
       try:
         if event_type == self._get_keyword(section):
@@ -165,7 +163,6 @@ class TaskConfig(object):
         continue
 
     logging.info('Found %d tasks for %s.', len(tasks), event_type)
-    logging.warning("*******End task_config_reader make new task loop*******\n%s*********************************", runtime.memory_usage())
 
     return {'tasks': tasks, 'exceptions': exceptions}
 
