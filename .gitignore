@@ -8,3 +8,4 @@
 suite_scheduler.iml
 .cipd/
 bin/cipd/
+bin/venv27/

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -7,7 +7,10 @@
 set -eu
 
 readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
+readonly set_up_script="${bin_dir}/../setup_environment.py"
+readonly install_gcp_script="${bin_dir}/install_gcp_reqs"
 
-./install_gcp_reqs
-cd "${bin_dir}/.."
-exec "${bin_dir}/python_venv" setup_environment.py "$@"
+
+${install_gcp_script}
+
+exec "${bin_dir}/python_venv" "${set_up_script}" "$@"

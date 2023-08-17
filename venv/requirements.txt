@@ -1,3 +1,0 @@
-mock
-pytz
-MySQL-python

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -12,11 +12,4 @@ cd "${bin_dir}/.."
 
 find . -name "*.pyc" -delete
 
-# Install vpython2.7 from CIPD if it isn't already in path
-if [ "$(type -P vpython)" == "" ]; then
-  cipd init bin/cipd --force  && cipd ensure -root bin/cipd -ensure-file bin/cipd_ensure_file
-fi
-
-# vpython must be in path
-PATH="$PATH:$(pwd)/bin/cipd"
-exec vpython runner.py "$@"
+exec "${bin_dir}/python_venv" runner.py "$@"

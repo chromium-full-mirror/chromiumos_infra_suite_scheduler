@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for setup environemtn for local testing & Google App Engine.
@@ -51,7 +51,7 @@ def _install_third_party_lib():
 
 def create_file(fname):
   """Create an empty file by opening it for writing and closing."""
-  open(fname, 'w').close()
+  open(fname, 'w+').close()
 
 
 def fixup_chromite_imports():
@@ -71,17 +71,18 @@ def fixup_chromite_imports():
     ]
     subprocess.check_call(cmd)
 
-  for root, _, files in os.walk('infra_libs/chromite'):
+  chromite_path = os.path.join(_INFRA_LIBS_PATH,"chromite")
+  for root, _, files in os.walk(chromite_path):
     for fname in files:
       if fname.endswith('_pb2.py'):
         path = os.path.join(root, fname)
         remove_third_party(path, 'google.protobuf')
 
   # Add explicit __init__.py files to workaround implicit namespaces in python3
-  create_file('infra_libs/chromite/__init__.py')
-  create_file('infra_libs/chromite/third_party/__init__.py')
-  create_file('infra_libs/chromite/third_party/google/__init__.py')
-  create_file('infra_libs/chromite/third_party/google/api/__init__.py')
+  create_file(os.path.join(chromite_path,'__init__.py'))
+  create_file(os.path.join(chromite_path,'third_party/__init__.py'))
+  create_file(os.path.join(chromite_path,'third_party/google/__init__.py'))
+  create_file(os.path.join(chromite_path,'third_party/google/api/__init__.py'))
 
 
 # _GITDEP Specifies a dependency in the form of a particular reference in a git
