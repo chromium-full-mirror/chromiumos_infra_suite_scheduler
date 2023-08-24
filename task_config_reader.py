@@ -75,6 +75,8 @@ COMMON_TASK_ENTRIES = [
     'run_via_cft',
     'include_tags',
     'exclude_tags',
+    'include_names',
+    'exclude_names',
 ]
 
 # Namedtuple for storing task info.
@@ -293,6 +295,8 @@ class TaskConfig(object):
     run_via_cft = bool(self._config_reader.getboolean(section, 'run_via_cft'))
     include_tags = self._config_reader.getstring(section, 'include_tags')
     exclude_tags = self._config_reader.getstring(section, 'exclude_tags')
+    include_names = self._config_reader.getstring(section, 'include_names')
+    exclude_names = self._config_reader.getstring(section, 'exclude_names')
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
@@ -385,6 +389,8 @@ class TaskConfig(object):
         run_via_cft=run_via_cft,
         include_tags=include_tags,
         exclude_tags=exclude_tags,
+        include_names = include_names,
+        exclude_names = exclude_names,
     )
 
   def _validate_task_section(self, task_info):

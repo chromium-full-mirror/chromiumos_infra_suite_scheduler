@@ -269,11 +269,15 @@ def _form_test_platform_request(task_params):
   if params.run_via_cft:
     include_tags = task_params.get('include_tags', None)
     exclude_tags = task_params.get('exclude_tags', None)
-    if include_tags or exclude_tags:
+    include_names = task_params.get('inlcude_names', None)
+    exclude_names = task_params.get('exclude_names', None)
+    if include_tags or exclude_tags or include_names or exclude_names:
       request.test_plan.tag_criteria.CopyFrom(
           test_suite_pb2.TestSuite.TestCaseTagCriteria(
               tags=_get_test_tags(include_tags),
-              tag_excludes=_get_test_tags(exclude_tags)))
+              tag_excludes=_get_test_tags(exclude_tags),
+              test_names = _get_test_tags(include_names),
+              test_name_excludes = _get_test_tags(exclude_names)))
   return request
 
 

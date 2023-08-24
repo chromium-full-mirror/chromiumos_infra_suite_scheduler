@@ -132,6 +132,12 @@ class Task(object):
           exclude_tags, a comma separated list of tags that will be excluded while
             finding test cases for CFT test execution path. This will be used only if
             run_via_cft is set to true.
+          include_names, a comma separated list of test names (wildcard allowed) that 
+            will be included while finding test cases for CFT test execution path.
+            This will be used only if run_via_cft is set to true.
+          exclude_names, a comma separated list of test names (wildcard allowed) that 
+            will be excluded while finding test cases for CFT test execution path.
+            This will be used only if run_via_cft is set to true.
 
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
@@ -172,6 +178,8 @@ class Task(object):
     self.run_via_cft = task_info.run_via_cft
     self.include_tags = task_info.include_tags
     self.exclude_tags = task_info.exclude_tags
+    self.include_names = task_info.include_names
+    self.exclude_names = task_info.exclude_names
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -581,6 +589,8 @@ class Task(object):
         'run_via_cft': self.run_via_cft,
         'include_tags': self.include_tags,
         'exclude_tags': self.exclude_tags,
+        'include_names': self.include_names,
+        'exclude_names': self.exclude_names
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

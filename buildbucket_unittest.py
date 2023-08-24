@@ -60,6 +60,8 @@ def _get_suite_params(board='fake_board',
       'run_via_cft': True,
       'include_tags': 'a, b, c',
       'exclude_tags': 'e, f, g',
+      'include_names': "*",
+      'exclude_names': "foo",
   }
 
 
