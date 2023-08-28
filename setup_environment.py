@@ -107,7 +107,7 @@ _GIT_DEPS = [
     _GitDep(
         'chromite',
         'https://chromium.googlesource.com/chromiumos/chromite',
-        'c7a86d5b2ee49e548a7bbfad192a0193977f4861',
+        'refs/changes/78/4814778/1',
         [
             '/api/gen/**/*.py',
             '/api/__init__.py',
@@ -152,8 +152,16 @@ def _install_infra_libs():
         cwd=_INFRA_LIBS_PATH)
     subprocess.check_call(['git', 'sparse-checkout', 'init'], cwd=dep_path)
     _set_sparse_checkout_paths(dep_path, dep.sparse_checkout_paths)
+
+    checkout_ref = dep.git_ref
+    if dep.git_ref.startswith('refs'):
+      print('Using custom ref: %s' % (dep.git_ref))
+      checkout_ref = 'FETCH_HEAD'
+      subprocess.check_call(
+        ['git', 'fetch', dep.git_project, dep.git_ref], cwd=dep_path)
+
     subprocess.check_call(
-        ['git', 'checkout', dep.git_ref, '-b', 'deploy', '-f'], cwd=dep_path)
+        ['git', 'checkout', checkout_ref, '-b', 'deploy', '-f'], cwd=dep_path)
 
     if dep.post_process:
       dep.post_process()
