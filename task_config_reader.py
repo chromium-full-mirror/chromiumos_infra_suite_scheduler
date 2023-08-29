@@ -77,6 +77,9 @@ COMMON_TASK_ENTRIES = [
     'exclude_tags',
     'include_names',
     'exclude_names',
+    'android_image_version',
+    'gms_core_package',
+    'ddd_suite',
 ]
 
 # Namedtuple for storing task info.
@@ -297,6 +300,9 @@ class TaskConfig(object):
     exclude_tags = self._config_reader.getstring(section, 'exclude_tags')
     include_names = self._config_reader.getstring(section, 'include_names')
     exclude_names = self._config_reader.getstring(section, 'exclude_names')
+    android_image_version = self._config_reader.getstring(section, 'android_image_version')
+    gms_core_package = self._config_reader.getstring(section, 'gms_core_package')
+    ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
@@ -391,6 +397,9 @@ class TaskConfig(object):
         exclude_tags=exclude_tags,
         include_names = include_names,
         exclude_names = exclude_names,
+        android_image_version = android_image_version,
+        gms_core_package = gms_core_package,
+        ddd_suite = ddd_suite,
     )
 
   def _validate_task_section(self, task_info):

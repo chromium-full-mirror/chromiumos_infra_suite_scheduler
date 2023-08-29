@@ -138,6 +138,11 @@ class Task(object):
           exclude_names, a comma separated list of test names (wildcard allowed) that 
             will be excluded while finding test cases for CFT test execution path.
             This will be used only if run_via_cft is set to true.
+          android_image_version, pinned android image version for android provisioning.
+          gms_core_package, pinned gms core cipd package for android provisioning.
+          ddd_variant_category, a boolean to specify using 3D solver to determine
+            hardware. All tests withing this suite *must* have a 3d expression.
+
 
       board_family_config: A board family dictionary mapping board_family name
         to its corresponding boards.
@@ -180,6 +185,9 @@ class Task(object):
     self.exclude_tags = task_info.exclude_tags
     self.include_names = task_info.include_names
     self.exclude_names = task_info.exclude_names
+    self.android_image_version = task_info.android_image_version
+    self.gms_core_package = task_info.gms_core_package
+    self.ddd_suite = task_info.ddd_suite
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -590,7 +598,10 @@ class Task(object):
         'include_tags': self.include_tags,
         'exclude_tags': self.exclude_tags,
         'include_names': self.include_names,
-        'exclude_names': self.exclude_names
+        'exclude_names': self.exclude_names,
+        'android_image_version' : self.android_image_version,
+        'gms_core_package' : self.gms_core_package,
+        'ddd_suite' :self.ddd_suite,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

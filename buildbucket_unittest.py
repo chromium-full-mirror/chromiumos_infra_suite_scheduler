@@ -62,6 +62,9 @@ def _get_suite_params(board='fake_board',
       'exclude_tags': 'e, f, g',
       'include_names': "*",
       'exclude_names': "foo",
+      'android_image_version': "latest",
+      'gms_core_package': "latest",
+      'ddd_suite': True,
   }
 
 

@@ -233,6 +233,16 @@ def _form_test_platform_request(task_params):
 
   params.run_via_cft = (task_params.has_key('run_via_cft') and task_params['run_via_cft'] == 'True')
 
+  if task_params.has_key('android_image_version'):
+    build = params.software_dependencies.add()
+    build.android_image_version = task_params['android_image_version']
+
+  if task_params.has_key('gms_core_package'):
+    build = params.software_dependencies.add()
+    build.gms_core_package = task_params['gms_core_package']
+
+  params.ddd_suite = (task_params.has_key('ddd_suite') and task_params['ddd_suite'] == 'True')
+
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
   fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)
 
