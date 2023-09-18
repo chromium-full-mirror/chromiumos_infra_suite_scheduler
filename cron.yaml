@@ -20,4 +20,4 @@ cron:
 - description: check if suite tests can be scheduled
   url: /cron/check_jobs
   target: beta
-  schedule: every 15 minutes
+  schedule: every 30 minutes
