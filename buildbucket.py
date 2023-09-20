@@ -236,10 +236,14 @@ def _form_test_platform_request(task_params):
   if task_params.has_key('android_image_version'):
     build = params.software_dependencies.add()
     build.android_image_version = task_params['android_image_version']
+    params.run_via_cft = True
+    params.run_via_trv2 = True
 
   if task_params.has_key('gms_core_package'):
     build = params.software_dependencies.add()
     build.gms_core_package = task_params['gms_core_package']
+    params.run_via_cft = True
+    params.run_via_trv2 = True
 
   params.ddd_suite = (task_params.has_key('ddd_suite') and task_params['ddd_suite'] == 'True')
 
