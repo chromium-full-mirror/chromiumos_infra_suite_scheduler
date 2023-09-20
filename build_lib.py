@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -233,7 +233,7 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
       continue
 
     if build.board not in cros_board_list:
-      logging.warning('%s is not a valid CrOS board.', build.board)
+      logging.debug('%s is not a valid CrOS board.', build.board)
       continue
 
     build_key = (build.board, build.model, build_config_info.type,
@@ -274,14 +274,16 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
   # Buildbucket Bigquery use UTC timezone
   all_branch_builds = build_client.get_passed_builds(
       earliest_end_time, latest_end_time, event_type)
-  logging.info("get_cros_builds: all branch_builds: %r",all_branch_builds)
+  # NOTE: Logging removed due to LogExplorer limitations.
+  #logging.info("get_cros_builds: all branch_builds: %r",all_branch_builds)
 
   #relaxed_builds = build_client.get_relaxed_passed_builds(
   #    earliest_end_time, latest_end_time, event_type)
 
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)
-  logging.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
+  # NOTE: Logging removed due to LogExplorer limitations.
+  #logging.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
 
   """relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, relaxed_builds + all_branch_builds)

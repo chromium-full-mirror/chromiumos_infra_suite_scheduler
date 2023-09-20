@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -607,7 +607,8 @@ class Task(object):
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag=self.suite,
                        **suite_job_parameters)
-    logging.info('Pushing task %r into taskqueue', suite_job_parameters)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
   def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):

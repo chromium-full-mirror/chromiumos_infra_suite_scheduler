@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -607,10 +607,14 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       query_str += 'LIMIT 10'
     logging.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
-    logging.info("rest_client: running query %s", query_str)
+    # Use this query here to find the passed builds:
+    # http://scripts/script_81._df7828_67b6_4890_ac57_02b49b6912f1
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.info("rest_client: running query %s", query_str)
     res = self.query(query_str)
     res = _parse_bq_job_query(res)
-    logging.info("rest_client: query results %r", query_str)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.info("rest_client: query results %r", query_str)
     if res is None:
       return []
 

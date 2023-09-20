@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -99,16 +99,19 @@ class TriggerReceiver(object):
     """
     cros_builds_tuple = event.get_cros_builds(
         self._lab_config, self._build_client)
-    logging.debug('Found CrOS builds: %r', cros_builds_tuple)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.debug('Found CrOS builds: %r', cros_builds_tuple)
     # Set delta to 3 days here as we only build once per day for non tot
     # builds, so a single failure on secondary boards may cause a skip
     # of primary board.
     recent_cros_builds_tuple = event.get_recent_cros_builds(
         self._lab_config, self._build_client, delta_days=3)
-    logging.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)
-    logging.debug('Found launch_control_builds: %r', launch_control_builds)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.debug('Found launch_control_builds: %r', launch_control_builds)
     firmware_builds = None
     if [x for x in event.task_list if (x.firmware_rw_build_spec or
                                        x.firmware_ro_build_spec)]:

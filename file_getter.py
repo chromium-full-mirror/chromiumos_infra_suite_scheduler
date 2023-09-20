@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for fetching files used by suite scheduler."""
@@ -35,7 +35,8 @@ def _write_config(config_name):
       'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'.format(config_name)
   ).read()
   config_text = base64.b64decode(tot_response)
-  logging.info('Writing %s as: %s', config_name, config_text)
+  # NOTE: Logging removed due to LogExplorer limitations.
+  #logging.info('Writing %s as: %s', config_name, config_text)
   filename = '/tmp/{}'.format(config_name)
   with open(filename, 'w') as f:
     f.write(config_text)
