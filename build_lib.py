@@ -489,6 +489,7 @@ def reshape_board(board):
     '-connectivitynext', #
     '-borealis', #
     '-campfire', #
+    '-cbx', #
     '-cfm', #
     '-kernelnext', #
     '-kvm', #
