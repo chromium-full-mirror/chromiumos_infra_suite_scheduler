@@ -232,6 +232,8 @@ def _form_test_platform_request(task_params):
     params.retry.max = constants.Buildbucket.MAX_RETRY
 
   params.run_via_cft = (task_params.has_key('run_via_cft') and task_params['run_via_cft'] == 'True')
+  # Enable run_via_trv2 only if run_via_cft is true
+  params.run_via_trv2 = (params.run_via_cft and (task_params.has_key('run_via_trv2') and task_params['run_via_trv2'] == 'True'))
 
   if task_params.has_key('android_image_version'):
     build = params.software_dependencies.add()

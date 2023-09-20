@@ -80,6 +80,7 @@ COMMON_TASK_ENTRIES = [
     'android_image_version',
     'gms_core_package',
     'ddd_suite',
+    'run_via_trv2',
 ]
 
 # Namedtuple for storing task info.
@@ -303,6 +304,7 @@ class TaskConfig(object):
     android_image_version = self._config_reader.getstring(section, 'android_image_version')
     gms_core_package = self._config_reader.getstring(section, 'gms_core_package')
     ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
+    run_via_trv2 = bool(self._config_reader.getboolean(section, 'run_via_trv2'))
 
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
@@ -400,6 +402,7 @@ class TaskConfig(object):
         android_image_version = android_image_version,
         gms_core_package = gms_core_package,
         ddd_suite = ddd_suite,
+        run_via_trv2 = run_via_trv2,
     )
 
   def _validate_task_section(self, task_info):

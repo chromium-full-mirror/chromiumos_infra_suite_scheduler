@@ -65,6 +65,7 @@ def _get_suite_params(board='fake_board',
       'android_image_version': "11",
       'gms_core_package': "latest_stable",
       'ddd_suite': True,
+      'run_via_trv2': True,
   }
 
 

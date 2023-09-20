@@ -142,6 +142,9 @@ class Task(object):
           gms_core_package, pinned gms core cipd package for android provisioning.
           ddd_variant_category, a boolean to specify using 3D solver to determine
             hardware. All tests withing this suite *must* have a 3d expression.
+          run_via_trv2, a boolean to specify if current task should be scheduled
+            to run via CFT and trv2 test execution path. Will only be considered
+            if run_via_cft is set to true.
 
 
       board_family_config: A board family dictionary mapping board_family name
@@ -188,6 +191,7 @@ class Task(object):
     self.android_image_version = task_info.android_image_version
     self.gms_core_package = task_info.gms_core_package
     self.ddd_suite = task_info.ddd_suite
+    self.run_via_trv2 = task_info.run_via_trv2
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -602,6 +606,7 @@ class Task(object):
         'android_image_version' : self.android_image_version,
         'gms_core_package' : self.gms_core_package,
         'ddd_suite' :self.ddd_suite,
+        'run_via_trv2': self.run_via_trv2,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
