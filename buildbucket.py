@@ -235,18 +235,6 @@ def _form_test_platform_request(task_params):
   # Enable run_via_trv2 only if run_via_cft is true
   params.run_via_trv2 = (params.run_via_cft and (task_params.has_key('run_via_trv2') and task_params['run_via_trv2'] == 'True'))
 
-  if task_params.has_key('android_image_version'):
-    build = params.software_dependencies.add()
-    build.android_image_version = task_params['android_image_version']
-    params.run_via_cft = True
-    params.run_via_trv2 = True
-
-  if task_params.has_key('gms_core_package'):
-    build = params.software_dependencies.add()
-    build.gms_core_package = task_params['gms_core_package']
-    params.run_via_cft = True
-    params.run_via_trv2 = True
-
   params.ddd_suite = (task_params.has_key('ddd_suite') and task_params['ddd_suite'] == 'True')
 
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
@@ -280,6 +268,16 @@ def _form_test_platform_request(task_params):
       if s_target.cros_build:
         s_build = s_device.software_dependencies.add()
         s_build.chromeos_build = s_target.cros_build
+      if task_params.has_key('android_image_version') and task_params['android_image_version'] not in (None, 'None',''):
+        s_build = s_device.software_dependencies.add()
+        s_build.android_image_version = task_params['android_image_version']
+        params.run_via_cft = True
+        params.run_via_trv2 = True
+      if task_params.has_key('gms_core_package') and task_params['gms_core_package'] not in (None, 'None',''):
+        s_build = s_device.software_dependencies.add()
+        s_build.gms_core_package = task_params['gms_core_package']
+        params.run_via_cft = True
+        params.run_via_trv2 = True
 
   request.test_plan.suite.add().name = task_params['suite']
   if params.run_via_cft:
