@@ -13,6 +13,7 @@ import constants
 import build_lib
 import buildbucket
 import task_executor
+import file_getter
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
@@ -103,6 +104,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.client = buildbucket.TestPlatformClient(ADDR, 'foo-proj',
                                                  'foo-bucket', 'foo-builder')
     self.addCleanup(patcher.stop)
+    self.get_android_boards_list = buildbucket.get_android_boards_list
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.addCleanup(self.testbed.deactivate)
@@ -148,6 +150,11 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
       self.assertEqual(req.params.software_attributes.build_target.name,
                        suite_kwargs[i]['board'])
+
+  def testGetAndroidBoardsList(self):
+    android_boards_list = self.get_android_boards_list(file_getter.TEST_LAB_CONFIG_FILE)
+    self.assertEqual(android_boards_list,['pixel6', 'pixel7', 'pixel4', 'pixel5', 'pixel3', 'pixel1']
+)
 
   def testPoolName(self):
     suite_kwargs = [_get_suite_params(board=b) for b in ['foo', 'goo', 'hoo']]

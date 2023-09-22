@@ -8,6 +8,7 @@ import datetime
 import logging
 import os
 import uuid
+import config_reader
 
 import analytics
 import build_lib
@@ -79,6 +80,7 @@ class TestPlatformClient(object):
         params = task.extract_params()
         if _should_skip(params):
           continue
+
         req = _form_test_platform_request(params)
         req_json = json_format.MessageToJson(req)
         counter_key = params['board']
@@ -257,6 +259,8 @@ def _form_test_platform_request(task_params):
     build = params.software_dependencies.add()
     build.rw_firmware_build = fw_rw_build
 
+  android_boards_list = get_android_boards_list(file_getter.NEW_LAB_CONFIG_FILE)
+
   secondary_targets = task_params.get('secondary_targets')
   secondary_targets = restruct_secondary_targets_from_string(secondary_targets)
   if secondary_targets:
@@ -268,16 +272,17 @@ def _form_test_platform_request(task_params):
       if s_target.cros_build:
         s_build = s_device.software_dependencies.add()
         s_build.chromeos_build = s_target.cros_build
-      if task_params.has_key('android_image_version') and task_params['android_image_version'] not in (None, 'None',''):
-        s_build = s_device.software_dependencies.add()
-        s_build.android_image_version = task_params['android_image_version']
-        params.run_via_cft = True
-        params.run_via_trv2 = True
-      if task_params.has_key('gms_core_package') and task_params['gms_core_package'] not in (None, 'None',''):
-        s_build = s_device.software_dependencies.add()
-        s_build.gms_core_package = task_params['gms_core_package']
-        params.run_via_cft = True
-        params.run_via_trv2 = True
+      if s_target.board in android_boards_list:
+        if task_params.has_key('android_image_version') and task_params['android_image_version'] not in (None, 'None',''):
+          s_build = s_device.software_dependencies.add()
+          s_build.android_image_version = task_params['android_image_version']
+          params.run_via_cft = True
+          params.run_via_trv2 = True
+        if task_params.has_key('gms_core_package') and task_params['gms_core_package'] not in (None, 'None',''):
+          s_build = s_device.software_dependencies.add()
+          s_build.gms_core_package = task_params['gms_core_package']
+          params.run_via_cft = True
+          params.run_via_trv2 = True
 
   request.test_plan.suite.add().name = task_params['suite']
   if params.run_via_cft:
@@ -294,6 +299,20 @@ def _form_test_platform_request(task_params):
               test_name_excludes = _get_test_tags(exclude_names)))
   return request
 
+def get_android_boards_list(lab_config):
+  """Reads lab config ini for android boards
+
+  Args:
+    None
+
+  Returns:
+    android boards: List of android boards in lab config ini.
+  """
+  file_getter.clone_config()
+  lab_config_reader = config_reader.ConfigReader(lab_config)
+  lab_config = config_reader.LabConfig(lab_config_reader)
+  android_boards_list = lab_config.get_android_model_map().keys()
+  return android_boards_list
 
 def _scheduling_for_pool(pool):
   """Assign appropriate pool name to scheduling instance.
