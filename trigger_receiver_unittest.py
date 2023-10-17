@@ -20,6 +20,7 @@ import task_executor
 import time_converter
 import trigger_receiver
 
+from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
@@ -185,6 +186,9 @@ class FakeLabConfig(object):
 
 
 class TriggerReceiverBaseTestCase(unittest.TestCase):
+  _DEFAULT_BUILDER =  builder_common_pb2.BuilderID(project='foo-proj',
+                                      bucket='foo-bucket',
+                                      builder='foo-builder')
 
   def setUp(self):
     self.testbed = testbed.Testbed()
@@ -805,7 +809,7 @@ class TriggerReceiverRealConfigTestCase(TriggerReceiverBaseTestCase):
     """Get the ground truth of to-be-scheduled task list from config file."""
     self._mock_utc_now.return_value = datetime.datetime.now(
         time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(_SUITE_CONFIG_READER)
+    task_config = task_config_reader.TaskConfig(_SUITE_CONFIG_READER, self._DEFAULT_BUILDER)
     tasks = {}
     for keyword, klass in task_config_reader.EVENT_CLASSES.iteritems():
       new_event = klass(

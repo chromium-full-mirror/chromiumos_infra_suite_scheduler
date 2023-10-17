@@ -15,6 +15,7 @@ import task_config_reader
 import time_converter
 import timed_event
 
+from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
@@ -28,6 +29,9 @@ class FakeTask(object):
 
 
 class TimedEventTestCase(unittest.TestCase):
+  _DEFAULT_BUILDER =  builder_common_pb2.BuilderID(project='foo-proj',
+                                        bucket='foo-bucket',
+                                        builder='foo-builder')
 
   def setUp(self):
     mock_utc_now = mock.patch('time_converter.utc_now')
@@ -57,7 +61,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
                                                tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     event = self._KLASS(
@@ -74,7 +78,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
                                                tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -93,7 +97,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
                                                tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -115,7 +119,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                                tzinfo=time_converter.UTC_TZ)
     expected_cur_exec_utc = datetime.datetime(2017, 8, 1, 5,
                                               tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -134,7 +138,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
                                                tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -154,7 +158,7 @@ class NightlyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(2017, 8, 1, 4,
                                                tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -276,7 +280,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     event = self._KLASS(
@@ -293,7 +297,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
 
@@ -312,7 +316,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, self._DEFAULT_UTC_HOUR-1, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -331,7 +335,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -353,7 +357,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
         2017, 7, 31, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
     expected_cur_exec_utc = datetime.datetime(
         2017, 8, 1, self._DEFAULT_UTC_HOUR, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -372,7 +376,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -392,7 +396,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
                                 tzinfo=time_converter.UTC_TZ)
     expected_last_exec_utc = datetime.datetime(
         2017, 8, 1, 4, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(
@@ -420,7 +424,7 @@ class WeeklyEventTestCase(TimedEventTestCase):
         2017, 7, 31, expected_utc_hour, tzinfo=time_converter.UTC_TZ)
     expected_cur_exec_utc = datetime.datetime(
         2017, 8, 1, expected_utc_hour, tzinfo=time_converter.UTC_TZ)
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self._mock_utc_now.return_value = utc_now
     last_exec_client = datastore_client.LastExecutionRecordStore()
     last_exec_client.set_last_execute_time(

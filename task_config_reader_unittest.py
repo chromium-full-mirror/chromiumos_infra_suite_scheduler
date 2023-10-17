@@ -13,6 +13,7 @@ import mock
 import task_config_reader
 import tot_manager
 
+from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
 
 class FakeTotMilestoneManager(tot_manager.TotMilestoneManager):
 
@@ -34,6 +35,9 @@ class BaseTaskConfigReaderTestCase(unittest.TestCase):
   _NUM = 2
   _BOARD = 'link'
   _DIMENSIONS = 'label-wifi:foo'
+  _DEFAULT_BUILDER =  builder_common_pb2.BuilderID(project='foo-proj',
+                                         bucket='foo-bucket',
+                                         builder='foo-builder')
 
   def setUp(self):
     self.config = config_reader.ConfigReader(None)
@@ -65,7 +69,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
 
   def testCreateTaskFromConfigNonexistentSection(self):
     """Ensure a Task CANNOT be built without suite, and raise error."""
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._create_task_from_config_section,
                       'non-existent section')
@@ -73,13 +77,13 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
   def testCreateTaskFromConfigNotAllowedHeader(self):
     """Ensure a Task can be built with unknown config headers."""
     self.config.set(self._TASK_NAME, 'non-valid-header', 'test')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(len(response), 1)
 
   def testGetTaskByKeyword(self):
     """Ensure a Task can be built from a correct config."""
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(len(tasks), 1)
     new_task = tasks[0]
@@ -97,7 +101,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
   def testGetTaskByKeywordNoRunonNoRaise(self):
     """Ensure a Task CANNOT be built without run_on, but not raise error."""
     self.config.remove_option(self._TASK_NAME, 'run_on')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     try:
       response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
       self.assertEqual(len(response['tasks']), 0)
@@ -111,7 +115,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     This is to ensure a malformed task won't affect other tasks' reading.
     """
     self.config.remove_option(self._TASK_NAME, 'suite')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     try:
       response = task_config.get_tasks_by_keyword(self._EVENT_TYPE)
       self.assertEqual(len(response['tasks']), 0)
@@ -122,14 +126,14 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
   def testGetTaskByKeywordNoBranch(self):
     """Ensure a Task can be built without branch_specs."""
     self.config.remove_option(self._TASK_NAME, 'branch_specs')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].branch_specs, [])
 
   def testGetTaskByKeywordNoNum(self):
     """Ensure a Task can be built without num."""
     self.config.remove_option(self._TASK_NAME, 'num')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertIsNone(tasks[0].num)
 
@@ -137,14 +141,14 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     """Ensure priority can be set by user."""
     priority = constants.Priorities.DEFAULT
     self.config.set(self._TASK_NAME, 'priority', str(priority))
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].priority, priority)
 
   def testSuitePoolShouldNotSetPriority(self):
     """Ensure priority is not set for pool suites."""
     self.config.set(self._TASK_NAME, 'pool', 'suites')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertIsNone(tasks[0].priority)
 
@@ -152,7 +156,7 @@ class TaskCreationTestCase(BaseTaskConfigReaderTestCase):
     """Ensure timeout can be set by user."""
     timeout = 1000
     self.config.set(self._TASK_NAME, 'timeout', str(timeout))
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
     self.assertEqual(tasks[0].timeout, timeout)
 
@@ -162,7 +166,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testNonIntNum(self):
     """Ensure a Task's num is a Integer."""
     self.config.set(self._TASK_NAME, 'num', 'non_int')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,
                       self._TASK_NAME)
@@ -170,7 +174,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testNonIntHour(self):
     """Ensure a Task's hour is a Integer."""
     self.config.set(self._TASK_NAME, 'hour', 'non_int')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,
                       self._TASK_NAME)
@@ -178,7 +182,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testNonIntDay(self):
     """Ensure a Task's hour is a Integer."""
     self.config.set(self._TASK_NAME, 'day', 'non_int')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,
                       self._TASK_NAME)
@@ -186,7 +190,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testNoSuite(self):
     """Ensure a Task's suite exists."""
     self.config.remove_option(self._TASK_NAME, 'suite')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -195,7 +199,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testInvalidIntHour(self):
     """Ensure a Task's hour is in 0~23."""
     self.config.set(self._TASK_NAME, 'hour', '24')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -205,7 +209,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a non-nightly Task cannot specify hour."""
     self.config.set(self._TASK_NAME, 'hour', '10')
     self.config.set(self._TASK_NAME, 'run_on', 'new_build')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -215,7 +219,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a Task's day is in 0~6."""
     self.config.set(self._TASK_NAME, 'day', '10')
     self.config.set(self._TASK_NAME, 'run_on', 'weekly')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -225,7 +229,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a Task's day is in 0~6."""
     self.config.set(self._TASK_NAME, 'day', '7')
     self.config.set(self._TASK_NAME, 'run_on', 'fortnightly')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -234,7 +238,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a nightly Task cannot specify day."""
     self.config.set(self._TASK_NAME, 'day', '1')
     self.config.set(self._TASK_NAME, 'run_on', 'nightly')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
@@ -243,7 +247,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testInValidOSType(self):
     """Ensure a Task's os_type is valid."""
     self.config.set(self._TASK_NAME, 'os_type', 'invalid')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._check_os_type,
@@ -253,7 +257,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     """Ensure a CrOS Task doesn't have launch control settings."""
     self.config.set(self._TASK_NAME, 'os_type', 'CrOS')
     self.config.set(self._TASK_NAME, 'branches', 'shamu-userdebug')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._check_os_type,
@@ -262,7 +266,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testLaunchControlForNonCrOS(self):
     """Ensure an android Task has launch control settings."""
     self.config.set(self._TASK_NAME, 'os_type', 'android')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._check_os_type,
@@ -270,13 +274,13 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
 
   def testGetTestbedCount(self):
     """Ensure testbed count can be successfully parsed."""
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertEqual(task_config._get_testbed_dut_count('sharu-2'), 2)
 
   def testNoTestbedForCrOS(self):
     """Ensure CrOS task won't specify testbed parameters."""
     self.config.set(self._TASK_NAME, 'boards', 'sharu-2')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     task_info = task_config._read_task_section(self._TASK_NAME)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._check_testbed_parameter,
@@ -285,7 +289,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testInvalidBoardFamilies(self):
     """Ensure to raise exception when a board family is invalid."""
     self.config.set(self._TASK_NAME, 'board_families', 'fake_one')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,
                       self._TASK_NAME)
@@ -293,7 +297,27 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
   def testInvalidExcludeBoardFamilies(self):
     """Ensure to raise exception when an exclude board family is invalid."""
     self.config.set(self._TASK_NAME, 'exclude_board_families', 'fake_one')
-    task_config = task_config_reader.TaskConfig(self.config)
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._read_task_section,
                       self._TASK_NAME)
+
+  def testCustomBuilder(self):
+    """Ensure builder information can be set by user."""
+    self.config.set(self._TASK_NAME, 'bb_builder', 'test_builder')
+    self.config.set(self._TASK_NAME, 'bb_bucket', 'test_bucket')
+    self.config.set(self._TASK_NAME, 'bb_project', 'test_project')
+
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
+    self.assertEqual(tasks[0].bb_builder, 'test_builder')
+    self.assertEqual(tasks[0].bb_bucket, 'test_bucket')
+    self.assertEqual(tasks[0].bb_project, 'test_project')
+
+  def testDefaultBuilder(self):
+    """Ensure builder information is set by TaskConfig if not set by user."""
+    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
+    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
+    self.assertEqual(tasks[0].bb_builder, self._DEFAULT_BUILDER.builder)
+    self.assertEqual(tasks[0].bb_bucket, self._DEFAULT_BUILDER.bucket)
+    self.assertEqual(tasks[0].bb_project, self._DEFAULT_BUILDER.project)

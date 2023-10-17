@@ -145,6 +145,12 @@ class Task(object):
           run_via_trv2, a boolean to specify if current task should be scheduled
             to run via CFT and trv2 test execution path. Will only be considered
             if run_via_cft is set to true.
+          bb_bucket, a string specifying which buildbucket bucket a given task
+            should be scheduled to.
+          bb_builder, a string specifying which buildbucket builder a given task
+            should be scheduled to.
+          bb_project, a string specifying which buildbucket project a given task
+            should be scheduled to.
 
 
       board_family_config: A board family dictionary mapping board_family name
@@ -192,6 +198,9 @@ class Task(object):
     self.gms_core_package = task_info.gms_core_package
     self.ddd_suite = task_info.ddd_suite
     self.run_via_trv2 = task_info.run_via_trv2
+    self.bb_bucket = task_info.bb_bucket
+    self.bb_builder = task_info.bb_builder
+    self.bb_project = task_info.bb_project
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -607,6 +616,9 @@ class Task(object):
         'gms_core_package' : self.gms_core_package,
         'ddd_suite' :self.ddd_suite,
         'run_via_trv2': self.run_via_trv2,
+        'bb_bucket': self.bb_bucket,
+        'bb_builder': self.bb_builder,
+        'bb_project': self.bb_project,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

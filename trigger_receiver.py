@@ -14,6 +14,8 @@ import rest_client
 import StringIO
 import task_config_reader
 
+from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
+
 
 
 class TriggerReceiver(object):
@@ -24,6 +26,17 @@ class TriggerReceiver(object):
 
     Its job is to fetch triggers from config files and trigger them.
     """
+
+    # Set default builder based on the env.
+    builder_name = constants.Buildbucket.STAGING_BUILDER
+    if (constants.environment() == constants.RunningEnv.ENV_PROD
+      and constants.application_id() == constants.AppID.PROD_APP):
+      builder_name = constants.Buildbucket.PROD_BUILDER
+
+    builder = builder_common_pb2.BuilderID(project=constants.Buildbucket.PROJECT,
+                                        bucket=constants.Buildbucket.BUCKET,
+                                        builder=builder_name)
+
     self._build_client = rest_client.BuildBucketBigqueryClient(
         rest_client.BaseRestClient(
             constants.RestClient.BIGQUERY_CLIENT.scopes,
@@ -38,7 +51,7 @@ class TriggerReceiver(object):
     if fake:
       self._task_config = task_config_reader.TaskConfig(
           config_reader.ConfigReader(
-              file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE))
+              file_getter.TEST_SUITE_SCHEDULER_CONFIG_FILE), builder)
       fake_lab_config_reader = config_reader.ConfigReader(
           file_getter.TEST_LAB_CONFIG_FILE)
       self._lab_config = config_reader.LabConfig(fake_lab_config_reader)
@@ -46,7 +59,7 @@ class TriggerReceiver(object):
       file_getter.clone_config()
       self._task_config = task_config_reader.TaskConfig(
           config_reader.ConfigReader(
-                file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE))
+                file_getter.NEW_SUITE_SCHEDULER_CONFIG_FILE), builder)
       lab_config_reader = config_reader.ConfigReader(file_getter.NEW_LAB_CONFIG_FILE)
       self._lab_config = config_reader.LabConfig(lab_config_reader)
 

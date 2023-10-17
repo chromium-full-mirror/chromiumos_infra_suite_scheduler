@@ -81,6 +81,9 @@ COMMON_TASK_ENTRIES = [
     'gms_core_package',
     'ddd_suite',
     'run_via_trv2',
+    'bb_bucket',
+    'bb_builder',
+    'bb_project'
 ]
 
 # Namedtuple for storing task info.
@@ -103,14 +106,16 @@ class TaskConfig(object):
 
   _ALLOWED_HEADER = set(COMMON_TASK_ENTRIES + ['owner', 'run_on'])
 
-  def __init__(self, config_reader, is_sanity=False):
+  def __init__(self, config_reader, default_builder, is_sanity=False):
     """Initialize a TaskConfig to generate task list from config file.
 
     Args:
       config_reader: a ConfigReader object to read task config.
+      default_builder: a BuilderID where a task should be sent by default.
       is_sanity: a boolean; true if we are running in sanity env.
     """
     self._config_reader = config_reader
+    self.default_builder = default_builder
     logging.info('Config contains entries: %s.',
                  ', '.join(self._config_reader.sections()))
     self.is_sanity = is_sanity
@@ -306,6 +311,16 @@ class TaskConfig(object):
     ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
     run_via_trv2 = bool(self._config_reader.getboolean(section, 'run_via_trv2'))
 
+    bb_bucket = self._config_reader.getstring(section, 'bb_bucket')
+    if not bb_bucket:
+      bb_bucket = self.default_builder.bucket
+    bb_builder = self._config_reader.getstring(section, 'bb_builder')
+    if not bb_builder:
+      bb_builder = self.default_builder.builder
+    bb_project = self._config_reader.getstring(section, 'bb_project')
+    if not bb_project:
+      bb_project = self.default_builder.project
+
     priority = self._config_reader.getint(section, 'priority')
     # Default priority is not needed for suites pool and other pools with
     # qs_account attached, because they have enabled quota scheduler.
@@ -403,6 +418,9 @@ class TaskConfig(object):
         gms_core_package = gms_core_package,
         ddd_suite = ddd_suite,
         run_via_trv2 = run_via_trv2,
+        bb_bucket = bb_bucket,
+        bb_builder = bb_builder,
+        bb_project = bb_project
     )
 
   def _validate_task_section(self, task_info):

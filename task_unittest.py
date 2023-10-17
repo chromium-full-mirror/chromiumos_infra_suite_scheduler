@@ -694,6 +694,22 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     self.assertEqual(jobs[0].build_target.name, 'hatch-kernelnext')
     self.assertEqual(jobs[0].model.value, 'akemi')
 
+  def testScheduleJobPassesBuilderInfo(self):
+    """Test record a schedule job with builder information."""
+    new_task = task.Task(
+        task_config_reader.TaskInfo(
+            name=self.NAME,
+            suite=self.SUITE,
+            branch_specs=['>=tot-2'],
+            boards='coral',
+            os_type=build_lib.OS_TYPE_CROS,
+            bb_bucket="foo-bucket",
+            bb_builder="foo-builder",
+            bb_project="foo-project"))
+
+    self.assertEqual(new_task.bb_bucket, "foo-bucket")
+    self.assertEqual(new_task.bb_builder, "foo-builder")
+    self.assertEqual(new_task.bb_project, "foo-project")
 
 class TaskBaseMultiDUTsTestCase(unittest.TestCase):
 
