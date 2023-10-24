@@ -15,6 +15,8 @@ import build_lib
 import task_executor
 import tot_manager
 
+from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
+
 from multi_duts_lib import BuildTarget, convert_secondary_targets_to_string
 
 # The max lifetime of a suite scheduled by suite scheduler
@@ -417,6 +419,18 @@ class Task(object):
       logging.warning('Failed to insert row: %r', self.job_section)
     return self.is_pushed
 
+  def get_builder(self):
+    """Get a BuilderID based on task fields.
+
+    Returns:
+      BuilderID, based on task.
+    """
+    return builder_common_pb2.BuilderID(
+      project=self.bb_project,
+      bucket=self.bb_bucket,
+      builder=self.bb_builder,
+    )
+
   def _model_to_board_dict(self, models_by_board):
     """Build a model to board dict based on model by boards dict."""
     d = {}
@@ -629,6 +643,12 @@ class Task(object):
     self.is_pushed = True
 
   def _generate_tag(self):
+    """Generates tag for a given task. If we lease by tag, guarantees all tasks
+    will share a suite and builder.
+
+    Returns:
+      A string of the form <suite>.<project>.<bucket>.<builder>
+    """
     return "{0}.{1}.{2}.{3}".format(self.suite, self.bb_project, self.bb_bucket, self.bb_builder)
 
   def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):

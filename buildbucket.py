@@ -49,11 +49,8 @@ class BuildbucketRunError(Exception):
 
 class TestPlatformClient(object):
   """prpc client for cros_test_platform, aka frontdoor."""
-  def __init__(self, address, project, bucket, builder):
+  def __init__(self, address):
     self.client = _get_client(address)
-    self.builder = builder_common_pb2.BuilderID(project=project,
-                                         bucket=bucket,
-                                         builder=builder)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
 
@@ -104,8 +101,9 @@ class TestPlatformClient(object):
     if not requests:
       return []
     try:
+      builder = self._get_builder(tasks)
       requests_json = '{ "requests": { %s } }' % ', '.join(requests)
-      req_build = self._build_request(requests_json, req_tags)
+      req_build = self._build_request(requests_json, req_tags, builder)
       logging.debug('Raw request to buildbucket: %r', req_build)
 
       if (self.running_env == constants.RunningEnv.ENV_STANDALONE
@@ -149,23 +147,47 @@ class TestPlatformClient(object):
                                      credentials=cred,
                                      timeout=PRPC_TIMEOUT_SEC)
 
-  def _build_request(self, reqs_json, tags):
+  def _build_request(self, reqs_json, tags, builder):
     """Generate ScheduleBuildRequest for calling buildbucket.
 
     Args:
       reqs_json: A json string of requests.
       tags: A list of tags for the buildbucket build.
+      builder: The buildbucket builder the request should be sent to.
 
     Returns:
       A ScheduleBuildRequest instance.
     """
     requests_struct = struct_pb2.Struct()
     recipe_struct = json_format.Parse(reqs_json, requests_struct)
-    return builds_service_pb2.ScheduleBuildRequest(builder=self.builder,
+    return builds_service_pb2.ScheduleBuildRequest(builder=builder,
                                                    properties=recipe_struct,
                                                    request_id=str(
                                                        uuid.uuid1()),
                                                    tags=tags)
+
+  def _get_builder(self, tasks):
+    """Gets the builder for a list of tasks.
+
+    Each task should have the same builder ID (we use the tag functionality of
+    the task queue to enforce that). If multiple builder IDs are found, we
+    raise an error to avoid processing.
+
+    Args:
+      tasks: A list of tasks.
+
+    Returns:
+      builder: A builder_common_pb2.BuilderID instance.
+
+    Raises:
+      ValueError: If multiple builder IDs are set.
+    """
+    first_task_builder = _infer_builder_from_task(tasks[0])
+
+    if all(_infer_builder_from_task(task) == first_task_builder for task in tasks):
+      return first_task_builder
+
+    raise ValueError("all tasks must share the same builder")
 
   def _gen_service_account_key(self, sa):
     """Generate credentials to authorize the call.
@@ -328,6 +350,22 @@ def _scheduling_for_pool(pool):
     return ctp_request.Request.Params.Scheduling(managed_pool=mp.Value(pool))
   return ctp_request.Request.Params.Scheduling(unmanaged_pool=pool)
 
+def _infer_builder_from_task(task):
+  """Infer the builder defined by users.
+
+  Args:
+    task: A task loaded from suite queue.
+
+  Returns:
+    builder: A builder_common_pb2.BuilderID instance.
+  """
+  task_params = task.extract_params()
+
+  return builder_common_pb2.BuilderID(
+      project=task_params.get("bb_project", constants.Buildbucket.PROJECT),
+      bucket=task_params.get("bb_bucket", constants.Buildbucket.BUCKET),
+      builder=task_params.get("bb_builder", constants.get_default_builder_by_env()),
+    )
 
 # Also see: A copy of this function in swarming_lib.py.
 def _infer_build_from_task_params(task_params):

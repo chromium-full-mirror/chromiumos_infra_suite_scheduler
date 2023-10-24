@@ -59,6 +59,19 @@ class Buildbucket(object):
   # in swarming.
   MULTIREQUEST_SIZE = 25
 
+def get_default_builder_by_env():
+  """Returns the appropriate builder name.
+
+  Returns:
+    If this instance is running on prod GAE, "cros_test_platform".
+    If this instance is running anywhere else, "cros_test_platform-dev".
+  """
+  builder = Buildbucket.STAGING_BUILDER
+  if (environment() == RunningEnv.ENV_PROD
+      and application_id() == AppID.PROD_APP):
+    builder = Buildbucket.PROD_BUILDER
+
+  return builder
 
 class BaseEvent(object):
   """Constants used for base_event."""

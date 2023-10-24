@@ -17,7 +17,7 @@ import file_getter
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
-from chromite.third_party.infra_libs.buildbucket.proto import build_pb2
+from chromite.third_party.infra_libs.buildbucket.proto import build_pb2, builder_common_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
 from google.protobuf import json_format
@@ -101,8 +101,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
     patcher = mock.patch('buildbucket._get_client',
                          return_value=self._get_client(ADDR))
     patcher.start()
-    self.client = buildbucket.TestPlatformClient(ADDR, 'foo-proj',
-                                                 'foo-bucket', 'foo-builder')
+    self.client = buildbucket.TestPlatformClient(ADDR)
     self.addCleanup(patcher.stop)
     self.get_android_boards_list = buildbucket.get_android_boards_list
     self.testbed = testbed.Testbed()
@@ -396,6 +395,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.assertEqual(actual, 0,
                      "BB client called %s times, expected 0"% actual)
 
+  def _extract_builder_from_bb_client(self):
+    return self.fake_client.called_with_requests[0].builder
+
   def _extract_request_map_from_bb_client(self):
     return self.fake_client.called_with_requests[0].properties['requests']
 
@@ -471,6 +473,46 @@ class TestTaskExecutions(TestPlatformClientTestCase):
         3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_not_called()
+
+  def testCustomBuilderTestExecution(self):
+    suite = _get_suite_params(board='fake_build', model='fake_model')
+    suite['task_id'] = FAKE_UUID
+    suite['bb_project'] = 'foo-project'
+    suite['bb_bucket'] = 'foo-bucket'
+    suite['bb_builder'] = 'foo-builder'
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    self.client.multirequest_run(tasks, 'fake_suite')
+    self._assert_bb_client_called()
+    self.assertEqual(self._extract_builder_from_bb_client(), builder_common_pb2.BuilderID(
+      project="foo-project",
+      bucket="foo-bucket",
+      builder="foo-builder",
+    ))
+
+  def testBuilderExecutionFailsWithMultipleBuckets(self):
+    suite1 = _get_suite_params(board='fake_build', model='fake_model')
+    suite1['task_id'] = FAKE_UUID
+    suite1['bb_project'] = 'foo-project'
+    suite1['bb_bucket'] = 'foo-bucket'
+    suite1['bb_builder'] = 'foo-builder'
+
+    suite2 = _get_suite_params(board='fake_build', model='fake_model')
+    suite2['task_id'] = FAKE_UUID
+    suite2['bb_project'] = 'bar-project'
+    suite2['bb_bucket'] = 'bar-bucket'
+    suite2['bb_builder'] = 'bar-builder'
+
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite1)
+    task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite2)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+    executed = self.client.multirequest_run(tasks, 'fake_suite')
+    self.assertEqual(len(executed), 0)
+    self._assert_bb_client_not_called()
+
 
 
 def _struct_to_ctp_request(struct_pb2):
