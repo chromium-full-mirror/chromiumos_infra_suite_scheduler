@@ -622,11 +622,14 @@ class Task(object):
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
-                       tag=self.suite,
+                       tag=self._generate_tag(),
                        **suite_job_parameters)
     # NOTE: Logging removed due to LogExplorer limitations.
     #logging.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
+
+  def _generate_tag(self):
+    return "{0}.{1}.{2}.{3}".format(self.suite, self.bb_project, self.bb_bucket, self.bb_builder)
 
   def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):
     """Schedule tasks with branch builds.

@@ -181,7 +181,7 @@ def _push_tasks(suite, count):
   """Push count tasks in the executor queue for suite."""
   for i in range(count):
     task_executor.push(
-        task_executor.SUITES_QUEUE, tag=suite, suite=suite, num=i + 1)
+        task_executor.SUITES_QUEUE, tag="{0}.foo.bar.baz".format(suite), suite=suite, num=i + 1)
 
 
 if __name__ == '__main__':

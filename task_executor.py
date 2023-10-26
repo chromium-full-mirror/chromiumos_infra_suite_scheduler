@@ -144,4 +144,4 @@ def push(queue_name, tag=None, **suite_kwargs):
 
 
 def _suite(tasks):
-  return tasks[0].tag
+  return tasks[0].extract_params().get("suite")
