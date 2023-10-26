@@ -288,7 +288,7 @@ def _form_test_platform_request(task_params):
   if params.run_via_cft:
     include_tags = task_params.get('include_tags', None)
     exclude_tags = task_params.get('exclude_tags', None)
-    include_names = task_params.get('inlcude_names', None)
+    include_names = task_params.get('include_names', None)
     exclude_names = task_params.get('exclude_names', None)
     if include_tags or exclude_tags or include_names or exclude_names:
       request.test_plan.tag_criteria.CopyFrom(
