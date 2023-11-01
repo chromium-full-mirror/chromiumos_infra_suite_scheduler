@@ -47,11 +47,7 @@ def new_task_processor():
   """Factory function to create a task processor appropriate to environment."""
   # Schedule tests to PROD_BUILDER if in production project, otherwise use
   # STAGING_BUILDER.
-  test_platform_client = buildbucket.TestPlatformClient(
-      constants.Buildbucket.HOST,
-      constants.Buildbucket.PROJECT,
-      constants.Buildbucket.BUCKET,
-      constants.get_default_builder_by_env())
+  test_platform_client = buildbucket.TestPlatformClient(constants.Buildbucket.HOST)
   return TaskProcessor(
       queue_name=SUITES_QUEUE,
       test_platform_client=test_platform_client,
