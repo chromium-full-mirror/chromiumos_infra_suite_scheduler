@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -25,6 +25,7 @@ class FakeFrontdoorClient(object):
     self.success_num = success_num
     self.error_num = error_num
     self.frontdoor_run_count = collections.defaultdict(list)
+    self.ctpv2_request_task_count = 0
 
   def multirequest_run(self, tasks, suite):
     executed_tasks = []
@@ -35,6 +36,18 @@ class FakeFrontdoorClient(object):
         raise ValueError('test')
       executed_tasks.append(task)
     self.frontdoor_run_count[suite].append(executed_tasks)
+    return executed_tasks
+
+  def ctpv2_request(self, tasks):
+    self.ctpv2_request_task_count += len(tasks)
+    executed_tasks = []
+    for task in tasks:
+      params = task.extract_params()
+      num = int(params.get('num'), 0)
+      if num > self.success_num and num <= self.success_num + self.error_num:
+        raise ValueError('test')
+      executed_tasks.append(task)
+    self.frontdoor_run_count['__CTPV2__'].append(executed_tasks)
     return executed_tasks
 
 
@@ -82,6 +95,29 @@ class TaskExecutorTestCase(unittest.TestCase):
     # After batch_execute runs, the extra tasks should remain in the queue.
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(extra_num, len(tasks))
+
+  def testBatchExecuteCTPv2Task(self):
+    """Test task_executor executes tasks not greater than the BATCH_SIZE."""
+    batch_size = 10
+    multirequest_size = 1
+    _push_tasks('__CTPV2__', batch_size)
+
+    frontdoor_client = FakeFrontdoorClient()
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=frontdoor_client,
+        options=task_executor.Options(
+            batch_size=batch_size,
+            multirequest_size=multirequest_size,
+            per_suite_multirequest_size={}))
+    task_processor.batch_execute()
+
+    count = 0
+    for tasks in frontdoor_client.frontdoor_run_count['__CTPV2__']:
+      count += len(tasks)
+      self.assertLessEqual(len(tasks), multirequest_size)
+    self.assertEqual(count, batch_size)
+    self.assertEqual(frontdoor_client.ctpv2_request_task_count, batch_size)
 
   def testBatchExecuteTaskFailedFrontdoorTotally(self):
     """Test task_executor fails at the beginning, and no tasks are deleted."""

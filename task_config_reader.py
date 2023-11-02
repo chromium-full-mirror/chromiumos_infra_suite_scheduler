@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -83,7 +83,10 @@ COMMON_TASK_ENTRIES = [
     'run_via_trv2',
     'bb_bucket',
     'bb_builder',
-    'bb_project'
+    'bb_project',
+    'run_via_ctpv2',
+    'karbon_filters',
+    'koffee_filters',
 ]
 
 # Namedtuple for storing task info.
@@ -310,6 +313,9 @@ class TaskConfig(object):
     gms_core_package = self._config_reader.getstring(section, 'gms_core_package')
     ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
     run_via_trv2 = bool(self._config_reader.getboolean(section, 'run_via_trv2'))
+    run_via_ctpv2 = bool(self._config_reader.getboolean(section, 'run_via_ctpv2'))
+    karbon_filters = self._config_reader.getstring(section, 'karbon_filters')
+    koffee_filters = self._config_reader.getstring(section, 'koffee_filters')
 
     bb_bucket = self._config_reader.getstring(section, 'bb_bucket')
     if not bb_bucket:
@@ -420,7 +426,10 @@ class TaskConfig(object):
         run_via_trv2 = run_via_trv2,
         bb_bucket = bb_bucket,
         bb_builder = bb_builder,
-        bb_project = bb_project
+        bb_project = bb_project,
+        run_via_ctpv2 = run_via_ctpv2,
+        karbon_filters = karbon_filters,
+        koffee_filters = koffee_filters,
     )
 
   def _validate_task_section(self, task_info):

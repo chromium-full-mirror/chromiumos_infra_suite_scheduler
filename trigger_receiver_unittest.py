@@ -7,6 +7,8 @@
 
 import constants
 import datetime
+import logging
+import json
 import os
 import unittest
 
@@ -19,11 +21,15 @@ import task_config_reader
 import task_executor
 import time_converter
 import trigger_receiver
+import buildbucket
+import ctpv2_requester
 
 from chromite.third_party.infra_libs.buildbucket.proto import builder_common_pb2
 from google.appengine.api import taskqueue
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
+
+from google.protobuf import json_format
 
 # Ensure that SUITE_SCHEDULER_CONFIG_FILE is read only once.
 _SUITE_CONFIG_READER = config_reader.ConfigReader(
@@ -182,6 +188,14 @@ class FakeLabConfig(object):
         'coral': ['santa', 'astronaut'],
         'reef': ['electro'],
         'nami': ['akali', 'bard'],
+    }
+
+  def get_android_model_map(self):
+    """"Mock config_reader.LabConfig.get_android_model_map."""
+    return {
+      'pixel5': ['pixel5', 'pixel5a'],
+      'pixel6': ['pixel6', 'pixel6pro'],
+      'pixel7': ['pixel7'],
     }
 
 
@@ -401,6 +415,106 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     self.assertEqual(len(tasks), 1)
     self.assertIn('link-release', tasks[0].payload)
+
+  def testNewBuildWithBoardCtpv2(self):
+    """Test the new_build suite with an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'run_via_ctpv2', 'true')
+    self.fake_config.set(link_suite, 'boards', 'coral, atlas-kernelnext')
+    self.fake_config.set(link_suite, 'suite', 'fake-nearby-share')
+    self.fake_config.set(link_suite, 'include_tags', 'group:cross-device, cross-device_nearbyshare')
+    self.fake_config.set(link_suite, 'exclude_tags', 'cross-device_floss')
+    self.fake_config.set(link_suite, 'koffee_filters', json.dumps([
+      {
+        'container': {
+          'hostname': 'us-docker.pkg.dev',
+          'project': 'cros-registry/test-service',
+          'name': 'fake_filter'
+        },
+        'dependentContainers': [
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter'
+          },
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter_with_digest_and_tags',
+            'digest': 'sha256:fakedigest',
+            'tags': [
+              'fake_tag_1',
+              'fake_tag_2'
+            ]
+          }
+        ]
+      }
+    ]))
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    for task in tasks:
+      req = ctpv2_requester.CTPv2Request(task.extract_params())
+      logging.info('%s', json_format.MessageToJson(req.request))
+
+  def testNewBuildWithMultiBoardCtpv2(self):
+    """Test the new_build suite with an existing board family."""
+    link_suite = 'FakeLinkNewBuildTask'
+    self.fake_config.add_section(link_suite)
+    self.fake_config.set(link_suite, 'run_on', 'new_build')
+    self.fake_config.set(link_suite, 'run_via_ctpv2', 'true')
+    self.fake_config.set(link_suite, 'multi_dut_boards', 'coral;reef')
+    self.fake_config.set(link_suite, 'suite', 'fake-nearby-share')
+    self.fake_config.set(link_suite, 'include_tags', 'group:cross-device, cross-device_nearbyshare')
+    self.fake_config.set(link_suite, 'exclude_tags', 'cross-device_floss')
+    self.fake_config.set(link_suite, 'koffee_filters', json.dumps([
+      {
+        'container': {
+          'hostname': 'us-docker.pkg.dev',
+          'project': 'cros-registry/test-service',
+          'name': 'fake_filter'
+        },
+        'dependentContainers': [
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter'
+          },
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter_with_digest_and_tags',
+            'digest': 'sha256:fakedigest',
+            'tags': [
+              'fake_tag_1',
+              'fake_tag_2'
+            ]
+          }
+        ]
+      }
+    ]))
+    self._mock_config_reader.return_value = self.fake_config
+
+    queue = taskqueue.Queue(task_executor.SUITES_QUEUE)
+    suite_trigger = trigger_receiver.TriggerReceiver(fake=True)
+    suite_trigger.cron()
+
+    self.assertEqual(len(suite_trigger.event_results), 1)
+    self.assertEqual(suite_trigger.event_results['new_build'],
+                     [link_suite])
+    tasks = queue.lease_tasks(3600, 10, deadline=0.5)
+    for task in tasks:
+      req = ctpv2_requester.CTPv2Request(task.extract_params())
+      logging.info('%s', json_format.MessageToJson(req.request))
 
   def testNewBuildWithExistingBoardFamiliesAndBoards(self):
     """Test the new_build suite with an existing board family."""

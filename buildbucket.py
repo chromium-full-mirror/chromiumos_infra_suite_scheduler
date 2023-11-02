@@ -1,10 +1,11 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for interacting with Buildbucket."""
 
 import collections
 import datetime
+import json
 import logging
 import os
 import uuid
@@ -14,6 +15,7 @@ import analytics
 import build_lib
 import constants
 import file_getter
+import ctpv2_requester
 from multi_duts_lib import restruct_secondary_targets_from_string
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
@@ -53,6 +55,44 @@ class TestPlatformClient(object):
     self.client = _get_client(address)
     self.scope = 'https://www.googleapis.com/auth/userinfo.email'
     self.running_env = constants.environment()
+
+  def ctpv2request_run(self, tasks):
+    """Generate ctpv2 requests from task list.
+
+    Args:
+      tasks: The suite tasks to run.
+
+    Returns: list of executed tasks
+    """
+    executed_tasks = []
+    for task in tasks:
+      try:
+        params = task.extract_params()
+        if _should_skip(params):
+          continue
+        executed_tasks.append(task)
+
+        # Make ctpv2 request
+        req = ctpv2_requester.CTPv2Request(params)
+
+        if (self.running_env == constants.RunningEnv.ENV_STANDALONE
+            or self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
+          # If running locally, use the staging service account.
+          sa_key = self._gen_service_account_key(
+              file_getter.STAGING_CLIENT_SECRETS_FILE)
+          cred = prpc_client.service_account_credentials(
+              service_account_key=sa_key)
+        else:
+          cred = prpc_client.service_account_credentials()
+
+        # Schedule request
+        builder = self._get_builder([task])
+        req.schedule(self, cred, builder)
+      except Exception as e: #pylint: disable=broad-except
+        logging.debug('Failed to schedule task: %r', task)
+        logging.exception(str(e))
+
+    return executed_tasks
 
   def multirequest_run(self, tasks, suite):
     """Call cros_test_platform Builder to schedule a batch of suite tests.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for buildbucket unittests."""
@@ -8,6 +8,7 @@ import json
 import mock
 import os
 import unittest
+import logging
 
 import constants
 import build_lib
@@ -16,6 +17,7 @@ import task_executor
 import file_getter
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
+from chromite.api.gen.chromiumos.test.api import ctp2_pb2 as ctpv2_request
 from chromite.api.gen.test_platform.suite_scheduler import analytics_pb2
 from chromite.third_party.infra_libs.buildbucket.proto import build_pb2, builder_common_pb2
 from google.appengine.api import taskqueue
@@ -67,6 +69,40 @@ def _get_suite_params(board='fake_board',
       'gms_core_package': "latest_stable",
       'ddd_suite': True,
       'run_via_trv2': True,
+  }
+
+
+def _get_ctpv2_suite_params(build='R80.0.0',
+                            targets=[],
+                            karbon_filters=[],
+                            koffee_filters=[],
+                            suite='fake_suite',
+                            pool='MANAGED_POOL_QUOTA',
+                            analytics_name=None,
+                            ddd_suite=False):
+  return {
+      'build': build,
+      'analytics_name': analytics_name,
+      'suite': suite,
+      'num': 1,
+      'pool': pool,
+      'priority': 10,
+      'timeout': 12,
+      'timeout_mins': 4320,
+      'max_runtime_mins': 4320,
+      'run_via_cft': True,
+      'include_tags': 'a, b, c',
+      'exclude_tags': 'e, f, g',
+      'include_names': "*",
+      'exclude_names': "foo",
+      'android_image_version': "11",
+      'gms_core_package': "latest_stable",
+      'ddd_suite': ddd_suite,
+      'run_via_trv2': True,
+      'run_via_ctpv2': True,
+      'targets': json.dumps(targets),
+      'karbon_filters': json.dumps(karbon_filters),
+      'koffee_filters': json.dumps(karbon_filters),
   }
 
 
@@ -149,6 +185,65 @@ class TestPlatformClientTestCase(unittest.TestCase):
       self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
       self.assertEqual(req.params.software_attributes.build_target.name,
                        suite_kwargs[i]['board'])
+
+  def testFormTestPlatformV2RequestSuccessfully(self):
+    targets = [[{
+      'board': 'fake_board',
+      'model': 'fake_model',
+      'variant': 'fake_variant',
+      'build_type': 'release',
+      'test_source_build': 'fake_source_build',
+    }]]
+    karbon = [
+      {
+        'container': {
+          'hostname': 'us-docker.pkg.dev',
+          'project': 'cros-registry/test-service',
+          'name': 'fake_filter'
+        },
+        'dependentContainers': [
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter'
+          },
+          {
+            'hostname': 'us-docker.pkg.dev',
+            'project': 'cros-registry/test-service',
+            'name': 'fake_dependent_filter_with_digest_and_tags',
+            'digest': 'sha256:fakedigest',
+            'tags': [
+              'fake_tag_1',
+              'fake_tag_2'
+            ]
+          }
+        ]
+      }
+    ]
+    suite_kwargs = [_get_ctpv2_suite_params(build=b, targets=targets, karbon_filters=karbon) for b in ['R80.0.0', 'R100.0.0']]
+    for suite in suite_kwargs:
+      task_executor.push(task_executor.SUITES_QUEUE, tag='__CTPV2__', **suite)
+
+    tasks = self.queue.lease_tasks_by_tag(
+        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
+
+    self.client.ctpv2request_run(tasks)
+    self._assert_bb_client_called(times=2)
+
+    request_map = self._extract_ctpv2_request_map_from_bb_client()
+    request = _struct_to_ctpv2_request(request_map)
+    logging.info('%s', request)
+
+    self.assertEqual(request.pool, 'MANAGED_POOL_QUOTA')
+    self.assertEqual(len(request.targets), 1)
+    self.assertEqual(request.targets[0].hw_target.legacy_hw.board, 'fake_board')
+    self.assertEqual(request.targets[0].hw_target.legacy_hw.model, 'fake_model')
+    self.assertEqual(len(request.targets[0].sw_targets), 1)
+    self.assertEqual(request.targets[0].sw_targets[0].legacy_sw.build, 'release')
+    self.assertEqual(request.targets[0].sw_targets[0].legacy_sw.variant, 'fake_variant')
+    self.assertEqual(request.targets[0].sw_targets[0].legacy_sw.gcs_path, ('gs://chromeos-image-archive/%s' % 'fake_source_build'))
+    self.assertEqual(len(request.karbon_filters), 1)
+    self.assertEqual(request.suite_request.test_suite.name, 'fake_suite')
 
   def testGetAndroidBoardsList(self):
     android_boards_list = self.get_android_boards_list(file_getter.TEST_LAB_CONFIG_FILE)
@@ -401,6 +496,9 @@ class TestPlatformClientTestCase(unittest.TestCase):
   def _extract_request_map_from_bb_client(self):
     return self.fake_client.called_with_requests[0].properties['requests']
 
+  def _extract_ctpv2_request_map_from_bb_client(self):
+    return self.fake_client.called_with_requests[0].properties['ctpv2_request']
+
   def _extract_tags_from_bb_client(self):
     return [
         '%s:%s' % (t.key, t.value)
@@ -526,3 +624,16 @@ def _struct_to_ctp_request(struct_pb2):
   """
   json = json_format.MessageToJson(struct_pb2)
   return json_format.Parse(json, ctp_request.Request())
+
+
+def _struct_to_ctpv2_request(struct_pb2):
+  """Transform google struct proto to ctpv2.
+
+  Args:
+    struct_pb2: A struct_pb2 instance.
+
+  Returns:
+    A ctpv2_request instance.
+  """
+  json = json_format.MessageToJson(struct_pb2)
+  return json_format.Parse(json, ctpv2_request.CTPv2Request())

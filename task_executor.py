@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -92,8 +92,11 @@ class TaskProcessor(object):
       tasks = self._limit_heavy_tasks(tasks)
       executed_tasks = []
       try:
-        executed_tasks.extend(
-            self.test_platform_client.multirequest_run(tasks, _suite(tasks)))
+        if _suite(tasks) == '__CTPV2__':
+          executed_tasks.extend(self.test_platform_client.ctpv2_request(tasks))
+        else:
+          executed_tasks.extend(
+              self.test_platform_client.multirequest_run(tasks, _suite(tasks)))
       except (ValueError,
               buildbucket.BuildbucketRunError,
               apiclient.errors.HttpError) as e:

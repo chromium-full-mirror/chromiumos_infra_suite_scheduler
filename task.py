@@ -7,6 +7,7 @@
 
 from distutils import version
 from collections import defaultdict
+import json
 import logging
 import uuid
 
@@ -200,6 +201,7 @@ class Task(object):
     self.gms_core_package = task_info.gms_core_package
     self.ddd_suite = task_info.ddd_suite
     self.run_via_trv2 = task_info.run_via_trv2
+    self.run_via_ctpv2 = task_info.run_via_ctpv2
     self.bb_bucket = task_info.bb_bucket
     self.bb_builder = task_info.bb_builder
     self.bb_project = task_info.bb_project
@@ -215,6 +217,16 @@ class Task(object):
           t.strip() for t in task_info.lc_targets.split(',')]
     else:
       self.launch_control_targets = []
+
+    if task_info.karbon_filters:
+      self.karbon_filters = json.loads(task_info.karbon_filters)
+    else:
+      self.karbon_filters = []
+
+    if task_info.koffee_filters:
+      self.koffee_filters = json.loads(task_info.koffee_filters)
+    else:
+      self.koffee_filters = []
 
     if task_info.boards:
       self.boards = [t.strip() for t in task_info.boards.split(',')]
@@ -651,6 +663,62 @@ class Task(object):
     """
     return "{0}.{1}.{2}.{3}".format(self.suite, self.bb_project, self.bb_bucket, self.bb_builder)
 
+  def _push_ctpv2_suite(
+      self,
+      task_id=None,
+      targets=None,
+      build=None):
+    """Schedule suite job for the task by pushing suites to SuiteQueue.
+
+    Args:
+      task_id: the id to track this task in exectuion.
+      targets: the list of board targets against which this suite job run.
+      build: the build number of this suite job.
+    """
+    suite_job_parameters = {
+        'build': build,
+        'analytics_name': self.analytics_name,
+        'dimensions': self.dimensions,
+        'force': self.force,
+        'job_retry': self.job_retry,
+        'max_runtime_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
+        'name': self.name,
+        'no_delay': self.no_delay,
+        'no_wait_for_results': not self.job_retry,
+        'num': self.num,
+        'pool': self.pool,
+        'priority': self.priority,
+        'qs_account': self.qs_account,
+        'suite': self.suite,
+        'task_id': task_id,
+        'timeout': self.timeout,
+        'timeout_mins': _JOB_MAX_RUNTIME_MINS_DEFAULT,
+        'run_via_cft': self.run_via_cft,
+        'include_tags': self.include_tags,
+        'exclude_tags': self.exclude_tags,
+        'include_names': self.include_names,
+        'exclude_names': self.exclude_names,
+        'android_image_version' : self.android_image_version,
+        'gms_core_package' : self.gms_core_package,
+        'ddd_suite' :self.ddd_suite,
+        'run_via_trv2': self.run_via_trv2,
+        'run_via_ctpv2': self.run_via_ctpv2,
+        'targets': json.dumps(targets),
+        'karbon_filters': json.dumps(self.karbon_filters),
+        'koffee_filters': json.dumps(self.koffee_filters),
+        'bb_bucket': self.bb_bucket,
+        'bb_builder': self.bb_builder,
+        'bb_project': self.bb_project,
+    }
+    logging.info('Pushing ctpv2 suite %s with %s',
+                    self.suite, suite_job_parameters)
+    task_executor.push(task_executor.SUITES_QUEUE,
+                       tag='__CTPV2__',
+                       **suite_job_parameters)
+    # NOTE: Logging removed due to LogExplorer limitations.
+    #logging.info('Pushing task %r into taskqueue', suite_job_parameters)
+    self.is_pushed = True
+
   def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):
     """Schedule tasks with branch builds.
 
@@ -661,6 +729,7 @@ class Task(object):
         |base_event.get_firmware_builds|.
       configs: A config_reader.Configs object.
     """
+    build_boards = defaultdict(list)
     lab_config = configs.lab_config
     models_by_board = lab_config.get_cros_model_map() if lab_config else {}
     model_agnostic_cros_builds = set()
@@ -769,6 +838,11 @@ class Task(object):
             firmware_ro_build,
             read_only=True)
 
+      if self.run_via_ctpv2:
+        build = milestone + '-' + manifest
+        build_boards[build].append((board, passed_model, build_type, test_source_build))
+        continue
+
       # Board above is used as build target to control the CrOS image.
       # The following part is to assign models for lab boards, where
       # the suffix should be removed.
@@ -817,6 +891,58 @@ class Task(object):
           self.job_section.add_schedule_job(
               board, explicit_model, task_id=task_id)
 
+    if not self.run_via_ctpv2:
+      return
+    for build, board_infos in build_boards.items():
+      targets = []
+      for board, passed_model, build_type, test_source_build in board_infos:
+        hwtest_board = build_lib.reshape_board(board)
+        variant = board.replace(hwtest_board, '').lstrip('-')
+        models = models_by_board.get(hwtest_board, [None])
+        for model in models:
+          if ((passed_model is not None and model == passed_model) or
+            passed_model is None):
+            full_model_name = '%s_%s' % (hwtest_board, model)
+            # Respect exclude first.
+            if self.exclude_models and full_model_name in self.exclude_models:
+              logging.debug("Skip model %s as it's in exclude model list %s",
+                            model, self.exclude_models)
+              continue
+
+            if self.models and full_model_name not in self.models:
+              logging.debug("Skip model %s as it's not in support model list %s",
+                            model, self.models)
+              continue
+
+            explicit_model = model
+
+            if self.any_model:
+              explicit_model = None
+              unique_build = str(cros_build)
+              if unique_build in model_agnostic_cros_builds:
+                # Skip since we've already run with no explicit model set.
+                msg = "Skip model %s as any_model enabled for this job." % model
+                self.job_section.add_schedule_job(board, model, msg=msg)
+                continue
+              model_agnostic_cros_builds.add(unique_build)
+
+            targets.append([{
+              'board': hwtest_board,
+              'model': explicit_model,
+              'variant': variant,
+              'build_type': build_type,
+              'test_source_build': test_source_build}])
+      task_id = str(uuid.uuid1())
+      self._push_ctpv2_suite(
+        task_id=task_id,
+        targets=targets,
+        build=build,
+      )
+
+      # Analytics table stores the build target instead of the lab board.
+      self.job_section.add_schedule_job(
+          board, explicit_model, task_id=task_id)
+
   def _schedule_multi_duts_cros_builds(self, build_dict,
                                        recent_build_dict, configs):
     """Schedule multi-DUTs tasks with branch builds.
@@ -828,6 +954,7 @@ class Task(object):
         with a wider time range.
       configs: A config_reader.Configs object.
     """
+    build_boards = defaultdict(list)
     build_targets_dict = self._get_multi_duts_build_targets_dict(configs)
     android_boards_list = configs.lab_config.get_android_model_map().keys()
     model_agnostic_builds = set()
@@ -864,6 +991,7 @@ class Task(object):
       # the suffix should be removed.
       hwtest_board = build_lib.reshape_board(board)
       for group in build_targets_dict.get(board):
+        targets = []
         joined_board_strings = '_'.join(dut.board for dut in group)
         build_tag = '%s_%s' % (joined_board_strings, cros_build)
         primary_dut = group[0]
@@ -880,6 +1008,10 @@ class Task(object):
           self.job_section.add_schedule_job(board, passed_model, msg=msg)
           continue
 
+        if self.run_via_ctpv2:
+          variant = board.replace(hwtest_board, '').lstrip('-')
+          targets.append((hwtest_board, primary_dut.model, variant, build_type, cros_build))
+
         # Determine cros builds for secondary DUTs from recent build dict.
         secondary_targets = []
         for s_dut in group[1:]:
@@ -887,6 +1019,8 @@ class Task(object):
             # We don't need to provision Android devices for CrOS test.
             secondary_targets.append(
               BuildTarget(s_dut.board, s_dut.model, None))
+            if self.run_via_ctpv2:
+              targets.append((s_dut.board, s_dut.model, None, build_type, None))
             continue
           s_key = (s_dut.board, None, build_type, milestone)
           s_manifest = recent_build_dict.get(s_key, '')
@@ -896,6 +1030,9 @@ class Task(object):
             s_hwtest_board = build_lib.reshape_board(s_dut.board)
             secondary_targets.append(
                 BuildTarget(s_hwtest_board, s_dut.model, s_cros_build))
+            if self.run_via_ctpv2:
+              s_variant = s_dut.board.replace(s_hwtest_board, '').lstrip('-')
+              targets.append((s_hwtest_board, s_dut.model, s_variant, build_type, s_cros_build))
         # Check if we get cros build for all secondary DUTs.
         if len(secondary_targets) != len(group[1:]):
           logging.info('Cannot determine cros version for all secondary'
@@ -904,6 +1041,12 @@ class Task(object):
 
         # Schedule task.
         model_agnostic_builds.add(build_tag)
+
+        if self.run_via_ctpv2:
+          build = milestone + '-' + manifest
+          build_boards[build].append(targets)
+          continue
+
         task_id = str(uuid.uuid1())
         self._push_suite(
           task_id = task_id,
@@ -917,6 +1060,32 @@ class Task(object):
         # Analytics table stores the build target instead of the lab board.
         self.job_section.add_schedule_job(
             board, primary_dut.model, task_id=task_id)
+
+    if not self.run_via_ctpv2:
+      return
+    for build, schedule_targets in build_boards.items():
+      targets = []
+      for build_targets in schedule_targets:
+        schedule_target = []
+        for board, model, variant, build_type, test_source_build in build_targets:
+          schedule_target.append({
+            'board': board,
+            'model': model,
+            'variant': variant,
+            'build_type': build_type,
+            'test_source_build': test_source_build})
+        if schedule_target:
+          targets.append(schedule_target)
+      task_id = str(uuid.uuid1())
+      self._push_ctpv2_suite(
+        task_id=task_id,
+        targets=targets,
+        build=build,
+      )
+
+      # Analytics table stores the build target instead of the lab board.
+      self.job_section.add_schedule_job(
+          board, model, task_id=task_id)
 
   def _schedule_launch_control_builds(self, launch_control_builds):
     """Schedule tasks with launch control builds.
