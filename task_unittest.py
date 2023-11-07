@@ -711,6 +711,20 @@ class TaskJobSectionTestCase(TaskBaseTestCase):
     self.assertEqual(new_task.bb_builder, "foo-builder")
     self.assertEqual(new_task.bb_project, "foo-project")
 
+
+  def testScheduleJobPassesImageBucket(self):
+    """Test record a schedule job with builder information."""
+    new_task = task.Task(
+        task_config_reader.TaskInfo(
+            name=self.NAME,
+            suite=self.SUITE,
+            branch_specs=['>=tot-2'],
+            boards='coral',
+            os_type=build_lib.OS_TYPE_CROS,
+            cros_image_bucket="foo-bucket"))
+
+    self.assertEqual(new_task.cros_image_bucket, "foo-bucket")
+
 class TaskBaseMultiDUTsTestCase(unittest.TestCase):
 
   NAME = 'fake_name'

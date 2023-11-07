@@ -135,10 +135,10 @@ class Task(object):
           exclude_tags, a comma separated list of tags that will be excluded while
             finding test cases for CFT test execution path. This will be used only if
             run_via_cft is set to true.
-          include_names, a comma separated list of test names (wildcard allowed) that 
+          include_names, a comma separated list of test names (wildcard allowed) that
             will be included while finding test cases for CFT test execution path.
             This will be used only if run_via_cft is set to true.
-          exclude_names, a comma separated list of test names (wildcard allowed) that 
+          exclude_names, a comma separated list of test names (wildcard allowed) that
             will be excluded while finding test cases for CFT test execution path.
             This will be used only if run_via_cft is set to true.
           android_image_version, pinned android image version for android provisioning.
@@ -154,6 +154,8 @@ class Task(object):
             should be scheduled to.
           bb_project, a string specifying which buildbucket project a given task
             should be scheduled to.
+          cros_image_bucket, a string specifying which GCS bucket a task should
+            fetch CrOS images from.
 
 
       board_family_config: A board family dictionary mapping board_family name
@@ -205,6 +207,7 @@ class Task(object):
     self.bb_bucket = task_info.bb_bucket
     self.bb_builder = task_info.bb_builder
     self.bb_project = task_info.bb_project
+    self.cros_image_bucket = task_info.cros_image_bucket
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -645,6 +648,7 @@ class Task(object):
         'bb_bucket': self.bb_bucket,
         'bb_builder': self.bb_builder,
         'bb_project': self.bb_project,
+        'cros_image_bucket': self.cros_image_bucket
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
@@ -709,6 +713,7 @@ class Task(object):
         'bb_bucket': self.bb_bucket,
         'bb_builder': self.bb_builder,
         'bb_project': self.bb_project,
+        'cros_image_bucket': self.cros_image_bucket,
     }
     logging.info('Pushing ctpv2 suite %s with %s',
                     self.suite, suite_job_parameters)
