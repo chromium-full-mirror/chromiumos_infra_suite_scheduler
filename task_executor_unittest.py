@@ -38,7 +38,7 @@ class FakeFrontdoorClient(object):
     self.frontdoor_run_count[suite].append(executed_tasks)
     return executed_tasks
 
-  def ctpv2_request(self, tasks):
+  def ctpv2request_run(self, tasks):
     self.ctpv2_request_task_count += len(tasks)
     executed_tasks = []
     for task in tasks:

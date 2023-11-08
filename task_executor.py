@@ -93,7 +93,7 @@ class TaskProcessor(object):
       executed_tasks = []
       try:
         if _tag(tasks) == '__CTPV2__':
-          executed_tasks.extend(self.test_platform_client.ctpv2_request(tasks))
+          executed_tasks.extend(self.test_platform_client.ctpv2request_run(tasks))
         else:
           executed_tasks.extend(
               self.test_platform_client.multirequest_run(tasks, _suite(tasks)))
