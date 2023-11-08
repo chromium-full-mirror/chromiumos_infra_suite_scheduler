@@ -92,7 +92,7 @@ class TaskProcessor(object):
       tasks = self._limit_heavy_tasks(tasks)
       executed_tasks = []
       try:
-        if _suite(tasks) == '__CTPV2__':
+        if _tag(tasks) == '__CTPV2__':
           executed_tasks.extend(self.test_platform_client.ctpv2_request(tasks))
         else:
           executed_tasks.extend(
@@ -138,6 +138,10 @@ def push(queue_name, tag=None, **suite_kwargs):
   """
   queue = taskqueue.Queue(queue_name)
   queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
+
+
+def _tag(tasks):
+  return tasks[0].tag
 
 
 def _suite(tasks):

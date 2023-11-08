@@ -100,7 +100,7 @@ class TaskExecutorTestCase(unittest.TestCase):
     """Test task_executor executes tasks not greater than the BATCH_SIZE."""
     batch_size = 10
     multirequest_size = 1
-    _push_tasks('__CTPV2__', batch_size)
+    _push_tasks('ctpv2-fake-suite', batch_size, '__CTPV2__')
 
     frontdoor_client = FakeFrontdoorClient()
     task_processor = task_executor.TaskProcessor(
@@ -213,11 +213,13 @@ class TaskExecutorTestCase(unittest.TestCase):
     self.assertEqual(extra_num, len(tasks))
 
 
-def _push_tasks(suite, count):
+def _push_tasks(suite, count, tag=''):
   """Push count tasks in the executor queue for suite."""
+  if tag == '':
+    tag = "{0}.foo.bar.baz".format(suite)
   for i in range(count):
     task_executor.push(
-        task_executor.SUITES_QUEUE, tag="{0}.foo.bar.baz".format(suite), suite=suite, num=i + 1)
+        task_executor.SUITES_QUEUE, tag=tag, suite=suite, num=i + 1)
 
 
 if __name__ == '__main__':
