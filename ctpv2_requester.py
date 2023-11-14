@@ -120,7 +120,7 @@ class CTPv2Request(object):
     if _key_not_none(target_dict, 'build_type'):
       sw_target.legacy_sw.build = target_dict['build_type']
     if _key_not_none(target_dict, 'test_source_build'):
-      sw_target.legacy_sw.gcs_path = buildbucket.get_gs_prefix(self.params) + target_dict['test_source_build']
+      sw_target.legacy_sw.gcs_path = buildbucket.GS_PREFIX + target_dict['test_source_build']
       self.req_tags.append(bb_common_pb2.StringPair(
         key='label-image',
         value=target_dict['test_source_build'],

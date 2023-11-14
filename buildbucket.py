@@ -17,7 +17,6 @@ import constants
 import file_getter
 import ctpv2_requester
 from multi_duts_lib import restruct_secondary_targets_from_string
-import utils
 
 from chromite.api.gen.test_platform import request_pb2 as ctp_request
 from components import auth
@@ -31,27 +30,8 @@ from oauth2client import service_account
 
 from google.protobuf import json_format, struct_pb2
 
-_DEFAULT_GS_BUCKET = 'chromeos-image-archive'
+GS_PREFIX = 'gs://chromeos-image-archive/'
 CONTAINER_METADATA_LOC = 'metadata/containers.jsonpb'
-
-def _format_gs_bucket(gs_bucket):
-  """Removes the `gs://` prefix as well as the `/` suffix."""
-  return utils.remove_prefix(gs_bucket, "gs://").rstrip("/")
-
-def get_gs_bucket(task_params):
-  """Fetches the GS bucket from the task. If not provided in task,
-  use default of `chromeos-image-archive."""
-  task_image_bucket = task_params.get("cros_image_bucket")
-
-  if task_image_bucket:
-    return _format_gs_bucket(task_image_bucket)
-
-  return _DEFAULT_GS_BUCKET
-
-def get_gs_prefix(task_params):
-  """Fetches a fully qualified (gs://<bucket>/) prefix for the GS bucket
-  apppropriate for the task."""
-  return 'gs://%s/' % get_gs_bucket(task_params)
 
 # The default prpc timeout(10 sec) is too short for the request_id
 # to propgate in buildbucket, and could not fully dedup the
@@ -295,10 +275,7 @@ def _form_test_platform_request(task_params):
   params.software_dependencies.add().chromeos_build = build
   params.software_attributes.build_target.name = task_params['board']
 
-  if task_params.get('cros_image_bucket'):
-   params.software_dependencies.add().chromeos_build_gcs_bucket = get_gs_bucket(task_params)
-
-  gs_url = get_gs_prefix(task_params) + task_params['test_source_build']
+  gs_url = GS_PREFIX + task_params['test_source_build']
   params.metadata.test_metadata_url = gs_url
   params.metadata.debug_symbols_archive_url = gs_url
   params.metadata.container_metadata_url = os.path.join(gs_url, CONTAINER_METADATA_LOC)

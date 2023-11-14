@@ -75,9 +75,3 @@ class UtilsTestCase(unittest.TestCase):
     """Test wait_for_value with wrong exception_to_raise."""
     self.assertRaises(ValueError, utils.wait_for_value,
                       half_func, exception_to_raise=KeyError)
-
-  def testRemovePrefixNoPrefix(self):
-    self.assertEqual("noprefix", utils.remove_prefix("noprefix", "prefix:"))
-
-  def testRemovePrefix(self):
-    self.assertEqual("eli", utils.remove_prefix("prefix:eli", "prefix:"))

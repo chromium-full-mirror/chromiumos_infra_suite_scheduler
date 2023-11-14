@@ -34,8 +34,7 @@ def _get_suite_params(board='fake_board',
                       suite='fake_suite',
                       pool='MANAGED_POOL_QUOTA',
                       cros_build='fake_cros_build',
-                      analytics_name=None,
-                      cros_image_bucket=''):
+                      analytics_name=None):
   return {
       'suite': suite,
       'board': board,
@@ -70,7 +69,6 @@ def _get_suite_params(board='fake_board',
       'gms_core_package': "latest_stable",
       'ddd_suite': True,
       'run_via_trv2': True,
-      'cros_image_bucket': cros_image_bucket,
   }
 
 
@@ -182,17 +180,11 @@ class TestPlatformClientTestCase(unittest.TestCase):
                       2 * 24 * 60 * 60)
       gs_url = ('gs://chromeos-image-archive/%s' %
                 suite_kwargs[i]['test_source_build'])
-
       self.assertEqual(req.params.metadata.test_metadata_url, gs_url)
       self.assertEqual(req.params.metadata.debug_symbols_archive_url, gs_url)
       self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
       self.assertEqual(req.params.software_attributes.build_target.name,
                        suite_kwargs[i]['board'])
-
-      gcs_bucket_software_dep = [dep for dep in
-                                 req.params.software_dependencies
-                                 if dep.chromeos_build_gcs_bucket]
-      self.assertEqual(len(gcs_bucket_software_dep), 0)
 
   def testFormTestPlatformV2RequestSuccessfully(self):
     targets = [[{
@@ -484,45 +476,6 @@ class TestPlatformClientTestCase(unittest.TestCase):
     self.client.multirequest_run(tasks, 'fake_suite')
     self._assert_bb_client_not_called()
 
-  def testTestPlatformRequestWithGCSImageBucket(self):
-    bucket_name = "eli"
-    suite_kwargs = [_get_suite_params(board='foo', cros_image_bucket=bucket_name)]
-    for suite in suite_kwargs:
-      task_executor.push(task_executor.SUITES_QUEUE, tag='fake_suite', **suite)
-
-    tasks = self.queue.lease_tasks_by_tag(
-        3600, constants.Buildbucket.MULTIREQUEST_SIZE, deadline=60)
-
-    self.client.multirequest_run(tasks, 'fake_suite')
-    self._assert_bb_client_called()
-
-    request_map = self._extract_request_map_from_bb_client()
-    request_list = [
-        _struct_to_ctp_request(v) for v in request_map.values()
-    ]
-    request_list.sort(
-        key=lambda req: req.params.software_attributes.build_target.name)
-    for i, req in enumerate(request_list):
-      gs_url = ('gs://%s/%s' %
-                (bucket_name, suite_kwargs[i]['test_source_build']))
-      self.assertEqual(req.params.metadata.test_metadata_url, gs_url)
-      self.assertEqual(req.params.metadata.debug_symbols_archive_url, gs_url)
-      expected_metadata_url = gs_url + "/metadata/containers.jsonpb"
-      self.assertEqual(req.params.metadata.container_metadata_url, expected_metadata_url)
-      self.assertEqual(req.test_plan.suite[0].name, suite_kwargs[i]['suite'])
-      self.assertEqual(req.params.software_attributes.build_target.name,
-                       suite_kwargs[i]['board'])
-
-      # bit clunky to parse a repeated oneof - we filter out to the
-      # chromeos_build_gcs_bucket, then assert a) it only appears once and
-      # b) its the right value
-      gcs_bucket_software_dep = [dep for dep in
-                                 req.params.software_dependencies
-                                 if dep.chromeos_build_gcs_bucket]
-      self.assertEqual(len(gcs_bucket_software_dep), 1)
-      self.assertEqual(gcs_bucket_software_dep[0].chromeos_build_gcs_bucket,
-                       bucket_name)
-
   def _get_client(self, addr):
     self.assertEqual(ADDR, addr)
     return self.fake_client
@@ -658,32 +611,6 @@ class TestTaskExecutions(TestPlatformClientTestCase):
     self.assertEqual(len(executed), 0)
     self._assert_bb_client_not_called()
 
-
-class TestGetGCSBucket(unittest.TestCase):
-  def testNoPrefixOrSuffix(self):
-    task_params = {"cros_image_bucket": "eli"}
-    self.assertEqual("eli", buildbucket.get_gs_bucket(task_params))
-    self.assertEqual("gs://eli/", buildbucket.get_gs_prefix(task_params))
-
-  def testPrefixNoSuffix(self):
-    task_params = {"cros_image_bucket": "gs://eli"}
-    self.assertEqual("eli", buildbucket.get_gs_bucket(task_params))
-    self.assertEqual("gs://eli/", buildbucket.get_gs_prefix(task_params))
-
-  def testNoPrefixYesSuffix(self):
-    task_params = {"cros_image_bucket": "eli/"}
-    self.assertEqual("eli", buildbucket.get_gs_bucket(task_params))
-    self.assertEqual("gs://eli/", buildbucket.get_gs_prefix(task_params))
-
-  def testPrefixAndSuffix(self):
-    task_params = {"cros_image_bucket": "gs://eli/"}
-    self.assertEqual("eli", buildbucket.get_gs_bucket(task_params))
-    self.assertEqual("gs://eli/", buildbucket.get_gs_prefix(task_params))
-
-  def testNoValue(self):
-    task_params = {}
-    self.assertEqual("chromeos-image-archive", buildbucket.get_gs_bucket(task_params))
-    self.assertEqual("gs://chromeos-image-archive/", buildbucket.get_gs_prefix(task_params))
 
 
 def _struct_to_ctp_request(struct_pb2):

@@ -321,11 +321,3 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     self.assertEqual(tasks[0].bb_builder, self._DEFAULT_BUILDER.builder)
     self.assertEqual(tasks[0].bb_bucket, self._DEFAULT_BUILDER.bucket)
     self.assertEqual(tasks[0].bb_project, self._DEFAULT_BUILDER.project)
-
-  def testImageBucket(self):
-    """Ensure builder information is set by TaskConfig if not set by user."""
-    self.config.set(self._TASK_NAME, 'cros_image_bucket', 'foo-bucket')
-
-    task_config = task_config_reader.TaskConfig(self.config, self._DEFAULT_BUILDER)
-    tasks = task_config.get_tasks_by_keyword(self._EVENT_TYPE)['tasks']
-    self.assertEqual(tasks[0].cros_image_bucket, "foo-bucket")

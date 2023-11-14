@@ -52,8 +52,3 @@ def wait_for_value(func, expected_value=None, exception_to_raise=(),
       logging.warning(str(e))
 
   return value
-
-def remove_prefix(text, prefix):
-    if text.startswith(prefix):
-        return text[len(prefix):]
-    return text

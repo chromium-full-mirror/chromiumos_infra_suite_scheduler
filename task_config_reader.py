@@ -87,7 +87,6 @@ COMMON_TASK_ENTRIES = [
     'run_via_ctpv2',
     'karbon_filters',
     'koffee_filters',
-    'cros_image_bucket',
 ]
 
 # Namedtuple for storing task info.
@@ -317,7 +316,6 @@ class TaskConfig(object):
     run_via_ctpv2 = bool(self._config_reader.getboolean(section, 'run_via_ctpv2'))
     karbon_filters = self._config_reader.getstring(section, 'karbon_filters')
     koffee_filters = self._config_reader.getstring(section, 'koffee_filters')
-    cros_image_bucket = self._config_reader.getstring(section, 'cros_image_bucket')
 
     bb_bucket = self._config_reader.getstring(section, 'bb_bucket')
     if not bb_bucket:
@@ -432,7 +430,6 @@ class TaskConfig(object):
         run_via_ctpv2 = run_via_ctpv2,
         karbon_filters = karbon_filters,
         koffee_filters = koffee_filters,
-        cros_image_bucket = cros_image_bucket,
     )
 
   def _validate_task_section(self, task_info):
