@@ -544,6 +544,14 @@ class Task(object):
       logging.debug('%s RO firmware build is not supported.', spec)
       return None
 
+    if spec == 'tot':
+      spec = 'cros'
+    if spec.startswith('tot'):
+      converted_spec = "cros-" + self.tot_manager.convert_tot_spec(spec)
+      logging.info('Using %s instead of %s for firmware spec',
+                    converted_spec, spec)
+      spec = converted_spec
+
     try:
       if self.firmware_board_name:
         logging.info('Using %s instead of %s for firmware board',

@@ -420,7 +420,8 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                   * the firmware config shows like "firmware-BoardName-[1]-firmwarebranch".
                   * [1] is the firmware ver.
                   */
-                  IF(prefix = 'firmware', 'firmware', 'cros') AS spec,
+                  IF(prefix = 'firmware', 'firmware', IF(build_config like '%-main', 'cros',
+                    CONCAT('cros-',REGEXP_EXTRACT(build_config, r"^[a-zA-Z0-9_.+-]+-release-(R[0-9]+)")))) AS spec,
                   IF(prefix = 'firmware', COALESCE(
                     IF(branch_board IN ('icarus', 'quiche', 'cr50'), branch_board, NULL),
                     SPLIT(firmware_tarball, '/') [SAFE_OFFSET(0)],

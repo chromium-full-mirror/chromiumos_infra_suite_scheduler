@@ -106,6 +106,10 @@ class TaskBaseTestCase(unittest.TestCase):
     self.firmware_dict = {
         ('cros', 'fake_board'): ('fake_board-release/R30-6182.0.0-rc2'),
         ('cros', 'alt_board'): ('alt_board-release/R30-6182.0.0-rc2'),
+        ('cros-R38', 'fake_board'): ('fake_board-release/R38-11223.0.0'),
+        ('cros-R38', 'alt_board'): ('alt_board-release/R38-11223.0.0'),
+        ('cros-R39', 'fake_board'): ('fake_board-release/R39-12345.0.0'),
+        ('cros-R39', 'alt_board'): ('alt_board-release/R39-12345.0.0'),
         ('firmware', 'fake_board'): ('firmware-fake_board-12345.67.'
                                      'A-firmwarebranch/RFoo-1.0.0-b1234567'
                                      '/fake_board'),
@@ -189,6 +193,23 @@ class TaskTestCase(TaskBaseTestCase):
         '{0}-release/R{1}-{2}'.format(self.BOARD,
                                       self.MILESTONE,
                                       self.PLATFORM))
+    firmware = self.task._get_firmware_build(
+        'tot', self.BOARD, self.firmware_dict, None)
+    self.assertEqual(
+        firmware,
+        '{0}-release/R{1}-{2}'.format(self.BOARD,
+                                      self.MILESTONE,
+                                      self.PLATFORM))
+    firmware = self.task._get_firmware_build(
+        'tot-1', self.BOARD, self.firmware_dict, None)
+    self.assertEqual(
+        firmware,
+        '{0}-release/R39-12345.0.0'.format(self.BOARD))
+    firmware = self.task._get_firmware_build(
+        'tot-2', self.BOARD, self.firmware_dict, None)
+    self.assertEqual(
+        firmware,
+        '{0}-release/R38-11223.0.0'.format(self.BOARD))
     firmware = self.task._get_firmware_build(
         'firmware', self.BOARD, self.firmware_dict, None)
     self.assertEqual(
