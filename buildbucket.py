@@ -343,11 +343,11 @@ def _form_test_platform_request(task_params):
     build = params.software_dependencies.add()
     build.rw_firmware_build = fw_rw_build
 
-  android_boards_list = get_android_boards_list(file_getter.NEW_LAB_CONFIG_FILE)
 
   secondary_targets = task_params.get('secondary_targets')
   secondary_targets = restruct_secondary_targets_from_string(secondary_targets)
   if secondary_targets:
+    android_boards_list = get_android_boards_list(file_getter.NEW_LAB_CONFIG_FILE)
     for s_target in secondary_targets:
       s_device = params.secondary_devices.add()
       s_device.software_attributes.build_target.name = s_target.board

@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -57,7 +57,7 @@ class Buildbucket(object):
 
   # TODO(crbug.com/1034166): this is a workaround to reduce the child task count
   # in swarming.
-  MULTIREQUEST_SIZE = 25
+  MULTIREQUEST_SIZE = 75
 
 def get_default_builder_by_env():
   """Returns the appropriate builder name.

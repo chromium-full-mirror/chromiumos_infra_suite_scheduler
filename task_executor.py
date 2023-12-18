@@ -89,7 +89,27 @@ class TaskProcessor(object):
       if not tasks:
         return
 
+
+      # Prints all tasks being seen
+      names = []
+      for task in tasks:
+        names.append(task.name)
+      names.sort()
+      logging.info("Tasks pulled for execution\n%s" % names)
+
       tasks = self._limit_heavy_tasks(tasks)
+
+      # Print tasks that will be tried
+      filteredNames = []
+      for task in tasks:
+        filteredNames.append(task.name)
+      filteredNames.sort()
+      logging.info("Tasks being sent for execution\n%s" % filteredNames)
+
+
+      diff = list(set(names) ^ set(filteredNames))
+      logging.info("Diff\n%s" % diff)
+
       executed_tasks = []
       try:
         if _tag(tasks) == '__CTPV2__':

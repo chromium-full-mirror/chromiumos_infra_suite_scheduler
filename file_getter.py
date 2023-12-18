@@ -32,8 +32,8 @@ NEW_LAB_CONFIG_FILE = None
 @retry(max_retries=5, first_retry_delay_in_seconds=5)
 def _write_config(config_name):
   tot_response = urllib2.urlopen(
-      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'.format(config_name)
-  ).read()
+      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'
+      .format(config_name)).read()
   config_text = base64.b64decode(tot_response)
   # NOTE: Logging removed due to LogExplorer limitations.
   #logging.info('Writing %s as: %s', config_name, config_text)
@@ -42,16 +42,23 @@ def _write_config(config_name):
     f.write(config_text)
   return filename
 
+
 def clone_config():
   """Function to clone the config for suite scheduler from the current head."""
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
-  logging.info('Fetching config from suite scheduler repo.')
+  logging.info('Fetching suite configs from suite scheduler repo.')
   try:
     NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
+  except Exception as e:
+    logging.error(str(e))
+
+  logging.info('Fetching lab configs from suite scheduler repo.')
+  try:
     NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
   except Exception as e:
     logging.error(str(e))
+
 
 # Service account secret json file used for staging project.
 STAGING_CLIENT_SECRETS_FILE = os.path.join(
