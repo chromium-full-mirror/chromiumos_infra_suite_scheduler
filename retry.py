@@ -34,7 +34,7 @@ def retry(max_retries, first_retry_delay_in_seconds=1, backoff=2):
           if cnt < max_retries:
             logging.warning(
                 "Retrying %s() in %ds due to exception: %s" % (
-                    func.__name__, delay, ex.message))
+                    func.__name__, delay, str(ex)), exc_info=True)
             delay = backoff * delay
             time.sleep(delay)
           else:

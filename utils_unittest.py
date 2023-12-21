@@ -4,6 +4,8 @@
 
 """Module for utils unittests."""
 
+import os
+import tempfile
 import unittest
 
 import utils
@@ -81,3 +83,16 @@ class UtilsTestCase(unittest.TestCase):
 
   def testRemovePrefix(self):
     self.assertEqual("eli", utils.remove_prefix("prefix:eli", "prefix:"))
+
+  def testWritedirs(self):
+    tmp_dir = tempfile.mkdtemp()
+    dirpath = "{}/test".format(tmp_dir)
+    self.assertFalse(os.path.exists(dirpath))
+
+    # exists after write dirs
+    utils.writedirs(dirpath)
+    self.assertTrue(os.path.exists(dirpath))
+
+    # writedirs on existing dir is noop
+    utils.writedirs(dirpath)
+    self.assertTrue(os.path.exists(dirpath))

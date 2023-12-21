@@ -6,6 +6,8 @@
 
 import logging
 
+import errno
+import os
 import time
 
 
@@ -57,3 +59,13 @@ def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix):]
     return text
+
+def writedirs(dirname):
+  """Create a directory if it does not exist. Necessary as python2 does
+  not support `exist` param in `os.makedirs`.
+  """
+  try:
+      os.makedirs(dirname)
+  except OSError as e:
+      if e.errno != errno.EEXIST:
+          raise
