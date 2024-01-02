@@ -55,9 +55,9 @@ If you get [failures when trying to download credentials][creds-fail],
 * Contact Test Platform team or one of the [OWNERS] to be allowlisted.
 
 [cros-checkout]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Get-the-Source
-[infra_virtualenv]: https://chromium.googlesource.com/chromiumos/infra_virtualenv/+/refs/heads/master/README.md
+[infra_virtualenv]: https://chromium.googlesource.com/chromiumos/infra_virtualenv/+/HEAD/README.md
 [creds-fail]: https://crbug.com/792690
-[OWNERS]: https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/master/OWNERS
+[OWNERS]: https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/HEAD/OWNERS
 
 
 ## Testing your changes {#testing}
