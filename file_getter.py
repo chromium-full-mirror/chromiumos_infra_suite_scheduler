@@ -87,8 +87,8 @@ def _comp_configs(config_name):
 
 
 def _get_credentials():
-  if (constants.environment() == constants.RunningEnv.ENV_PROD
-      and constants.application_id() == constants.AppID.PROD_APP):
+  # This applies to any AppEngine environment.
+  if constants.environment() == constants.RunningEnv.ENV_PROD:
     return appengine.AppAssertionCredentials(["https://www.googleapis.com/auth/gerritcodereview"])
   else:
     return ServiceAccountCredentials.from_json_keyfile_name(STAGING_CLIENT_SECRETS_FILE, scopes=["https://www.googleapis.com/auth/gerritcodereview"])
