@@ -208,6 +208,7 @@ class Task(object):
     self.bb_builder = task_info.bb_builder
     self.bb_project = task_info.bb_project
     self.cros_image_bucket = task_info.cros_image_bucket
+    self.run_on = task_info.run_on
 
     if task_info.lc_branches:
       self.launch_control_branches = [

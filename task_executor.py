@@ -17,6 +17,7 @@ from google.appengine.runtime import apiproxy_errors
 
 
 SUITES_QUEUE = 'suitesQueue'
+MAX_NEW_BUILD_SUITES = 150
 
 Options = collections.namedtuple(
     'Options',
@@ -75,6 +76,12 @@ class TaskProcessor(object):
 
   def batch_execute(self):
     """Execute tasks."""
+    # To limit the pressure Suite Scheduler places on QuotaScheduler, limit
+    # the amount of new_build tasks that can be executed per SuiteScheduler
+    # run.
+    new_build_task_count = 0
+    new_build_rejection_count = 0
+
     sent_multireq_count = 0
     while (sent_multireq_count < self._options.batch_size):
       try:
@@ -89,7 +96,6 @@ class TaskProcessor(object):
       if not tasks:
         return
 
-
       # Prints all tasks being seen
       names = []
       for task in tasks:
@@ -98,6 +104,23 @@ class TaskProcessor(object):
       logging.info("Tasks pulled for execution\n%s" % names)
 
       tasks = self._limit_heavy_tasks(tasks)
+
+      # If the current tasks are of NEW_BUILD trigger type, check if they will
+      # exceed the rate limit.
+      if _trigger_type(tasks) == "new_build" and new_build_task_count + len(tasks) > MAX_NEW_BUILD_SUITES:
+        logging.info("NEW_BUILD suite count limit hit, %d tasks for suite %s will be skipped and ran on the next iteration.", len(tasks), _suite(tasks))
+        for task in tasks:
+          self.queue.modify_task_lease(task, 0)
+
+        # Increment the rejection count. This logic is in place to avoid
+        # spinning endlessly if only new_build tasks remain and we have reached
+        # our limit.
+        new_build_rejection_count += 1
+        if new_build_rejection_count >= 10:
+          logging.info("NEW_BUILD rate limited %d times. Ending SuSch run in suspicion that task queue is only NEW_BUILD Configs")
+          break
+
+        continue
 
       # Print tasks that will be tried
       filteredNames = []
@@ -127,6 +150,12 @@ class TaskProcessor(object):
           sent_multireq_count += 1
           logging.info('Successfully kicking %d tasks for suite %s',
                        len(executed_tasks), _suite(tasks))
+
+          # Update count of new_build tasks launched for rate limiting
+          if _trigger_type(executed_tasks) == "new_build":
+            new_build_task_count += len(executed_tasks)
+            logging.info("Launched %d configs for %s, %d total", len(executed_tasks), _suite(executed_tasks), new_build_task_count)
+
           self.queue.delete_tasks(executed_tasks)
 
   def purge(self):
@@ -166,3 +195,6 @@ def _tag(tasks):
 
 def _suite(tasks):
   return tasks[0].extract_params().get("suite")
+
+def _trigger_type(tasks):
+  return tasks[0].extract_params().get("run_on")

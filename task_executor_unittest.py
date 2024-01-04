@@ -212,14 +212,41 @@ class TaskExecutorTestCase(unittest.TestCase):
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(extra_num, len(tasks))
 
+  def testRateLimitedNewBuildTasks(self):
+    batch_size = 10
 
-def _push_tasks(suite, count, tag=''):
+    total_tasks = 200
+    _push_tasks('new_build1', 100, new_build=True)
+    _push_tasks('new_build2', 100, new_build=True)
+
+    task_processor = task_executor.TaskProcessor(
+        task_executor.SUITES_QUEUE,
+        test_platform_client=FakeFrontdoorClient(),
+        options=task_executor.Options(
+            batch_size=batch_size,
+            multirequest_size=75,
+            per_suite_multirequest_size={}))
+    task_processor.batch_execute()
+
+    # After batch_execute runs, the extra tasks should remain in the queue.
+    tasks_run = total_tasks - len(self.taskqueue_stub.get_filtered_tasks())
+    self.assertLessEqual(tasks_run, 150)
+
+
+def _push_tasks(suite, count, tag='', new_build=False):
   """Push count tasks in the executor queue for suite."""
   if tag == '':
     tag = "{0}.foo.bar.baz".format(suite)
   for i in range(count):
-    task_executor.push(
-        task_executor.SUITES_QUEUE, tag=tag, suite=suite, num=i + 1)
+    if new_build:
+      fake_suite_parameters = {
+        "run_on": "new_build",
+      }
+      task_executor.push(
+          task_executor.SUITES_QUEUE, tag=tag, suite=suite, **fake_suite_parameters)
+    else:
+      task_executor.push(
+          task_executor.SUITES_QUEUE, tag=tag, suite=suite, num=i + 1)
 
 
 if __name__ == '__main__':
