@@ -71,6 +71,7 @@ def _get_suite_params(board='fake_board',
       'ddd_suite': True,
       'run_via_trv2': True,
       'cros_image_bucket': cros_image_bucket,
+      'test_args': 'tast_expr=example.Pass'
   }
 
 

@@ -369,6 +369,8 @@ def _form_test_platform_request(task_params):
           params.run_via_trv2 = True
 
   request.test_plan.suite.add().name = task_params['suite']
+  if task_params.get('test_args'):
+    request.test_plan.suite[-1].test_args = task_params.get('test_args', None)
   if params.run_via_cft:
     include_tags = task_params.get('include_tags', None)
     exclude_tags = task_params.get('exclude_tags', None)
