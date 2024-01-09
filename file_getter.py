@@ -5,10 +5,8 @@
 
 import base64
 import constants
-import difflib
 import logging
 import os
-import subprocess
 import urllib2
 
 from retry import retry
@@ -36,20 +34,6 @@ NEW_LAB_CONFIG_FILE = None
 
 
 @retry(max_retries=5, first_retry_delay_in_seconds=5)
-def _write_config(config_name):
-  tot_response = urllib2.urlopen(
-      'https://chromium.googlesource.com/chromiumos/infra/suite_scheduler/+/refs/heads/main/generated_configs/{}?format=text'
-      .format(config_name)).read()
-  config_text = base64.b64decode(tot_response)
-  # NOTE: Logging removed due to LogExplorer limitations.
-  #logging.info('Writing %s as: %s', config_name, config_text)
-  filename = '/tmp/{}'.format(config_name)
-  with open(filename, 'w') as f:
-    f.write(config_text)
-  return filename
-
-
-@retry(max_retries=5, first_retry_delay_in_seconds=5)
 def _write_internal_config(config_name):
   request = urllib2.Request('https://chrome-internal.googlesource.com/chromeos/config-internal/+/refs/heads/main/test/suite_scheduler/generated/{}?format=text'.format(config_name))
 
@@ -63,27 +47,13 @@ def _write_internal_config(config_name):
   # logging.info("got resp: %s", config_text)
   # NOTE: Logging removed due to LogExplorer limitations.
 
-  dirname = "/tmp/internal"
+  dirname = "/tmp"
   utils.writedirs(dirname)
 
   filename = '{}/{}'.format(dirname, config_name)
   with open(filename, 'w') as f:
     f.write(config_text)
   return filename
-
-
-def _comp_configs(config_name):
-  external = open('/tmp/{}'.format(config_name)).readlines()
-  internal = open('/tmp/internal/{}'.format(config_name)).readlines()
-
-  if external == internal:
-    logging.info("Internal and external configs are equal for {}.".format(config_name))
-    return
-
-  logging.info("Internal and external configs differ for {}. This could be due to internal configs being fresher.".format(config_name))
-  diff = difflib.unified_diff(external, internal, fromfile='external', tofile='internal')
-  logging.info("".join(diff))
-  return
 
 
 def _get_credentials():
@@ -100,26 +70,16 @@ def clone_config():
   global NEW_LAB_CONFIG_FILE
   logging.info('Fetching suite configs from suite scheduler repo.')
   try:
-    NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_config('suite_scheduler.ini')
+    NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_internal_config('suite_scheduler.ini')
   except Exception as e:
     logging.error(str(e))
 
   logging.info('Fetching lab configs from suite scheduler repo.')
   try:
-    NEW_LAB_CONFIG_FILE = _write_config('lab_config.ini')
+    NEW_LAB_CONFIG_FILE = _write_internal_config('lab_config.ini')
   except Exception as e:
     logging.error(str(e))
 
-  # Shadow read configs from internal repo. Failure here will not cause any
-  # issue with suite scheduler operation as we have already fetched the
-  # public configs.
-  try:
-    _write_internal_config('suite_scheduler.ini')
-    _write_internal_config('lab_config.ini')
-    _comp_configs('suite_scheduler.ini')
-    _comp_configs('lab_config.ini')
-  except Exception as e:
-    logging.error(str(e))
 
 # Service account secret json file used for staging project.
 STAGING_CLIENT_SECRETS_FILE = os.path.join(
