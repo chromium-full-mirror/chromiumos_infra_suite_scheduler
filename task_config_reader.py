@@ -90,6 +90,7 @@ COMMON_TASK_ENTRIES = [
     'cros_image_bucket',
     "run_on",
     "test_args",
+    "enable_autotest_sharding",
 ]
 
 # Namedtuple for storing task info.
@@ -315,6 +316,7 @@ class TaskConfig(object):
     android_image_version = self._config_reader.getstring(section, 'android_image_version')
     gms_core_package = self._config_reader.getstring(section, 'gms_core_package')
     test_args = self._config_reader.getstring(section, 'test_args')
+    enable_autotest_sharding = self._config_reader.getboolean(section, 'enable_autotest_sharding')
     ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
     run_via_trv2 = bool(self._config_reader.getboolean(section, 'run_via_trv2'))
     run_via_ctpv2 = bool(self._config_reader.getboolean(section, 'run_via_ctpv2'))
@@ -440,6 +442,7 @@ class TaskConfig(object):
         cros_image_bucket = cros_image_bucket,
         run_on = run_on,
         test_args = test_args,
+        enable_autotest_sharding = enable_autotest_sharding,
     )
 
   def _validate_task_section(self, task_info):

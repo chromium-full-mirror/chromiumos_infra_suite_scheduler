@@ -157,6 +157,7 @@ class Task(object):
           cros_image_bucket, a string specifying which GCS bucket a task should
             fetch CrOS images from.
           test_args, args will be provided to the respective test harness.
+          enable_autotest_sharding, if enable_autotest_sharding is True, then autotest tests will be sharded.
 
 
       board_family_config: A board family dictionary mapping board_family name
@@ -211,6 +212,7 @@ class Task(object):
     self.cros_image_bucket = task_info.cros_image_bucket
     self.run_on = task_info.run_on
     self.test_args = task_info.test_args
+    self.enable_autotest_sharding = task_info.enable_autotest_sharding
 
     if task_info.lc_branches:
       self.launch_control_branches = [
@@ -660,7 +662,8 @@ class Task(object):
         'bb_builder': self.bb_builder,
         'bb_project': self.bb_project,
         'cros_image_bucket': self.cros_image_bucket,
-        'test_args': self.test_args
+        'test_args': self.test_args,
+        'enable_autotest_sharding': self.enable_autotest_sharding,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,
@@ -727,6 +730,7 @@ class Task(object):
         'bb_project': self.bb_project,
         'cros_image_bucket': self.cros_image_bucket,
         'test_args': self.test_args,
+        'enable_autotest_sharding': self.enable_autotest_sharding
     }
     logging.info('Pushing ctpv2 suite %s with %s',
                     self.suite, suite_job_parameters)

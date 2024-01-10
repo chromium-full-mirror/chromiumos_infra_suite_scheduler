@@ -371,6 +371,8 @@ def _form_test_platform_request(task_params):
   request.test_plan.suite.add().name = task_params['suite']
   if task_params.get('test_args'):
     request.test_plan.suite[-1].test_args = task_params.get('test_args', None)
+  if task_params.get('enable_autotest_sharding') and task_params['enable_autotest_sharding'] == 'True':
+    request.test_plan.enable_autotest_sharding = True
   if params.run_via_cft:
     include_tags = task_params.get('include_tags', None)
     exclude_tags = task_params.get('exclude_tags', None)
