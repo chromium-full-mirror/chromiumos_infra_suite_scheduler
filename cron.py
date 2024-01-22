@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -22,12 +22,16 @@ _PROD_CALENDAR_ID_MAPPING = {
     'new_build': constants.CalendarID.PROD_NEW_BUILD,
     'nightly': constants.CalendarID.PROD_NIGHTLY,
     'weekly': constants.CalendarID.PROD_WEEKLY,
+    # TODO: generate a calendar identity for fortnightly
+    'fortnightly': constants.CalendarID.PROD_WEEKLY,
 }
 
 _STAGING_CALENDAR_ID_MAPPING = {
     'new_build': constants.CalendarID.STAGING_NEW_BUILD,
     'nightly': constants.CalendarID.STAGING_NIGHTLY,
     'weekly': constants.CalendarID.STAGING_WEEKLY,
+    # TODO: generate a calendar identity for fortnightly
+    'fortnightly': constants.CalendarID.STAGING_WEEKLY,
 }
 
 # Timezone used in calendar, indicating PST.
@@ -78,8 +82,12 @@ class TriggerEvent(webapp2.RequestHandler):
       if not results:
         continue
 
-      _add_to_calendar(keyword, results, log_url, start_time, end_time,
+      try:
+        _add_to_calendar(keyword, results, log_url, start_time, end_time,
                        calendar_client, _PROD_CALENDAR_ID_MAPPING[keyword])
+      except:
+        logging.warning("Failed to write events to calendar for type %s", keyword)
+        pass
 
 
 class ExecuteTask(webapp2.RequestHandler):
