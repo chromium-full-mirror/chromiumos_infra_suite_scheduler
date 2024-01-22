@@ -10,6 +10,8 @@ import logging
 
 import buildbucket
 import constants
+import time
+
 
 import apiclient
 from google.appengine.api import taskqueue
@@ -186,7 +188,17 @@ def push(queue_name, tag=None, **suite_kwargs):
     **suite_kwargs: the args for a suite to kick off.
   """
   queue = taskqueue.Queue(queue_name)
-  queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
+  try:
+      queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
+  except:
+    try:
+      # Sleep for 100ms then retry
+      time.sleep(.100)
+
+      queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
+    except:
+      logging.warning("Task could not be added to queue. Skipping.")
+      pass
 
 
 def _tag(tasks):
