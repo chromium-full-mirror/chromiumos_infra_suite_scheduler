@@ -57,7 +57,7 @@ class Buildbucket(object):
 
   # TODO(crbug.com/1034166): this is a workaround to reduce the child task count
   # in swarming.
-  MULTIREQUEST_SIZE = 75
+  MULTIREQUEST_SIZE = 25
 
 def get_default_builder_by_env():
   """Returns the appropriate builder name.
