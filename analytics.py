@@ -1,13 +1,13 @@
-# Copyright 2023 The ChromiumOS Authors.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for collecting and uploading analytics metrics."""
 
 import json
-import logging
 import re
 
+import safe_log
 import constants
 import rest_client
 
@@ -86,9 +86,9 @@ class ExecutionTask(AnalyticsBase):
         self.task.response.ctp_build_id = str(resp.id)
         return
       # If id is absent, we should log resp as an error message.
-      logging.warning('No build id in buildbucket response %s.', str(resp))
+      safe_log.warning('No build id in buildbucket response %s.', str(resp))
     except AttributeError as e:
-      logging.warning('Failed to parse the buildbucket response, %s.'
+      safe_log.warning('Failed to parse the buildbucket response, %s.'
                       'Error: %s', str(resp), str(e))
     self.task.error.error_message = str(resp)
 
@@ -302,7 +302,7 @@ def _job_section(task_info):
         build_filters.branch_filters.add(
             channel=channel, operator=op, lag=lag)
       except ValueError as e:
-        logging.warning('Failed to parse the spec, %s', str(e))
+        safe_log.warning('Failed to parse the spec, %s', str(e))
   if task_info.firmware_rw_build_spec:
     build_filters.firmware_rw_build_spec = branch_pb2.Branch.FIRMWARE
   if task_info.firmware_ro_build_spec:

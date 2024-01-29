@@ -1,11 +1,11 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module of a basic event."""
 
 import datetime
-import logging
+import safe_log
 import re
 
 import build_lib
@@ -58,7 +58,7 @@ class BaseEvent(object):
     self._set_last_exec(last_exec_utc)
     self._set_should_handle()
 
-    logging.info('%s Event created:\ntarget_exec_time (utc): %s\n'
+    safe_log.info('%s Event created:\ntarget_exec_time (utc): %s\n'
                  'last_exec_time (utc): %s\nshould_handle: %s',
                  self.keyword, self.target_exec_utc, self.last_exec_utc,
                  self.should_handle)
@@ -165,11 +165,11 @@ class BaseEvent(object):
       artifact = artifact or ''
       match = re.match(ARTIFACT_PATTERN, artifact)
       if not match:
-        logging.debug('Artifact path of firmware is not valid: %s, %s, %s',
+        safe_log.debug('Artifact path of firmware is not valid: %s, %s, %s',
                       spec, board, artifact)
         continue
       firmware_build = match.group('firmware_build')
-      logging.debug('latest firmware build of (%s, %s): %s',
+      safe_log.debug('latest firmware build of (%s, %s): %s',
                     spec, board, firmware_build)
       firmware_build_dict[(spec, board)] = firmware_build
     return firmware_build_dict
@@ -213,10 +213,10 @@ class BaseEvent(object):
         if scheduled:
           scheduled_tasks.append(per_task.name)
         else:
-          logging.debug('No suites are scheduled in suites queue for '
+          safe_log.debug('No suites are scheduled in suites queue for '
                         'task %s', per_task.name)
       except task.SchedulingError:
-        logging.exception('Failed to schedule task: %s', per_task.name)
+        safe_log.exception('Failed to schedule task: %s', per_task.name)
         continue
     return scheduled_tasks
 

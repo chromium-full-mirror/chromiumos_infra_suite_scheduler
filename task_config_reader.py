@@ -1,11 +1,11 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module of reader for suite tasks config file."""
 
 import collections
-import logging
+import safe_log
 import re
 import sys
 
@@ -123,7 +123,7 @@ class TaskConfig(object):
     """
     self._config_reader = config_reader
     self.default_builder = default_builder
-    logging.info('Config contains entries: %s.',
+    safe_log.info('Config contains entries: %s.',
                  ', '.join(self._config_reader.sections()))
     self.is_sanity = is_sanity
     self._tot_manager = tot_manager.TotMilestoneManager(is_sanity=is_sanity)
@@ -177,10 +177,10 @@ class TaskConfig(object):
           tasks.append(new_task)
       except MalformedConfigEntryError as e:
         exceptions.append(str(e))
-        logging.exception(str(e))
+        safe_log.exception(str(e))
         continue
 
-    logging.info('Found %d tasks for %s.', len(tasks), event_type)
+    safe_log.info('Found %d tasks for %s.', len(tasks), event_type)
 
     return {'tasks': tasks, 'exceptions': exceptions}
 
@@ -595,7 +595,7 @@ class TaskConfig(object):
     extra_keys = section_headers.difference(self._ALLOWED_HEADER)
     if self._ALLOWED_HEADER != section_headers:
       section_headers = self._filter_to_known_keys(section_headers, self._ALLOWED_HEADER)
-      logging.warning(
+      safe_log.warning(
           '%s: unknown entries: %s' % (section, ', '.join(extra_keys)))
 
     task_info = self._read_task_section(section)

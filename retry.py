@@ -1,10 +1,10 @@
-# Copyright 2023 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for a retry decorator."""
 
-import logging
+import safe_log
 import time
 
 
@@ -32,13 +32,13 @@ def retry(max_retries, first_retry_delay_in_seconds=1, backoff=2):
           return func(*args, **kwargs)
         except Exception as ex:
           if cnt < max_retries:
-            logging.warning(
+            safe_log.warning(
                 "Retrying %s() in %ds due to exception: %s" % (
                     func.__name__, delay, str(ex)), exc_info=True)
             delay = backoff * delay
             time.sleep(delay)
           else:
-            logging.error(
+            safe_log.error(
                 "Hit retry limit of %d for %s()" % (
                     max_retries, func.__name__))
             raise

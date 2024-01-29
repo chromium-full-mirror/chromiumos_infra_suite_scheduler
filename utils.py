@@ -1,10 +1,10 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for use by any callers."""
 
-import logging
+import safe_log
 
 import errno
 import os
@@ -51,7 +51,7 @@ def wait_for_value(func, expected_value=None, exception_to_raise=(),
       if time.time() - start_time_sec >= timeout_sec:
         break
     except exception_to_raise as e:
-      logging.warning(str(e))
+      safe_log.warning(str(e))
 
   return value
 

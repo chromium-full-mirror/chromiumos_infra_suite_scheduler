@@ -1,10 +1,10 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for ChromeOS build utils without import external packages."""
 
-import logging
+import safe_log
 
 
 def parse_full_model(full_model):
@@ -26,5 +26,5 @@ def parse_full_model(full_model):
   if len(model_tokens) == 4:
     return '_'.join(model_tokens[:2]), '_'.join(model_tokens[2:])
 
-  logging.error('Invalid full_model format: %s', full_model)
+  safe_log.error('Invalid full_model format: %s', full_model)
   raise ValueError

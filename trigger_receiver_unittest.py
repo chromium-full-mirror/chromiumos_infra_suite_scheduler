@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 import constants
 import datetime
-import logging
+import safe_log
 import json
 import os
 import unittest
@@ -464,7 +464,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     for task in tasks:
       req = ctpv2_requester.CTPv2Request(task.extract_params())
-      logging.info('%s', json_format.MessageToJson(req.request))
+      safe_log.info('%s', json_format.MessageToJson(req.request))
 
   def testNewBuildWithMultiBoardCtpv2(self):
     """Test the new_build suite with an existing board family."""
@@ -514,7 +514,7 @@ class TriggerReceiverFakeBuildTestCase(TriggerReceiverBaseTestCase):
     tasks = queue.lease_tasks(3600, 10, deadline=0.5)
     for task in tasks:
       req = ctpv2_requester.CTPv2Request(task.extract_params())
-      logging.info('%s', json_format.MessageToJson(req.request))
+      safe_log.info('%s', json_format.MessageToJson(req.request))
 
   def testNewBuildWithExistingBoardFamiliesAndBoards(self):
     """Test the new_build suite with an existing board family."""

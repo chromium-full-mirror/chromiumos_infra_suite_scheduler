@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-# Copyright 2019 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for buildbucket unittests."""
@@ -8,7 +8,7 @@ import json
 import mock
 import os
 import unittest
-import logging
+import safe_log
 
 import constants
 import build_lib
@@ -242,7 +242,7 @@ class TestPlatformClientTestCase(unittest.TestCase):
 
     request_map = self._extract_ctpv2_request_map_from_bb_client()
     request = _struct_to_ctpv2_request(request_map)
-    logging.info('%s', request)
+    safe_log.info('%s', request)
 
     self.assertEqual(request.pool, 'MANAGED_POOL_QUOTA')
     self.assertEqual(len(request.targets), 1)

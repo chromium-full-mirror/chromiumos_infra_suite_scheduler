@@ -5,7 +5,7 @@
 """Module containing the constants to be reused throughout suite_scheduler."""
 
 import collections
-import logging
+import safe_log
 import os
 
 from google.appengine.api import app_identity
@@ -127,7 +127,7 @@ class RestClient(object):
        'v1'])
 
   STACKDRIVER_CLIENT = RestClientInfo._make(
-      ['https://www.googleapis.com/auth/logging.read',
+      ['https://www.googleapis.com/auth/safe_log.read',
        'logging',
        'v2'])
 

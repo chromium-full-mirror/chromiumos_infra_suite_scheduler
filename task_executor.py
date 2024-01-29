@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 # pylint: disable=g-bad-import-order
 
 import collections
-import logging
 
+import safe_log
 import buildbucket
 import constants
 import time
@@ -92,7 +92,7 @@ class TaskProcessor(object):
       except (taskqueue.UnknownQueueError,
               taskqueue.TransientError,
               apiproxy_errors.DeadlineExceededError) as e:
-        logging.exception(e)
+        safe_log.exception(e)
         raise
 
       if not tasks:
@@ -103,14 +103,14 @@ class TaskProcessor(object):
       for task in tasks:
         names.append(task.name)
       names.sort()
-      logging.info("Tasks pulled for execution\n%s" % names)
+      safe_log.info("Tasks pulled for execution\n%s" % names)
 
       tasks = self._limit_heavy_tasks(tasks)
 
       # If the current tasks are of NEW_BUILD trigger type, check if they will
       # exceed the rate limit.
       if _trigger_type(tasks) == "new_build" and new_build_task_count + len(tasks) > MAX_NEW_BUILD_SUITES:
-        logging.info("NEW_BUILD suite count limit hit, %d tasks for suite %s will be skipped and ran on the next iteration.", len(tasks), _suite(tasks))
+        safe_log.info("NEW_BUILD suite count limit hit, %d tasks for suite %s will be skipped and ran on the next iteration.", len(tasks), _suite(tasks))
         for task in tasks:
           self.queue.modify_task_lease(task, 0)
 
@@ -119,7 +119,7 @@ class TaskProcessor(object):
         # our limit.
         new_build_rejection_count += 1
         if new_build_rejection_count >= 10:
-          logging.info("NEW_BUILD rate limited %d times. Ending SuSch run in suspicion that task queue is only NEW_BUILD Configs")
+          safe_log.info("NEW_BUILD rate limited %d times. Ending SuSch run in suspicion that task queue is only NEW_BUILD Configs")
           break
 
         continue
@@ -129,11 +129,11 @@ class TaskProcessor(object):
       for task in tasks:
         filteredNames.append(task.name)
       filteredNames.sort()
-      logging.info("Tasks being sent for execution\n%s" % filteredNames)
+      safe_log.info("Tasks being sent for execution\n%s" % filteredNames)
 
 
       diff = list(set(names) ^ set(filteredNames))
-      logging.info("Diff\n%s" % diff)
+      safe_log.info("Diff\n%s" % diff)
 
       executed_tasks = []
       try:
@@ -145,18 +145,18 @@ class TaskProcessor(object):
       except (ValueError,
               buildbucket.BuildbucketRunError,
               apiclient.errors.HttpError) as e:
-        logging.exception('Failed to kick off %d tasks for suite %s',
+        safe_log.exception('Failed to kick off %d tasks for suite %s',
                           len(tasks), _suite(tasks))
       finally:
         if executed_tasks:
           sent_multireq_count += 1
-          logging.info('Successfully kicking %d tasks for suite %s',
+          safe_log.info('Successfully kicking %d tasks for suite %s',
                        len(executed_tasks), _suite(tasks))
 
           # Update count of new_build tasks launched for rate limiting
           if _trigger_type(executed_tasks) == "new_build":
             new_build_task_count += len(executed_tasks)
-            logging.info("Launched %d configs for %s, %d total", len(executed_tasks), _suite(executed_tasks), new_build_task_count)
+            safe_log.info("Launched %d configs for %s, %d total", len(executed_tasks), _suite(executed_tasks), new_build_task_count)
 
           self.queue.delete_tasks(executed_tasks)
 
@@ -197,7 +197,7 @@ def push(queue_name, tag=None, **suite_kwargs):
 
       queue.add(taskqueue.Task(method='PULL', tag=tag, params=suite_kwargs))
     except:
-      logging.warning("Task could not be added to queue. Skipping.")
+      safe_log.warning("Task could not be added to queue. Skipping.")
       pass
 
 

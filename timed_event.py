@@ -1,11 +1,11 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module of TimedEvent, triggered by time points."""
 
 import datetime
-import logging
+import safe_log
 
 import base_event
 import constants
@@ -115,7 +115,7 @@ class Nightly(TimedEvent):
       super(Nightly, self).filter_tasks()
     else:
       cur_hour = self.target_exec_utc.hour
-      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+      safe_log.debug('Current hour for %s event: %s', self.keyword, cur_hour)
       tasks = [t for t in self.task_list
                if ((t.hour is not None and cur_hour == t.hour) or
                    (t.hour is None and cur_hour == self._default_utc_hour))]
@@ -204,8 +204,8 @@ class Weekly(TimedEvent):
     else:
       cur_day = self.target_exec_utc.weekday()
       cur_hour = self.target_exec_utc.hour
-      logging.debug('Current weekday for %s event: %s', self.keyword, cur_day)
-      logging.debug('Current hour for %s event: %s', self.keyword, cur_hour)
+      safe_log.debug('Current weekday for %s event: %s', self.keyword, cur_day)
+      safe_log.debug('Current hour for %s event: %s', self.keyword, cur_hour)
       tasks = [t for t in self.task_list if
                (t.day == cur_day and t.hour == cur_hour)]
       self.task_list = tasks
@@ -298,16 +298,16 @@ class Fortnightly(TimedEvent):
         return
       cur_day = self.target_exec_utc.weekday()+((self.target_exec_utc.isocalendar()[1] % 2) * 7)
       cur_hour = self.target_exec_utc.hour
-      logging.debug('Current weekday for %s event: %s', str(self.keyword), str(cur_day))
-      logging.debug('Current hour for %s event: %s', str(self.keyword), str(cur_hour))
+      safe_log.debug('Current weekday for %s event: %s', str(self.keyword), str(cur_day))
+      safe_log.debug('Current hour for %s event: %s', str(self.keyword), str(cur_hour))
       tasks = []
       for t in self.task_list:
-        logging.debug('task.day is %s',str(t.day))
-        logging.debug('task.hour is %s',str(t.hour))
+        safe_log.debug('task.day is %s',str(t.day))
+        safe_log.debug('task.hour is %s',str(t.hour))
         if(t.day == cur_day and t.hour == cur_hour):
-          logging.debug('Adding task %s for execution',str(t.name))
+          safe_log.debug('Adding task %s for execution',str(t.name))
           tasks.append(t)
         else:
-          logging.debug('Not adding task %s for execution',str(t.name))
+          safe_log.debug('Not adding task %s for execution',str(t.name))
 
       self.task_list = tasks

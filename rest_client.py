@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 # pylint: disable=g-bad-exception-name
 import ast
 import httplib2
-import logging
+import safe_log
 import re
 import time
 
@@ -314,10 +314,10 @@ class BigqueryRestClient(object):
         status = ex.resp.status
         if status in [500, 502, 503, 504]:
           if cnt < RETRY_LIMIT:
-            logging.warning("Got response status %d, retrying" % status)
+            safe_log.warning("Got response status %d, retrying" % status)
             time.sleep(5)
           else:
-            logging.error(
+            safe_log.error(
               "Retry limit of %d hit communicating with BigQuery" % RETRY_LIMIT)
             raise
 
@@ -346,7 +346,7 @@ class BigqueryRestClient(object):
         body=body)
     response = request.execute(num_retries=3)
     if response.get('insertErrors'):
-      logging.error('InsertRequest reported errors: %r',
+      safe_log.error('InsertRequest reported errors: %r',
                     response.get('insertErrors'))
       return False
 
@@ -377,8 +377,8 @@ class CrOSTestPlatformBigqueryClient(BigqueryRestClient):
     try:
       return int(_parse_bq_job_query(res)[0][0])
     except (ValueError, KeyError) as e:
-      logging.debug('The returned json: \n%r', res)
-      logging.exception(str(e))
+      safe_log.debug('The returned json: \n%r', res)
+      safe_log.exception(str(e))
       raise
 
 
@@ -480,7 +480,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
     res = _parse_bq_job_query(res)
     if res is None:
       return None
-    logging.info('Fetched the latest artifact links: %s',
+    safe_log.info('Fetched the latest artifact links: %s',
         [row[2] for row in res])
     return res
 
@@ -591,7 +591,7 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
       """
 
       # Insert the currently visible builds to BQ.
-      logging.info(
+      safe_log.info(
           'Insert the visible passed builds '
           'between %s and %s to BQ.', earliest_end_time_str,
           latest_end_time_str)
@@ -606,16 +606,16 @@ class BuildBucketBigqueryClient(BigqueryRestClient):
                                       latest_end_time_str, project_id)
     if global_config.GAE_TESTING:
       query_str += 'LIMIT 10'
-    logging.info('Getting passed builds finished between %s and %s',
+    safe_log.info('Getting passed builds finished between %s and %s',
                  earliest_end_time_str, latest_end_time_str)
     # Use this query here to find the passed builds:
     # http://scripts/script_81._df7828_67b6_4890_ac57_02b49b6912f1
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.info("rest_client: running query %s", query_str)
+    #safe_log.info("rest_client: running query %s", query_str)
     res = self.query(query_str)
     res = _parse_bq_job_query(res)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.info("rest_client: query results %r", query_str)
+    #safe_log.info("rest_client: query results %r", query_str)
     if res is None:
       return []
 

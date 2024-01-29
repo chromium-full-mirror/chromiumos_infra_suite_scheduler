@@ -1,10 +1,10 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for CrOS ToT manager."""
 
-import logging
+import safe_log
 import re
 
 import build_lib
@@ -137,5 +137,5 @@ class TotMilestoneManager(object):
     response = build_lib.get_latest_cros_build_from_gs(
         self.storage_client)
     tot = response.split('-')[0]
-    logging.info('TOTManager: ToT calculated as %s', tot)
+    safe_log.info('TOTManager: ToT calculated as %s', tot)
     return tot

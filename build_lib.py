@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 from distutils import version
 import collections
 import json
-import logging
+import safe_log
 import re
 
 import apiclient
@@ -194,11 +194,11 @@ def get_board_family_mapping_from_gs(storage_client):
 
       board_family[group].append(board_name)
 
-    logging.info('Successfully get following board families from GS: %r',
+    safe_log.info('Successfully get following board families from GS: %r',
                  board_family.keys())
     return board_family
   except apiclient.errors.HttpError as e:
-    logging.error('Cannot load boards.json in bucket %s: %s',
+    safe_log.error('Cannot load boards.json in bucket %s: %s',
                   _GE_RELEASE_BUILD_BUCKET, str(e))
     raise
 
@@ -223,17 +223,17 @@ def buildinfo_list_to_branch_build_dict(cros_board_list, buildinfo_list):
       build_config_info = parse_cros_build_config(build.board,
                                                   build.build_config)
     except ValueError as e:
-      logging.warning('Failed to parse build config: %s: %s',
+      safe_log.warning('Failed to parse build config: %s: %s',
                       build.build_config, e)
       continue
 
     if build.board != build_config_info.board:
-      logging.warning('Non-matched build_config and board: %s, %s',
+      safe_log.warning('Non-matched build_config and board: %s, %s',
                       build.board, build.board)
       continue
 
     if build.board not in cros_board_list:
-      logging.debug('%s is not a valid CrOS board.', build.board)
+      safe_log.debug('%s is not a valid CrOS board.', build.board)
       continue
 
     build_key = (build.board, build.model, build_config_info.type,
@@ -275,7 +275,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
   all_branch_builds = build_client.get_passed_builds(
       earliest_end_time, latest_end_time, event_type)
   # NOTE: Logging removed due to LogExplorer limitations.
-  #logging.info("get_cros_builds: all branch_builds: %r",all_branch_builds)
+  #safe_log.info("get_cros_builds: all branch_builds: %r",all_branch_builds)
 
   #relaxed_builds = build_client.get_relaxed_passed_builds(
   #    earliest_end_time, latest_end_time, event_type)
@@ -283,7 +283,7 @@ def get_cros_builds(build_client, cros_board_list, earliest_end_time,
   branch_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, all_branch_builds)
   # NOTE: Logging removed due to LogExplorer limitations.
-  #logging.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
+  #safe_log.info("get_cros_builds: all branch_builds_dict: %r",branch_builds_dict)
 
   """relaxed_builds_dict = buildinfo_list_to_branch_build_dict(
       cros_board_list, relaxed_builds + all_branch_builds)
@@ -349,7 +349,7 @@ def get_launch_control_builds_by_branch_targets(
       try:
         board = parse_launch_control_target(t).target
       except ValueError:
-        logging.warning(
+        safe_log.warning(
             'Failed to parse launch control target: %s', t)
         continue
 
@@ -362,7 +362,7 @@ def get_launch_control_builds_by_branch_targets(
           build_id = get_latest_launch_control_build(
               android_client, branch, t)
         except NoBuildError as e:
-          logging.warning(e)
+          safe_log.warning(e)
           continue
 
         build = str(AndroidBuild(branch, t, build_id))
@@ -373,7 +373,7 @@ def get_launch_control_builds_by_branch_targets(
   for board, in board_to_builds_dict.iteritems():
     mapped_board = get_board_by_android_target(board)
     if mapped_board != board:
-      logging.debug('Map board %s to %s', board, mapped_board)
+      safe_log.debug('Map board %s to %s', board, mapped_board)
       if board_to_builds_dict.get(mapped_board) is None:
         del board_to_builds_dict[board]
       else:

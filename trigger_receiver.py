@@ -1,10 +1,10 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for cron job to trigger events for suite scheduler."""
 
-import logging
+import safe_log
 
 import config_reader
 import constants
@@ -66,7 +66,7 @@ class TriggerReceiver(object):
     # Initialize events
     self.events = {}
     for keyword, klass in task_config_reader.EVENT_CLASSES.iteritems():
-      logging.info('Initializing %s event', keyword)
+      safe_log.info('Initializing %s event', keyword)
       new_event = klass(
           self._task_config.get_event_setting(klass.section_name()),
           self._last_exec_client.get_last_execute_time(klass.KEYWORD))
@@ -74,7 +74,7 @@ class TriggerReceiver(object):
       if new_event.should_handle:
         new_event.set_task_list(
             self._task_config.get_tasks_by_keyword(klass.KEYWORD)['tasks'])
-        logging.info('Got %d tasks for %s event',
+        safe_log.info('Got %d tasks for %s event',
                      len(new_event.task_list), klass.KEYWORD)
 
       self.events[keyword] = new_event
@@ -93,14 +93,14 @@ class TriggerReceiver(object):
       5. Reset event when it's finished.
     """
     for keyword, event in self.events.iteritems():
-      logging.info('Handling %s event in cron job', keyword)
+      safe_log.info('Handling %s event in cron job', keyword)
 
       event.filter_tasks()
       if event.task_list:
-        logging.info('Processing %d tasks.', len(event.task_list))
+        safe_log.info('Processing %d tasks.', len(event.task_list))
         self._schedule_tasks(event)
       else:
-        logging.info('No task list found')
+        safe_log.info('No task list found')
       event.finish()
 
   def _schedule_tasks(self, event):
@@ -113,18 +113,18 @@ class TriggerReceiver(object):
     cros_builds_tuple = event.get_cros_builds(
         self._lab_config, self._build_client)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.debug('Found CrOS builds: %r', cros_builds_tuple)
+    #safe_log.debug('Found CrOS builds: %r', cros_builds_tuple)
     # Set delta to 3 days here as we only build once per day for non tot
     # builds, so a single failure on secondary boards may cause a skip
     # of primary board.
     recent_cros_builds_tuple = event.get_recent_cros_builds(
         self._lab_config, self._build_client, delta_days=3)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
+    #safe_log.debug('Found recent CrOS builds: %r', recent_cros_builds_tuple)
     launch_control_builds = event.get_launch_control_builds(
         self._lab_config, self._android_client)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.debug('Found launch_control_builds: %r', launch_control_builds)
+    #safe_log.debug('Found launch_control_builds: %r', launch_control_builds)
     firmware_builds = None
     if [x for x in event.task_list if (x.firmware_rw_build_spec or
                                        x.firmware_ro_build_spec)]:
@@ -136,4 +136,4 @@ class TriggerReceiver(object):
         firmware_builds=firmware_builds,
         configs=config_reader.Configs(lab_config=self._lab_config),
         recent_cros_builds_tuple=recent_cros_builds_tuple)
-    logging.info('Finished processing all tasks')
+    safe_log.info('Finished processing all tasks')

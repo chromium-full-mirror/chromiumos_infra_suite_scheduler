@@ -1,10 +1,10 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Module for local integration tests."""
 
-import logging
+import safe_log
 import os
 import subprocess
 import unittest
@@ -23,7 +23,7 @@ LOCAL_DEV_APPSERVER = 'dev_appserver.py'
 INTEGRATION_TEST_CONFIG = 'test.yaml'
 
 # Indicate whether it's in debug.
-DEBUG_MODE = logging.getLogger().getEffectiveLevel() <= logging.DEBUG
+DEBUG_MODE = safe_log.getLogger().getEffectiveLevel() <= safe_log.DEBUG
 
 # The url to start local dev appserver.
 DEV_APPSERVER_PORT = 8888

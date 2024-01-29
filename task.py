@@ -1,4 +1,4 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 from distutils import version
 from collections import defaultdict
 import json
-import logging
+import safe_log
 import uuid
 
 import analytics
@@ -343,15 +343,15 @@ class Task(object):
         if m and '%s_%s' % (b, m) not in self.exclude_models:
           self.job_section.add_model(m)
 
-    logging.info('######## Scheduling task %s ########', self.name)
+    safe_log.info('######## Scheduling task %s ########', self.name)
     if self.os_type == build_lib.OS_TYPE_CROS:
       if not builds_dict:
-        logging.info('No CrOS build to run, skip running.')
+        safe_log.info('No CrOS build to run, skip running.')
       else:
         self._schedule_cros_builds(builds_dict, firmware_builds, configs)
     else:
       if not launch_control_builds:
-        logging.info('No Android build to run, skip running.')
+        safe_log.info('No Android build to run, skip running.')
       else:
         self._schedule_launch_control_builds(launch_control_builds)
     upload_result = False
@@ -359,9 +359,9 @@ class Task(object):
       upload_result = self.job_section.upload()
     # For any exceptions from BQ, only log it and move on.
     except Exception as e: #pylint: disable=broad-except
-      logging.exception(str(e))
+      safe_log.exception(str(e))
     if not upload_result:
-      logging.warning('Failed to insert row: %r', self.job_section)
+      safe_log.warning('Failed to insert row: %r', self.job_section)
     return self.is_pushed
 
   def schedule_multi_duts(self, cros_builds_tuple,
@@ -386,7 +386,7 @@ class Task(object):
     # For multi-DUTs We allow either request by board or request by model,
     # but not both.
     if self.multi_dut_boards and self.multi_dut_models:
-      logging.error('Both board and model presented in request but expecting'
+      safe_log.error('Both board and model presented in request but expecting'
                     'only one of them present at a time.')
       return False
     self.is_pushed = False
@@ -415,15 +415,15 @@ class Task(object):
       if self.exclude_models and model not in self.exclude_models:
         self.job_section.add_model(model)
 
-    logging.info('######## Scheduling task %s ########', self.name)
+    safe_log.info('######## Scheduling task %s ########', self.name)
     if self.os_type != build_lib.OS_TYPE_CROS:
-      logging.info('Multi-DUTs testing only support CrOS builds.')
+      safe_log.info('Multi-DUTs testing only support CrOS builds.')
       return False
     if not builds_dict:
-      logging.info('No CrOS build to run, skip running.')
+      safe_log.info('No CrOS build to run, skip running.')
       return False
     if not recent_builds_dict:
-      logging.info('No recent CrOS build for secondary DUTs to run,'
+      safe_log.info('No recent CrOS build for secondary DUTs to run,'
                    ' skip running.')
       return False
     self._schedule_multi_duts_cros_builds(builds_dict,
@@ -434,9 +434,9 @@ class Task(object):
       upload_result = self.job_section.upload()
     # For any exceptions from BQ, only log it and move on.
     except Exception as e: #pylint: disable=broad-except
-      logging.exception(str(e))
+      safe_log.exception(str(e))
     if not upload_result:
-      logging.warning('Failed to insert row: %r', self.job_section)
+      safe_log.warning('Failed to insert row: %r', self.job_section)
     return self.is_pushed
 
   def get_builder(self):
@@ -546,20 +546,20 @@ class Task(object):
     """
     if not spec or spec == 'stable':
       # TODO(crbug.com/577316): Query stable RO firmware.
-      logging.debug('%s RO firmware build is not supported.', spec)
+      safe_log.debug('%s RO firmware build is not supported.', spec)
       return None
 
     if spec == 'tot':
       spec = 'cros'
     if spec.startswith('tot'):
       converted_spec = "cros-" + self.tot_manager.convert_tot_spec(spec)
-      logging.info('Using %s instead of %s for firmware spec',
+      safe_log.info('Using %s instead of %s for firmware spec',
                     converted_spec, spec)
       spec = converted_spec
 
     try:
       if self.firmware_board_name:
-        logging.info('Using %s instead of %s for firmware board',
+        safe_log.info('Using %s instead of %s for firmware board',
                      self.firmware_board_name, board)
         board = self.firmware_board_name
       if firmware_build_dict:
@@ -567,7 +567,7 @@ class Task(object):
       else:
         return None
     except ValueError as e:
-      logging.warning('Failed to get firmware from lab config file'
+      safe_log.warning('Failed to get firmware from lab config file'
                       'for spec %s, board %s: %s', spec, board, str(e))
       return None
 
@@ -670,7 +670,7 @@ class Task(object):
                        tag=self._generate_tag(),
                        **suite_job_parameters)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.info('Pushing task %r into taskqueue', suite_job_parameters)
+    #safe_log.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
   def _generate_tag(self):
@@ -732,13 +732,13 @@ class Task(object):
         'test_args': self.test_args,
         'enable_autotest_sharding': self.enable_autotest_sharding
     }
-    logging.info('Pushing ctpv2 suite %s with %s',
+    safe_log.info('Pushing ctpv2 suite %s with %s',
                     self.suite, suite_job_parameters)
     task_executor.push(task_executor.SUITES_QUEUE,
                        tag='__CTPV2__',
                        **suite_job_parameters)
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.info('Pushing task %r into taskqueue', suite_job_parameters)
+    #safe_log.info('Pushing task %r into taskqueue', suite_job_parameters)
     self.is_pushed = True
 
   def _schedule_cros_builds(self, build_dict, firmware_build_dict, configs):
@@ -759,14 +759,14 @@ class Task(object):
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
                                            manifest))
-      logging.info('Running %s on %s', self.name, cros_build)
+      safe_log.info('Running %s on %s', self.name, cros_build)
       if self.exclude_boards and board in self.exclude_boards:
-        logging.debug('Board %s is in excluded board list: %s',
+        safe_log.debug('Board %s is in excluded board list: %s',
                       board, self.exclude_boards)
         continue
 
       if self.boards and board not in self.boards:
-        logging.debug('Board %s is not in supported board list: %s',
+        safe_log.debug('Board %s is not in supported board list: %s',
                       board, self.boards)
         continue
 
@@ -776,7 +776,7 @@ class Task(object):
         msg = ("branch_build spec %s doesn't fit this task's "
                "requirement: %s") % (branch_build_spec,
                    ",".join(self.branch_specs))
-        logging.debug(msg)
+        safe_log.debug(msg)
         self.job_section.add_schedule_job(board, passed_model, msg=msg)
         continue
 
@@ -790,7 +790,7 @@ class Task(object):
 
       # check that we only got one spec for ro firmware
       if all([self.firmware_ro_version, self.firmware_ro_build_spec]):
-        logging.error(
+        safe_log.error(
           "Exactly one of firmware_ro_version or firmware_ro_build_spec " \
           "allowed, got: %s and %s" % (
             self.firmware_ro_version,
@@ -801,7 +801,7 @@ class Task(object):
 
       # check that we only got one spec for rw firmware
       if all([self.firmware_rw_version, self.firmware_rw_build_spec]):
-        logging.error(
+        safe_log.error(
           "Exactly one of firmware_rw_version or firmware_rw_build_spec " \
           "allowed, got: %s and %s" % (
             self.firmware_rw_version,
@@ -820,7 +820,7 @@ class Task(object):
 
         if not firmware_ro_build:
           msg = 'No RO firmware build to run, skip running'
-          logging.debug(msg)
+          safe_log.debug(msg)
           self.job_section.add_schedule_job(board, passed_model, msg=msg)
           continue
 
@@ -834,7 +834,7 @@ class Task(object):
 
         if not firmware_rw_build:
           msg = 'No RW firmware build to run, skip running'
-          logging.debug(msg)
+          safe_log.debug(msg)
           self.job_section.add_schedule_job(board, passed_model, msg=msg)
           continue
 
@@ -878,12 +878,12 @@ class Task(object):
           full_model_name = '%s_%s' % (hwtest_board, model)
           # Respect exclude first.
           if self.exclude_models and full_model_name in self.exclude_models:
-            logging.debug("Skip model %s as it's in exclude model list %s",
+            safe_log.debug("Skip model %s as it's in exclude model list %s",
                           model, self.exclude_models)
             continue
 
           if self.models and full_model_name not in self.models:
-            logging.debug("Skip model %s as it's not in support model list %s",
+            safe_log.debug("Skip model %s as it's not in support model list %s",
                           model, self.models)
             continue
 
@@ -927,12 +927,12 @@ class Task(object):
             full_model_name = '%s_%s' % (hwtest_board, model)
             # Respect exclude first.
             if self.exclude_models and full_model_name in self.exclude_models:
-              logging.debug("Skip model %s as it's in exclude model list %s",
+              safe_log.debug("Skip model %s as it's in exclude model list %s",
                             model, self.exclude_models)
               continue
 
             if self.models and full_model_name not in self.models:
-              logging.debug("Skip model %s as it's not in support model list %s",
+              safe_log.debug("Skip model %s as it's not in support model list %s",
                             model, self.models)
               continue
 
@@ -984,9 +984,9 @@ class Task(object):
          milestone), manifest in build_dict.iteritems():
       cros_build = str(build_lib.CrOSBuild(board, build_type, milestone,
                                            manifest))
-      logging.info('Running %s on %s', self.name, cros_build)
+      safe_log.info('Running %s on %s', self.name, cros_build)
       if board not in build_targets_dict.keys():
-        logging.debug('Board %s is not in primary board list: %s',
+        safe_log.debug('Board %s is not in primary board list: %s',
                       board, build_targets_dict.keys())
         continue
 
@@ -996,7 +996,7 @@ class Task(object):
         msg = ("branch_build spec %s doesn't fit this task's "
                "requirement: %s") % (branch_build_spec,
                    ",".join(self.branch_specs))
-        logging.debug(msg)
+        safe_log.debug(msg)
         self.job_section.add_schedule_job(board, passed_model, msg=msg)
         continue
 
@@ -1020,7 +1020,7 @@ class Task(object):
         if primary_dut.model:
           if primary_dut.model != passed_model:
             # Explict model specified but not match, so skip to next.
-            logging.info(
+            safe_log.info(
                 "Explict model %s specified but doesn't match with passed"
                 " model %s, skipping.", primary_dut.model, passed_model)
             continue
@@ -1057,7 +1057,7 @@ class Task(object):
               targets.append((s_hwtest_board, s_dut.model, s_variant, build_type, s_cros_build))
         # Check if we get cros build for all secondary DUTs.
         if len(secondary_targets) != len(group[1:]):
-          logging.info('Cannot determine cros version for all secondary'
+          safe_log.info('Cannot determine cros version for all secondary'
                        ' DUTs, skip.')
           continue
 
@@ -1116,20 +1116,20 @@ class Task(object):
       launch_control_builds: the build dict for Android boards.
     """
     for board, launch_control_build in launch_control_builds.iteritems():
-      logging.debug('Running %s on %s', self.name, board)
+      safe_log.debug('Running %s on %s', self.name, board)
       if self.exclude_boards and board in self.exclude_boards:
-        logging.debug('Board %s is in excluded board list: %s',
+        safe_log.debug('Board %s is in excluded board list: %s',
                       board, self.exclude_boards)
         continue
       if self.boards and board not in self.boards:
-        logging.debug('Board %s is not in supported board list: %s',
+        safe_log.debug('Board %s is not in supported board list: %s',
                       board, self.boards)
         continue
 
       for android_build in launch_control_build:
         if not any([branch in android_build
                     for branch in self.launch_control_branches]):
-          logging.debug('Branch %s is not required to run for task '
+          safe_log.debug('Branch %s is not required to run for task '
                         '%s', android_build, self.name)
           continue
 
@@ -1188,7 +1188,7 @@ class Task(object):
         models = cros_models_by_board.get(hwtest_board, [None])
         for model in models:
           if self.exclude_models and model in self.exclude_models:
-            logging.info('Model %s is in exclude list, skipping.' % model)
+            safe_log.info('Model %s is in exclude list, skipping.' % model)
             continue
           new_group = []
           new_group.append(BuildTarget(primary_board, model, None))
@@ -1199,7 +1199,7 @@ class Task(object):
     for group in self.multi_dut_models:
       boards = [model_to_board_dict.get(model, '') for model in group]
       if '' in boards:
-        logging.info('Cannot find board name from one of requested model,'
+        safe_log.info('Cannot find board name from one of requested model,'
                      ' skipping.')
         continue
       new_group = [BuildTarget(boards[i], group[i], None) for i in range(len(group))]

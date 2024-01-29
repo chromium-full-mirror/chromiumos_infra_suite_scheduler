@@ -6,7 +6,7 @@
 # pylint: disable=g-bad-import-order
 
 import datetime
-import logging
+import safe_log
 import webapp2
 
 import constants
@@ -75,7 +75,7 @@ class TriggerEvent(webapp2.RequestHandler):
     log_url = _LOGGING_URL_FORMAT % (
         constants.server_name(), str_start_time, str_end_time,
         '/cron/trigger_event')
-    logging.info('URL for logs of current round of event trigger: %s', log_url)
+    safe_log.info('URL for logs of current round of event trigger: %s', log_url)
 
     for keyword, results in suite_trigger.event_results.iteritems():
       # No finished tasks for the given keyword
@@ -86,7 +86,7 @@ class TriggerEvent(webapp2.RequestHandler):
         _add_to_calendar(keyword, results, log_url, start_time, end_time,
                        calendar_client, _PROD_CALENDAR_ID_MAPPING[keyword])
       except:
-        logging.warning("Failed to write events to calendar for type %s", keyword)
+        safe_log.warning("Failed to write events to calendar for type %s", keyword)
         pass
 
 
@@ -128,7 +128,7 @@ class TestPush(webapp2.RequestHandler):
     log_url = _LOGGING_URL_FORMAT % (
         constants.server_name(), str_start_time, str_end_time,
         '/cron/test_push')
-    logging.info('URL for logs of current round of test_push: %s', log_url)
+    safe_log.info('URL for logs of current round of test_push: %s', log_url)
 
     task_processor = task_executor.new_task_processor()
     task_processor.batch_execute()
@@ -146,7 +146,7 @@ class TestPush(webapp2.RequestHandler):
 
 
 def _adjust_log_time(utc_start_time, utc_end_time):
-  """Adjust the start and end time for logging.
+  """Adjust the start and end time for safe_log.
 
   In order to ensure that logs can be fetched by a proper time window,
   slightly enlarge the log time window by extending 2 * _LOG_TIME_ADDON_MIN.
@@ -209,7 +209,7 @@ def _add_to_calendar(keyword, task_results, log_url, start_time, end_time,
   if constants.environment() == constants.RunningEnv.ENV_PROD:
     calendar_client.add_event(calendar_id, event)
   else:
-    logging.info(event)
+    safe_log.info(event)
 
 
 class CheckJobs(webapp2.RequestHandler):

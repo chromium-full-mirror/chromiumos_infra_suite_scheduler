@@ -1,4 +1,4 @@
-# Copyright 2019 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Module for interacting with Buildbucket."""
@@ -6,7 +6,7 @@
 import collections
 import datetime
 import json
-import logging
+import safe_log
 import os
 import uuid
 import config_reader
@@ -108,8 +108,8 @@ class TestPlatformClient(object):
         builder = self._get_builder([task])
         req.schedule(self, cred, builder)
       except Exception as e: #pylint: disable=broad-except
-        logging.debug('Failed to schedule task: %r', task)
-        logging.exception(str(e))
+        safe_log.debug('Failed to schedule task: %r', task)
+        safe_log.exception(str(e))
 
     return executed_tasks
 
@@ -156,14 +156,14 @@ class TestPlatformClient(object):
           task_executions.append(
               analytics.ExecutionTask(params['task_id'], req_name))
       except (ValueError, BuildbucketRunError):
-        logging.error('Failed to process task: %r', params)
+        safe_log.error('Failed to process task: %r', params)
     if not requests:
       return []
     try:
       builder = self._get_builder(tasks)
       requests_json = '{ "requests": { %s } }' % ', '.join(requests)
       req_build = self._build_request(requests_json, req_tags, builder)
-      logging.debug('Raw request to buildbucket: %r', req_build)
+      safe_log.debug('Raw request to buildbucket: %r', req_build)
 
       if (self.running_env == constants.RunningEnv.ENV_STANDALONE
           or self.running_env == constants.RunningEnv.ENV_DEVELOPMENT_SERVER):
@@ -177,20 +177,20 @@ class TestPlatformClient(object):
       resp = self.client.ScheduleBuild(req_build,
                                        credentials=cred,
                                        timeout=PRPC_TIMEOUT_SEC)
-      logging.debug('Response from buildbucket: %r', resp)
+      safe_log.debug('Response from buildbucket: %r', resp)
       for t in task_executions:
         t.update_result(resp)
         try:
           if not t.upload():
-            logging.warning('Failed to insert row: %r', t)
+            safe_log.warning('Failed to insert row: %r', t)
         # For any exceptions from BQ, only log it.
         except Exception as e:  #pylint: disable=broad-except
-          logging.exception('Failed to insert row: %r, got error: %s', t,
+          safe_log.exception('Failed to insert row: %r, got error: %s', t,
                             str(e))
       return executed_tasks
     except Exception as e:
-      logging.debug('Failed to process tasks: %r', tasks)
-      logging.exception(str(e))
+      safe_log.debug('Failed to process tasks: %r', tasks)
+      safe_log.exception(str(e))
       return []
 
   def dummy_run(self):
@@ -557,7 +557,7 @@ def _get_key_val_from_label(label):
   res = label.split(':')
   if len(res) == 2:
     return res[0], res[1]
-  logging.warning('Failed to parse the label, %s', label)
+  safe_log.warning('Failed to parse the label, %s', label)
 
 
 def _bb_tags(suite):

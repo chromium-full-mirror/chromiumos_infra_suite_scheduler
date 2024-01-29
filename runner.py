@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,6 +13,7 @@ Example invocation:
 
 import argparse
 import logging
+import safe_log
 import os
 import sys
 import unittest
@@ -87,9 +88,9 @@ if __name__ == '__main__':
   unittest_parser = _make_parser()
   args = unittest_parser.parse_args()
   if args.debug:
-    logging.getLogger().setLevel(logging.DEBUG)
+    safe_log.getLogger(logging.DEBUG)
   else:
-    logging.getLogger().setLevel(logging.CRITICAL)
+    safe_log.getLogger(logging.CRITICAL)
 
   # Normalize to full path in case user input path is in abbreviated form.
   args.sdk_path = os.path.abspath(os.path.expanduser(args.sdk_path))

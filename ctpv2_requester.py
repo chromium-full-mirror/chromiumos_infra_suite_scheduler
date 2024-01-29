@@ -1,10 +1,11 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Module for building and scheduling a CTPv2 Request."""
 
 import json
-import logging
+import safe_log
 
 import analytics
 import buildbucket
@@ -37,22 +38,22 @@ class CTPv2Request(object):
     req_json = '{ "ctpv2_request": %s }' % json_format.MessageToJson(self.request)
     req_name = self.params['suite'] + '_' + self.params['build']
     req_build = platform_client._build_request(req_json, self.req_tags, builder)
-    logging.debug('Raw request to buildbucket: %r', req_build)
+    safe_log.debug('Raw request to buildbucket: %r', req_build)
 
     resp = platform_client.client.ScheduleBuild(req_build,
       credentials=cred,
       timeout=buildbucket.PRPC_TIMEOUT_SEC)
-    logging.debug('Response from buildbucket: %r', resp)
+    safe_log.debug('Response from buildbucket: %r', resp)
 
     if _key_not_none(self.params, 'task_id'):
       execution_task = analytics.ExecutionTask(self.params['task_id'], req_name)
       execution_task.update_result(resp)
       try:
         if not execution_task.upload():
-          logging.warning('Failed to insert row: %r', execution_task)
+          safe_log.warning('Failed to insert row: %r', execution_task)
       # For any exceptions from BQ, only log it.
       except Exception as e:  #pylint: disable=broad-except
-        logging.exception('Failed to insert row: %r, got error: %s', execution_task,
+        safe_log.exception('Failed to insert row: %r, got error: %s', execution_task,
                           str(e))
 
   def _form_ctpv2_request(self):

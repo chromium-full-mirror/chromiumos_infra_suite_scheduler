@@ -1,11 +1,12 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Module for fetching files used by suite scheduler."""
 
 import base64
 import constants
-import logging
+import safe_log
 import os
 import urllib2
 
@@ -44,7 +45,7 @@ def _write_internal_config(config_name):
 
   tot_response = urllib2.urlopen(request).read()
   config_text = base64.b64decode(tot_response)
-  # logging.info("got resp: %s", config_text)
+  # safe_log.info("got resp: %s", config_text)
   # NOTE: Logging removed due to LogExplorer limitations.
 
   dirname = "/tmp"
@@ -68,17 +69,17 @@ def clone_config():
   """Function to clone the config for suite scheduler from the current head."""
   global NEW_SUITE_SCHEDULER_CONFIG_FILE
   global NEW_LAB_CONFIG_FILE
-  logging.info('Fetching suite configs from suite scheduler repo.')
+  safe_log.info('Fetching suite configs from suite scheduler repo.')
   try:
     NEW_SUITE_SCHEDULER_CONFIG_FILE = _write_internal_config('suite_scheduler.ini')
   except Exception as e:
-    logging.error(str(e))
+    safe_log.error(str(e))
 
-  logging.info('Fetching lab configs from suite scheduler repo.')
+  safe_log.info('Fetching lab configs from suite scheduler repo.')
   try:
     NEW_LAB_CONFIG_FILE = _write_internal_config('lab_config.ini')
   except Exception as e:
-    logging.error(str(e))
+    safe_log.error(str(e))
 
 
 # Service account secret json file used for staging project.

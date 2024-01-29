@@ -1,4 +1,4 @@
-# Copyright 2017 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 import collections
 import ConfigParser
 import json
-import logging
+import safe_log
 import re
 
 import build_utils
@@ -117,7 +117,7 @@ class LabConfig(object):
     cros_board_list = set([re.match(r'(.*?)(?:-\d+)?$', board.strip()).group(1)
                            for board in board_list.split(',')])
     # NOTE: Logging removed due to LogExplorer limitations.
-    #logging.info('Found CROS boards in lab_config.ini: %s', str(cros_board_list))
+    #safe_log.info('Found CROS boards in lab_config.ini: %s', str(cros_board_list))
     return cros_board_list - android_board_list
 
   def get_cros_model_map(self):
