@@ -81,6 +81,7 @@ COMMON_TASK_ENTRIES = [
     'gms_core_package',
     'ddd_suite',
     'run_via_trv2',
+    'dynamic_trv2',
     'bb_bucket',
     'bb_builder',
     'bb_project',
@@ -319,6 +320,7 @@ class TaskConfig(object):
     enable_autotest_sharding = self._config_reader.getboolean(section, 'enable_autotest_sharding')
     ddd_suite = bool(self._config_reader.getboolean(section, 'ddd_suite'))
     run_via_trv2 = bool(self._config_reader.getboolean(section, 'run_via_trv2'))
+    dynamic_trv2 = bool(self._config_reader.getboolean(section, 'dynamic_trv2'))
     run_via_ctpv2 = bool(self._config_reader.getboolean(section, 'run_via_ctpv2'))
     karbon_filters = self._config_reader.getstring(section, 'karbon_filters')
     koffee_filters = self._config_reader.getstring(section, 'koffee_filters')
@@ -433,6 +435,7 @@ class TaskConfig(object):
         gms_core_package = gms_core_package,
         ddd_suite = ddd_suite,
         run_via_trv2 = run_via_trv2,
+        dynamic_trv2 = dynamic_trv2,
         bb_bucket = bb_bucket,
         bb_builder = bb_builder,
         bb_project = bb_project,

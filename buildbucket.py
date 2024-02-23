@@ -318,8 +318,10 @@ def _form_test_platform_request(task_params):
     params.retry.max = constants.Buildbucket.MAX_RETRY
 
   params.run_via_cft = (task_params.has_key('run_via_cft') and task_params['run_via_cft'] == 'True')
-  # Enable run_via_trv2 only if run_via_cft is true
+  # Enable run_via_trv2 only if run_via_cft is true.
   params.run_via_trv2 = (params.run_via_cft and (task_params.has_key('run_via_trv2') and task_params['run_via_trv2'] == 'True'))
+  # Enable translate_trv2 only if run_via_trv2 is true.
+  params.translate_trv2_request = (params.run_via_trv2 and (task_params.has_key('dynamic_trv2') and task_params['dynamic_trv2'] == 'True'))
 
   params.ddd_suite = (task_params.has_key('ddd_suite') and task_params['ddd_suite'] == 'True')
 

@@ -148,6 +148,9 @@ class Task(object):
           run_via_trv2, a boolean to specify if current task should be scheduled
             to run via CFT and trv2 test execution path. Will only be considered
             if run_via_cft is set to true.
+          dynamic_trv2, a boolean to specify if trv2 should translate the request
+            to a dyanmic trv2 request. Should only be set if run_via_trv2 is set to
+            true.
           bb_bucket, a string specifying which buildbucket bucket a given task
             should be scheduled to.
           bb_builder, a string specifying which buildbucket builder a given task
@@ -205,6 +208,7 @@ class Task(object):
     self.gms_core_package = task_info.gms_core_package
     self.ddd_suite = task_info.ddd_suite
     self.run_via_trv2 = task_info.run_via_trv2
+    self.dynamic_trv2 = task_info.dynamic_trv2
     self.run_via_ctpv2 = task_info.run_via_ctpv2
     self.bb_bucket = task_info.bb_bucket
     self.bb_builder = task_info.bb_builder
@@ -658,6 +662,7 @@ class Task(object):
         'gms_core_package' : self.gms_core_package,
         'ddd_suite' :self.ddd_suite,
         'run_via_trv2': self.run_via_trv2,
+        'dynamic_trv2': self.dynamic_trv2,
         'bb_bucket': self.bb_bucket,
         'bb_builder': self.bb_builder,
         'bb_project': self.bb_project,
@@ -721,6 +726,7 @@ class Task(object):
         'gms_core_package' : self.gms_core_package,
         'ddd_suite' :self.ddd_suite,
         'run_via_trv2': self.run_via_trv2,
+        'dynamic_trv2': self.dynamic_trv2,
         'run_via_ctpv2': self.run_via_ctpv2,
         'targets': json.dumps(targets),
         'karbon_filters': json.dumps(self.karbon_filters),
