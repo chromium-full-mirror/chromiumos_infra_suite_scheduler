@@ -479,30 +479,53 @@ def reshape_board(board):
   # NOTE: please try to keep this list in sync with the corresponding list in
   # chromite/lib/config_lib.py
   special_suffixes = [
-    '-arc64', #
-    '-arc-r', #
-    '-arc-r-userdebug', #
-    '-arc-s', #
-    '-arc-t', #
-    '-arcnext', #
-    '-arcvm', #
-    '-connectivitynext', #
-    '-borealis', #
-    '-campfire', #
-    '-cbx', #
-    '-cfm', #
-    '-kernelnext', #
-    '-kvm', #
-    '-libcamera', #
-    '-manatee', #
-    '-manatee-kernelnext', #
-    '-ndktranslation', #
-    '-nopkvm', #
-    '-pkvm', #
-    '-userdebug', #
-    '-pvs-lab', #
-    '-gki', #
-    '-uwb', #
+    '-angle',
+    '-arc-r',
+    '-arc-r-ack-release',
+    '-arc-r-release',
+    '-arc-r-userdebug',
+    '-arc-r-userdebug-release',
+    '-arc-s',
+    '-arc-s-release',
+    '-arc-t',
+    '-arc-v',
+    '-arc64',
+    '-arc64-release',
+    '-arcnext',
+    '-arcvm',
+    '-arm64-release',
+    '-blueznext',
+    '-borealis',
+    '-campfire',
+    '-cbx',
+    '-cfm',
+    '-connectivitynext',
+    '-diskswap-release',
+    '-floss',
+    '-gki',
+    '-hibernate-release',
+    '-kernelnext',
+    '-kernelnext-release',
+    '-kvm',
+    '-kvm-release',
+    '-labstation-release',
+    '-libcamera',
+    '-lvm-stateful-release',
+    '-macrophage-release',
+    '-manatee',
+    '-manatee-kernelnext',
+    '-minios-release',
+    '-moblab-release',
+    '-ndktranslation',
+    '-ndktranslation-release',
+    '-nopkvm',
+    '-pkvm',
+    '-pvs-lab',
+    '-userdebug',
+    '-userdebug-release',
+    '-uwb',
+    '-vmtest',
+    '-zephyr-release',
   ]
   # ARM64 userspace boards use 64 suffix but can't put that in list above
   # because of collisions with boards like kevin-arc64.
