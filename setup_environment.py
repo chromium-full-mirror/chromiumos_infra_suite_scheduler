@@ -108,7 +108,7 @@ _GIT_DEPS = [
     _GitDep(
         'chromite',
         'https://chromium.googlesource.com/chromiumos/chromite',
-        'refs/changes/95/5182095/1',
+        'refs/changes/14/5344714/1',
         [
             '/api/gen/**/*.py',
             '/api/__init__.py',
