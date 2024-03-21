@@ -15,34 +15,78 @@ _CHANGED_KEY = "changed"
 
 
 class Suite:
-    def __init__(self, name):
+    """
+    Container GOPO which holds suite information for easy access
+
+    Attributes
+    ----------
+    name: str
+        The official name of this suite
+    meta: Dict
+        All attributes present in this suite
+    previous_version : Suite
+        Link to what the Suite looked like before the last change
+    version_name : str
+        Git hash name for this version if not latest
+    """
+    def __init__(self, name: str):
         self.name = name
         self.meta = {}
         self.previous_version = None
         self.version_name = None
 
     @staticmethod
-    def _parse_name(line: str):
+    def _parse_name(line: str) -> 'Suite':
+        """
+        Tokenizing parser to extract the name of the suite
+
+        Args:
+            line (str): Line in .ini containing name
+
+        Returns: Suite given the line
+
+        """
         pattern = NAME_PATTERN.match(line)
         if not pattern:
             raise KeyError("Name is not in correct format: {}".format(line))
         return Suite(pattern.group(1))
 
     def _parse_kv(self, line: str) -> None:
+        """
+        Tokenizing parser to extract the key/value pair from the suite,
+        updating the suite in the process to add the kv
+
+        Args:
+            line (str): Line in the .ini containing the kv pair
+
+        """
         key, value = line.split(':', 1)
         value = value.strip()
         self.meta[key] = value
 
     def equal(self, key: str, value: str) -> bool:
+        """
+        Whether the current suite has the specified key value
+
+        Args:
+            key (str): Key to match
+            value (str): Value to match
+
+        Returns: True if there is a key value in this suite which matches
+
+        """
         return self.meta.get(key, False) == value
 
-    def has_no(self, key: str):
+    def has_no(self, key: str) -> bool:
+        """ Whether the key exists in this suite """
         return not self.meta.get(key)
 
     def has_prev(self) -> bool:
+        """ Whether this suite has a previous version """
         return self.previous_version is not None
 
     def _finalize(self):
+        """ Finalizes the suite parsing """
         self.cadence = Cadence.parse(self.meta)
 
     def __str__(self):
@@ -51,8 +95,15 @@ class Suite:
     def __repr__(self):
         return self.__str__()
 
-    # TODO make better
+    # TODO(jaquesc) improve
     def diff_prev(self) -> Dict[str, Set]:
+        """
+            Determines differences (additions, removals, changes) from this
+            suite and its previous iteration
+
+        Returns:
+            Dict: Dictionary of changes
+        """
         if not self.previous_version:
             return None
         fields_added = list(set(self.meta) - set(self.previous_version.meta))
@@ -85,12 +136,21 @@ class Suite:
             _CHANGED_KEY: fields_changed
         }
 
-    # TODO make better and pretty print
+    # TODO(jaquesc) improve and pretty print
     def __sub__(self, other) -> Set:
         return set(self.meta.items()) - set(other.meta.items())
 
     @staticmethod
-    def parse(file_iterator):
+    def parse(file_iterator) -> 'Suite':
+        """
+        Tokenizing parser from file iterator of an ini, into a Suite
+
+        Args:
+            file_iterator (IO): file pointing to ini
+
+        Returns:
+            Suite: Constructed suited from the ini
+        """
         line = file_iterator.readline()
         if line == '':
             return None

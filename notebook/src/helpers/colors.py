@@ -1,3 +1,5 @@
+""" Helper adapter file to color output """
+
 import colored
 
 

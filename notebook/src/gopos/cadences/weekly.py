@@ -1,9 +1,26 @@
+from typing import Dict
+from typing import List
+
 from gopos.cadences.cadence import Cadence
 
 from gopos.timelines.cron import Cron
 
 
 class Weekly(Cadence):
+    """
+    Subclass of Cadence which specifies a time every week
+
+    Attributes
+    ----------
+    raw_day : int
+        Day out of 7 (0-6) days
+    raw_hour : int
+        Hour out of 24 (0-23)
+    day : str
+        Day of the week (Monday-Sunday)
+    hour : str
+        Hour in xx:xx format
+    """
     def __init__(self, day, hour):
         self.raw_day = int(day)
         self.raw_hour = int(hour)
@@ -11,7 +28,7 @@ class Weekly(Cadence):
         self.hour = Cadence.parse_hour(hour)
 
     @staticmethod
-    def from_meta(meta):
+    def from_meta(meta: Dict) -> Cadence:
         day = meta.get('day')
         hour = meta.get('hour')
         if not day or not hour:
@@ -19,10 +36,10 @@ class Weekly(Cadence):
                 "{} must have a day and hour if weekly".format(meta['suite']))
         return Weekly(day, hour)
 
-    def type(self):
+    def type(self) -> str:
         return "Weekly"
 
-    def run_meta(self):
+    def run_meta(self) -> str:
         return "on {} at {}".format(self.day, self.hour)
 
     def __gt__(self, other):
@@ -48,7 +65,7 @@ class Weekly(Cadence):
     def __hash__(self):
         return hash(self.__str__())
 
-    def to_cron(self) -> [Cron]:
+    def to_cron(self) -> List[Cron]:
         result = []
         # weeks in a cron month
         for week in range(Cron.weeks_in_month()):

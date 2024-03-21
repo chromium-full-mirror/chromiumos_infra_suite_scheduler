@@ -2,6 +2,7 @@ import logging
 import sys
 import argparse
 import code
+from argparse import Namespace
 from typing import Dict
 
 from gopos.suites.suite import Suite
@@ -37,6 +38,7 @@ CHANGES = {_CHANGED_KEY: set(), _REMOVED_KEY: set()}
 
 
 def interact():
+    """ Starts the REPL """
     try:
         import readline
     except ImportError:
@@ -49,6 +51,7 @@ def interact():
 
 
 def prompt():
+    """ Adds explanatory prompt to users """
     print("\n\nWelcome to the interactive Susch explorer!")
     print("Suites are stores in a {} class, and Cadences in {} class.".format(
         colors.red("Suite"), colors.red("Cadence")))
@@ -59,6 +62,7 @@ def prompt():
 
 
 def changes_prompt(suite_map: Dict):
+    """ Adds information about suite changes if calculated """
     print(f"For the iterations provided, "
           f"{colors.red(str(len(CHANGES[_CHANGED_KEY])))} changed, "
           f"and {colors.red(str(len(CHANGES[_REMOVED_KEY])))} removed.\n")
@@ -72,7 +76,8 @@ def changes_prompt(suite_map: Dict):
             print(f"{colors.red(change)} at {colors.red(suite_map[change].version_name)}")
 
 
-def parse_args():
+def parse_args() -> Namespace:
+    """ Arg parser setup """
     parser = argparse.ArgumentParser(
         prog='SuSchParser',
         description='Parses and allows you to interact with Suite Scheduler '
@@ -95,7 +100,15 @@ def parse_args():
     return parser.parse_args()
 
 
-def build_suites(source_file: str):
+def build_suites(source_file: str) -> Dict:
+    """
+    Builds the SUITES Suite object and returns a dict of suites mapped by name
+    Args:
+        source_file (str): Suites file to tokenize
+
+    Returns:
+        suite_map (Dict): suite of dicts mapped by name
+    """
     suite_map = {}
 
     with open(source_file, 'r') as susch_ini:
@@ -109,6 +122,15 @@ def build_suites(source_file: str):
 
 
 def build_previous(source_file: str, source_hash: str, suite_map: Dict):
+    """
+    Builds previous suites for SUITES based on git responses and amount of
+    traceback specified by user
+
+    Args:
+        source_file (str): Previous version file to build history from
+        source_hash (str): The git hash representing this version
+        suite_map (Dict): Dict to use to know what was built
+    """
     with open(source_file, 'r') as susch_ini:
         while True:
             next_suite = Suite.parse(susch_ini)
@@ -128,6 +150,12 @@ def build_previous(source_file: str, source_hash: str, suite_map: Dict):
 
 
 def _setup_logging(log_level: int):
+    """
+    Simple logger setup
+
+    Args:
+        log_level (int): Desired log level
+    """
     if log_level <= 0:
         log_level = 10
     handler = logging.StreamHandler(stream=sys.stdout)

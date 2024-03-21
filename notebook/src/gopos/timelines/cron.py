@@ -1,26 +1,38 @@
 class Cron:
+    """
+    Simpler representation of a cadence with a very specific day/time pair.
+    Used for constructing a Timeline. A timeline is expected to have 28 days
+    to fit all cadences accordingly.
+
+    Attributes
+    ----------
+    day: int
+        Representation of day out of 28 (max days in a Timeline month)
+    hour: int
+        Representation of hours in a day (0-23)
+    """
     def __init__(self, day: int, hour: int):
-        if 0 > day > 28:
+        if 0 > day > Cron.days_in_a_month() - 1:
             raise IndexError(f"Day out of range: {day}")
-        if 0 > hour > 23:
+        if 0 > hour > Cron.hours_in_a_day() - 1:
             raise IndexError(f"Hour out of range: {hour}")
         self.day = day
         self.hour = hour
 
     @staticmethod
-    def weeks_in_month():
+    def weeks_in_month() -> int:
         return 4
 
     @staticmethod
-    def days_in_a_week():
+    def days_in_a_week() -> int:
         return 7
 
     @staticmethod
-    def days_in_a_month():
+    def days_in_a_month() -> int:
         return 28
 
     @staticmethod
-    def hours_in_a_day():
+    def hours_in_a_day() -> int:
         return 24
 
     def __hash__(self):

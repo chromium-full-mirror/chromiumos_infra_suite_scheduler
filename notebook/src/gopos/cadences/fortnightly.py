@@ -1,4 +1,7 @@
 import math
+from typing import Dict
+from typing import List
+
 from gopos.cadences.cadence import Cadence
 from gopos.cadences.new_build import NewBuild
 from gopos.cadences.nightly import Nightly
@@ -7,7 +10,23 @@ from gopos.timelines.cron import Cron
 
 
 class Fortnightly(Cadence):
-    def __init__(self, day, hour):
+    """
+    Subclass of Cadence which specifies a time every two weeks
+
+    Attributes
+    ----------
+    raw_day : int
+        Day out of 14 (0-13) days
+    raw_hour : int
+        Hour out of 24 (0-23)
+    day : str
+        Day of the week (Monday-Sunday)
+    hour : str
+        Hour in xx:xx format
+    week : int
+        Which week in a fortnight it is (0-1)
+    """
+    def __init__(self, day: str, hour: str):
         self.raw_day = int(day) % 7
         self.raw_hour = int(hour)
         self.day = Cadence.DAY_LIST[self.raw_day]
@@ -15,7 +34,7 @@ class Fortnightly(Cadence):
         self.week = math.ceil(int(day) / 7)
 
     @staticmethod
-    def from_meta(meta):
+    def from_meta(meta: Dict) -> Cadence:
         day = meta.get('day')
         hour = meta.get('hour')
         if not day or not hour:
@@ -24,10 +43,10 @@ class Fortnightly(Cadence):
                     meta['suite']))
         return Fortnightly(day, hour)
 
-    def type(self):
+    def type(self) -> str:
         return "Fortnightly"
 
-    def run_meta(self):
+    def run_meta(self) -> str:
         return "on week {}/2 on {} at {}".format(self.week, self.day, self.hour)
 
     def __gt__(self, other):
@@ -45,7 +64,7 @@ class Fortnightly(Cadence):
     def __hash__(self):
         return hash(self.__str__())
 
-    def to_cron(self) -> [Cron]:
+    def to_cron(self) -> List[Cron]:
         result = []
         for week in range(0, Cron.weeks_in_month(), 2):
             result.append(
