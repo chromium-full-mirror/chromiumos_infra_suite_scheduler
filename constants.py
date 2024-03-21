@@ -165,6 +165,9 @@ class Priorities(object):
   # postbuild task's priority
   POSTBUILD = 170
 
+  # newbuild3d task's priority
+  NEWBUILD3D = 150
+
   # the default task priority
   DEFAULT = 140
 

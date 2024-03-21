@@ -234,6 +234,7 @@ class TaskInfoCheckTestCase(BaseTaskConfigReaderTestCase):
     self.assertRaises(task_config_reader.MalformedConfigEntryError,
                       task_config._validate_task_section,
                       task_info)
+
   def testNoDayForNightlyEvent(self):
     """Ensure a nightly Task cannot specify day."""
     self.config.set(self._TASK_NAME, 'day', '1')

@@ -10,6 +10,7 @@ import re
 import sys
 
 import build_event
+import build_3d_event
 import build_lib
 import constants
 import rest_client
@@ -24,6 +25,7 @@ EVENT_CLASSES = {
     'nightly': timed_event.Nightly,
     'weekly': timed_event.Weekly,
     'new_build': build_event.NewBuild,
+    'new_build_3D': build_3d_event.NewBuild3D
 }
 
 # Namedtuple for storing event settings.
