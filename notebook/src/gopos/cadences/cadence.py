@@ -102,6 +102,9 @@ class Cadence(ABC):
         Returns:
             bool: True if they are loosely equal, False otherwise
         """
+        from gopos.cadences.new_build import NewBuild
+        from gopos.cadences.nightly import Nightly
+
         if type(other) == type(self) == NewBuild:
             return True
         elif type(other) == NewBuild or type(self) == NewBuild:

@@ -84,7 +84,8 @@ def parse_args() -> Namespace:
                     'Configs',
         epilog='Contact jaquesc@ with questions')
     parser.add_argument('-s', '--source', action='store',
-                        default="suite_scheduler.ini", dest='source',
+                        default="../generated_configs/suite_scheduler.ini",
+                        dest='source',
                         help="Path to Suite Scheduler file to parse ("
                              "suite_scheduler.ini)")
     parser.add_argument('-r', '--reload', action='store_true',
@@ -173,7 +174,7 @@ def main():
     _setup_logging(30 - (int(args.verbosity) * 10))
 
     if not os.path.isfile(source_file):
-        sys.stderr.write(f"{source_file} cannot be found.")
+        sys.stderr.write(f"Source file {source_file} cannot be found.\n")
         sys.exit(1)
 
     git = Git(source_file)
