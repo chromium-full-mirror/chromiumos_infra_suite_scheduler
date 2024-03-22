@@ -4,7 +4,14 @@ SuiteNotebook is a REPL which allows one to introspect Suites and their cadences
 
 ## Installation
 
-As the package is python, no installation is necessary, but one must make sure they have suite_scheduler.ini present inside of a git repo, so that it may be read an instrospected. As SuitesNotebook is present in the same repo as suite_scheduler.ini, it is expected that the file be present when this code is pulled.
+As the package is python, the only real installation requirement is installing requirements.txt. Specifically, run:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+Beyond that, one must only make sure they have suite_scheduler.ini present inside of a git repo, so that it may be read an instrospected. As SuitesNotebook is present in the same repo as suite_scheduler.ini, it is expected that the file be present when this code is pulled.
+
 
 ## Usage
 
