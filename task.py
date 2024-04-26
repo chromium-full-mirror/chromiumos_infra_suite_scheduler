@@ -626,6 +626,18 @@ class Task(object):
     else:
       secondary_targets = ''
 
+    # Attempt to pass the user defined steps within the suite push
+    # for CTPv1 requests that intend to be translated to CTPv2.
+    karbon_filters = None
+    koffee_filters = None
+    try:
+      if self.karbon_filters:
+        karbon_filters = json.dumps(self.karbon_filters)
+      if self.koffee_filters:
+        koffee_filters = json.dumps(self.koffee_filters)
+    except Exception as e:
+      safe_log.info('failed to dump filters into json %s', str(e))
+
     suite_job_parameters = {
         build_lib.BuildVersionKey.ANDROID_BUILD_VERSION: android_build,
         build_lib.BuildVersionKey.CROS_VERSION: cros_build,
@@ -669,6 +681,8 @@ class Task(object):
         'cros_image_bucket': self.cros_image_bucket,
         'test_args': self.test_args,
         'enable_autotest_sharding': self.enable_autotest_sharding,
+        'karbon_filters': karbon_filters,
+        'koffee_filters': koffee_filters,
     }
 
     task_executor.push(task_executor.SUITES_QUEUE,

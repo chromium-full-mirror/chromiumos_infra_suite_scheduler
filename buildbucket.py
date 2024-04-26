@@ -16,6 +16,7 @@ import build_lib
 import constants
 import file_getter
 import ctpv2_requester
+import request_helper
 from multi_duts_lib import restruct_secondary_targets_from_string
 import utils
 
@@ -324,6 +325,21 @@ def _form_test_platform_request(task_params):
   params.translate_trv2_request = (params.run_via_trv2 and (task_params.has_key('dynamic_trv2') and task_params['dynamic_trv2'] == 'True'))
 
   params.ddd_suite = (task_params.has_key('ddd_suite') and task_params['ddd_suite'] == 'True')
+
+  # Attach user defined steps into the CTPv1 request.
+  # Meant to be used only for requests being rerouted
+  # to CTPv2 for translation through the ctpv2 allowed pools.
+  # Wrap around a try/catch to ensure no breakages.
+  try:
+    user_defined_steps = []
+    if request_helper.key_not_none(task_params, 'karbon_filters'):
+      user_defined_steps.extend(json.loads(task_params['karbon_filters']))
+    if request_helper.key_not_none(task_params, 'koffee_filters'):
+      user_defined_steps.extend(json.loads(task_params['koffee_filters']))
+    if len(user_defined_steps) > 0:
+      request_helper.form_ctpv2_filters(params.user_defined_filters, user_defined_steps)
+  except Exception as e:
+    safe_log.debug('Failed to add user defined filters: %s', str(e))
 
   fw_rw_build = task_params.get(build_lib.BuildVersionKey.FW_RW_VERSION)
   fw_ro_build = task_params.get(build_lib.BuildVersionKey.FW_RO_VERSION)

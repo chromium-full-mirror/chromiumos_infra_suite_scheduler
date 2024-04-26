@@ -9,6 +9,7 @@ import safe_log
 
 import analytics
 import buildbucket
+import request_helper
 
 from chromite.third_party.infra_libs.buildbucket.proto import common_pb2 as bb_common_pb2
 from chromite.api.gen.chromiumos.test.api import ctp2_pb2 as ctpv2_request
@@ -45,7 +46,7 @@ class CTPv2Request(object):
       timeout=buildbucket.PRPC_TIMEOUT_SEC)
     safe_log.debug('Response from buildbucket: %r', resp)
 
-    if _key_not_none(self.params, 'task_id'):
+    if request_helper.key_not_none(self.params, 'task_id'):
       execution_task = analytics.ExecutionTask(self.params['task_id'], req_name)
       execution_task.update_result(resp)
       try:
@@ -60,12 +61,12 @@ class CTPv2Request(object):
     """Entry point for creaing the ctpv2 request."""
     self._form_ctpv2_targets()
     self._form_ctpv2_suite_request()
-    if _key_not_none(self.params, 'pool'):
+    if request_helper.key_not_none(self.params, 'pool'):
       self.request.pool = self.params['pool']
-    if _key_not_none(self.params, 'karbon_filters'):
-      self._form_ctpv2_filters(self.request.karbon_filters, json.loads(self.params['karbon_filters']))
-    if _key_not_none(self.params, 'koffee_filters'):
-      self._form_ctpv2_filters(self.request.koffee_filters, json.loads(self.params['koffee_filters']))
+    if request_helper.key_not_none(self.params, 'karbon_filters'):
+      request_helper.form_ctpv2_filters(self.request.karbon_filters, json.loads(self.params['karbon_filters']))
+    if request_helper.key_not_none(self.params, 'koffee_filters'):
+      request_helper.form_ctpv2_filters(self.request.koffee_filters, json.loads(self.params['koffee_filters']))
 
   def _form_ctpv2_suite_request(self):
     """Fills in the ctpv2 field for suite_request."""
@@ -88,7 +89,7 @@ class CTPv2Request(object):
     Use targets field for individual dut requests. Use schedule targets
     field for multi-dut requests.
     """
-    if not _key_not_none(self.params, 'targets'):
+    if not request_helper.key_not_none(self.params, 'targets'):
       return
     targets = self.request.targets
     schedule_targets = self.request.schedule_targets
@@ -112,70 +113,17 @@ class CTPv2Request(object):
     """
     sw_targets = target.sw_targets
     sw_target = sw_targets.add()
-    if _key_not_none(target_dict, 'board'):
+    if request_helper.key_not_none(target_dict, 'board'):
       target.hw_target.legacy_hw.board = target_dict['board']
-    if _key_not_none(target_dict, 'model'):
+    if request_helper.key_not_none(target_dict, 'model'):
       target.hw_target.legacy_hw.model = target_dict['model']
-    if _key_not_none(target_dict, 'variant'):
+    if request_helper.key_not_none(target_dict, 'variant'):
       sw_target.legacy_sw.variant = target_dict['variant']
-    if _key_not_none(target_dict, 'build_type'):
+    if request_helper.key_not_none(target_dict, 'build_type'):
       sw_target.legacy_sw.build = target_dict['build_type']
-    if _key_not_none(target_dict, 'test_source_build'):
+    if request_helper.key_not_none(target_dict, 'test_source_build'):
       sw_target.legacy_sw.gcs_path = buildbucket.get_gs_prefix(self.params) + target_dict['test_source_build']
       self.req_tags.append(bb_common_pb2.StringPair(
         key='label-image',
         value=target_dict['test_source_build'],
       ))
-
-  def _form_ctpv2_filters(self, request_filters, k_filters):
-    """Form the ctpv2 filters from provided filter dictionaries.
-
-    Args:
-      request_filters: proto object representing ctpv2 filter requests.
-      k_filters: list of dictionaries of filter info.
-    """
-    for k_filter in k_filters:
-      request_filter = request_filters.add()
-      if _key_not_none(k_filter, 'container_metadata'):
-        request_filter.container_metadata = _filter['container_metadata']
-      if _key_not_none(k_filter, 'container'):
-        container = request_filter.container
-        self._form_container_image_info(container, k_filter['container'])
-      if _key_not_none(k_filter, 'dependentContainers'):
-        dependent_filters = request_filter.dependent_containers
-        for image_info in k_filter['dependentContainers']:
-          container = dependent_filters.add()
-          self._form_container_image_info(container, image_info)
-
-  def _form_container_image_info(self, container, image_info):
-    """Form container image info for filters.
-
-    Args:
-      container: proto object representing container info.
-      image_info: dictionary of image info.
-    """
-    if _key_not_none(image_info, 'repository'):
-      repository = image_info['repository']
-      if _key_not_none(repository, 'hostname'):
-        container.repository.hostname = repository['hostname']
-      if _key_not_none(repository, 'project'):
-        container.repository.project = repository['project']
-    if _key_not_none(image_info, 'name'):
-      container.name = image_info['name']
-    if _key_not_none(image_info, 'digest'):
-      container.digest = image_info['digest']
-    if _key_not_none(image_info, 'tags'):
-      container.tags.extend(image_info['tags'])
-
-
-def _key_not_none(_dict, key):
-  """Check if key exists and dictionary and is not None.
-
-  Args:
-    _dict: dict.
-    key: string.
-
-  Returns:
-    A boolean; true when dictionary containers key and key is not None.
-  """
-  return _dict.has_key(key) and _dict.get(key) not in ['None', None]
