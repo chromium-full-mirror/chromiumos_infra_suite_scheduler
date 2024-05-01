@@ -830,13 +830,18 @@ class Task(object):
         )
         continue
 
+      # Board above is used as build target to control the CrOS image.
+      # hwtest_board has the suffix removed, which is used to to assign
+      # models for lab boards, and lookup up firmware builds.
+      hwtest_board = build_lib.reshape_board(board)
+
       # resolve ro firmware version to provision
       firmware_ro_build = None
       if self.firmware_ro_version:
         firmware_ro_build = self.firmware_ro_version
       elif self.firmware_ro_build_spec:
         firmware_ro_build = self._get_firmware_build(
-          self.firmware_ro_build_spec, board, firmware_build_dict, lab_config)
+          self.firmware_ro_build_spec, hwtest_board, firmware_build_dict, lab_config)
 
         if not firmware_ro_build:
           msg = 'No RO firmware build to run, skip running'
@@ -850,7 +855,7 @@ class Task(object):
         firmware_rw_build = self.firmware_rw_version
       elif self.firmware_rw_build_spec:
         firmware_rw_build = self._get_firmware_build(
-          self.firmware_rw_build_spec, board, firmware_build_dict, lab_config)
+          self.firmware_rw_build_spec, hwtest_board, firmware_build_dict, lab_config)
 
         if not firmware_rw_build:
           msg = 'No RW firmware build to run, skip running'
@@ -884,11 +889,6 @@ class Task(object):
         build = milestone + '-' + manifest
         build_boards[build].append((board, passed_model, build_type, test_source_build))
         continue
-
-      # Board above is used as build target to control the CrOS image.
-      # The following part is to assign models for lab boards, where
-      # the suffix should be removed.
-      hwtest_board = build_lib.reshape_board(board)
 
       models = models_by_board.get(hwtest_board, [None])
 
