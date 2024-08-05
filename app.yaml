@@ -13,6 +13,9 @@ handlers:
 - url: /.*
   script: main.app
 
+manual_scaling:
+  instances: 1
+
 # [START libraries]
 libraries:
 - name: pytz
