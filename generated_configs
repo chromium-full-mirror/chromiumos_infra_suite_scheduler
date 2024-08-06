@@ -920022,7 +920022,6 @@
 					"damu",
 					"burnet",
 					"boten",
-					"cret360",
 					"maglia",
 					"magolor"
 				]
@@ -920071,7 +920070,10 @@
 					"nissa",
 					"staryu",
 					"brya",
-					"strongbad"
+					"strongbad",
+					"nami",
+					"volteer",
+					"geralt"
 				],
 				"skipVariants": true,
 				"modelsList": [
@@ -920131,6 +920133,7 @@
 					"tentacruel",
 					"chinchou",
 					"chinchou360",
+					"kyogre",
 					"bookem",
 					"boten",
 					"maglia",
@@ -920155,6 +920158,8 @@
 					"landrid",
 					"drawper",
 					"drawcia",
+					"kracko",
+					"kracko360",
 					"craask",
 					"craaskbowl",
 					"craaskvin",
@@ -920165,12 +920170,24 @@
 					"yavijo",
 					"yahiko",
 					"joxer",
+					"anraggar",
+					"anraggar360",
 					"starmie",
 					"marasov",
 					"felwinter",
 					"osiris",
 					"kano",
-					"homestar"
+					"omnigul",
+					"homestar",
+					"bard",
+					"ekko",
+					"akali",
+					"akali360",
+					"volta",
+					"volet",
+					"voxel",
+					"voema",
+					"ciri"
 				]
 			},
 			"poolOptions": {
