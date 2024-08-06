@@ -200917,7 +200917,8 @@
 				"onlySuccessfulBuildRequired": true,
 				"runViaCft": true,
 				"tagCriteria": {},
-				"builderId": {}
+				"builderId": {},
+				"maxInShard": "1"
 			},
 			"analyticsName": "EnableAutotestExperimentation",
 			"enableAutotestSharding": true
